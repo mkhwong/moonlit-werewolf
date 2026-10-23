@@ -1,0 +1,7 @@
+{
+  "name": "月夜狼人殺",
+  "description": "Real-time multiplayer Werewolf (狼人殺) in Traditional Chinese. The host creates a room and shares a 4-character code; the server deals roles, runs every night step with animations, the sheriff election, votes and win checks.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

@@ -1,0 +1,13 @@
+# Render Blueprint — one-click deploy of 月夜狼人殺
+services:
+  - type: web
+    name: moonlit-werewolf
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

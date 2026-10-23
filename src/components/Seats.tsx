@@ -1,0 +1,59 @@
+import React from 'react';
+import Emblem, { Avatar } from './Emblem';
+import { ROLES } from '../../shared/roles';
+import { findTag } from '../notes';
+
+// Players sit in two columns down the sides of the table; each seat is a framed cameo.
+export default function Seats({ side, players, me, game, targets, selected, onSeat, notes, wolfPicks, speaking, online, compact, talking }: any) {
+  const E = game.election;
+  const signed = new Set(E ? E.signed : []);
+  const withdrawn = new Set(E ? E.withdrawn : []);
+  return (
+    <div className={`seats seats-${side} ${compact ? 'seats-compact' : ''}`} role="list">
+      {players.map(p => {
+        const selectable = !!targets && targets.includes(p.id);
+        const isSel = selected === p.id;
+        const tag = notes[p.id]?.tag ? findTag(notes[p.id].tag, game.composition) : null;
+        const roleShown = p.id !== me?.id && (p.mate ? p.role : (p.revealed && p.revealed !== 'wolfTeam' ? p.revealed : null));
+        const cls = [
+          'seat',
+          !p.alive && 'is-dead',
+          selectable && 'is-selectable',
+          isSel && 'is-selected',
+          speaking === p.id && 'is-speaking',
+          talking?.has(p.id) && 'is-talking',
+          p.id === me?.id && 'is-me',
+          targets && !selectable && 'is-muted',
+        ].filter(Boolean).join(' ');
+        const mateRole = p.mate ? `，狼隊友（${ROLES[p.role]?.name}）` : '';
+        const label = `${p.seat}號 ${p.name}${mateRole}${p.alive ? '' : '，已出局'}${p.sheriff ? '，警長' : ''}${tag ? `，筆記：${tag.label}` : ''}`;
+        return (
+          <button key={p.id} type="button" role="listitem" className={cls} onClick={() => onSeat(p.id)} aria-label={label} aria-pressed={isSel}>
+            <span className="seat-medal">
+              <Avatar name={p.name} size={compact ? 36 : 44} dim={!p.alive} />
+              {!p.alive ? <i className="seat-x" aria-hidden /> : null}
+              <span className="seat-num">{p.seat}</span>
+              {p.sheriff ? <span className="seat-badge" title="警長"><Emblem id="badge" size={20} /></span> : null}
+              {p.mate ? <span className="seat-mate" title="狼隊友"><Emblem id="werewolf" size={16} /></span> : null}
+              {online && online[p.id] === false ? <span className="seat-offline" title="離線" /> : null}
+              {talking?.has(p.id) ? <span className="seat-mic" title="說話中" aria-label="說話中"><svg viewBox="0 0 24 24" width="12" height="12"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" /></svg></span> : null}
+              {wolfPicks && wolfPicks[p.id] ? (
+                <span className="seat-picks">{wolfPicks[p.id].map(s => <i key={s}>{s}</i>)}</span>
+              ) : null}
+            </span>
+            <span className="seat-name">{p.id === me?.id ? '我' : p.name}</span>
+            {signed.has(p.id) ? <span className={`seat-chip ${withdrawn.has(p.id) ? 'chip-out' : 'chip-run'}`}>{withdrawn.has(p.id) ? '退水' : '競選'}</span> : null}
+            {tag ? <span className="seat-tag" style={{ '--t': tag.color }}>{tag.label}</span> : null}
+            {roleShown || p.revealed === 'wolfTeam' || p.idiotRevealed ? (
+              <span className="seat-meta">
+                {roleShown && !p.mate ? <b style={{ color: ROLES[roleShown]?.color }}>{ROLES[roleShown]?.name}</b> : null}
+                {p.revealed === 'wolfTeam' ? <b style={{ color: '#e0525a' }}>狼人</b> : null}
+                {p.idiotRevealed ? <span>無票</span> : null}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

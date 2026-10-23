@@ -1,0 +1,33 @@
+{
+  "name": "moonlit-werewolf",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "月夜狼人殺 — online Werewolf (狼人殺) in Traditional Chinese",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build",
+    "start": "tsx server.ts --prod",
+    "lint": "tsc --noEmit",
+    "test": "tsx scripts/scenario.ts && tsx scripts/simulate.ts 120",
+    "bots": "tsx scripts/bots.ts"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "express": "^4.21.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "tsx": "^4.19.2",
+    "vite": "^5.4.11"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.7.2"
+  }
+}
