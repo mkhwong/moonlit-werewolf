@@ -1,3 +1,4 @@
+import { armAudioUnlock } from './audio';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { socket, syncClock, call, loadSession, clearSession } from './socket';
 import Home from './screens/Home';
@@ -21,7 +22,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onState = s => { syncClock(s.serverNow); setState(s); setResuming(false); if (s.voice) { voice.armAutoJoin(); voice.sync(s.you.id, s.voice.members); } (window as any).__ww = s; };
+    const onState = s => { syncClock(s.serverNow); setState(s); setResuming(false); armAudioUnlock(); if (s.voice) { voice.armAutoJoin(); voice.sync(s.you.id, s.voice.members); } (window as any).__ww = s; };
     const onConnect = () => {
       setConnected(true);
       const sess = loadSession();

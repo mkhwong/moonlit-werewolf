@@ -8,6 +8,8 @@ import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
 import { act, call, call as emit, useNow, now } from '../socket';
 import { useNotes } from '../notes';
+import { useAudioCues } from '../cues';
+import { sfx } from '../audio';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt, throwBlocked } from '../components/Throw';
 import { PttDock, RoleFigure, VoiceCtx } from '../components/VoiceControls';
 import { hasTransition, playTransition, preloadTransitions, playTurn, preloadTurns, TURN_FOR_STEP, TURN_FOR_SHOOTER } from '../transitions';
@@ -250,6 +252,7 @@ export default function Game({ state }: any) {
   const P = useMemo(() => Object.fromEntries(game.players.map(p => [p.id, p])), [game.players]);
   const online = useMemo(() => Object.fromEntries(room.players.map(p => [p.id, p.online])), [room.players]);
   const me = game.me;
+  useAudioCues(game, P);
 
   let targets = null;
   if (throwItem) targets = game.players.filter(p => p.id !== game.me?.id).map(p => p.id);
@@ -273,7 +276,7 @@ export default function Game({ state }: any) {
     }
     if (targets && targets.includes(pid)) {
       if (pr.kind === 'wolf') act(pr.myPick === pid ? { type: 'unpick' } : { type: 'pick', target: pid });
-      else setSel(s => (s === pid ? null : pid));
+      else { sfx('tap'); setSel(s => (s === pid ? null : pid)); }
       return;
     }
     setSheet({ note: pid });

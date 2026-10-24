@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { socket, call } from '../socket';
+import { sfx } from '../audio';
 
 // 擲物：雞蛋、發霉番茄、便便 — thrown at another player, everyone sees it fly and splat.
 
@@ -101,10 +102,12 @@ export function playThrow({ from, to, item }: { from: string; to: string; item: 
     const y = (1 - u) ** 2 * a.y + 2 * (1 - u) * u * my + u * u * b.y;
     kf.push({ transform: `translate(${x - size / 2}px,${y - size / 2}px) rotate(${u * 540}deg) scale(${1 + Math.sin(u * Math.PI) * 0.35})`, offset: u });
   }
+  sfx('whoosh');
   const flight = proj.animate(kf, { duration: reduce ? 1 : 720, easing: 'cubic-bezier(.3,.1,.7,1)', fill: 'forwards' });
 
   flight.onfinish = () => {
     proj.remove();
+    sfx('splat');
     const s = 84;
     const splat = document.createElement('div');
     splat.className = 'throw-splat';

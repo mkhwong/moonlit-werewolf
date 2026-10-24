@@ -817,3 +817,5 @@ html .wwt .wwt-bg { opacity: .28 !important; }
 html .wwt .wwt-vig { opacity: .35 !important; }
 html .wwt-turn .wwt-tbg { opacity: .3 !important; }
 html .wwt > .wwt-hint { display: none !important; }
+.sound-toggle.is-off { color: var(--moon-3); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .15); }
+.sound-toggle.is-sfx { color: var(--moon-2); }

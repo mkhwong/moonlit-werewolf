@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { voice, VoiceStatus } from '../voice';
 import Emblem from './Emblem';
 import { useSimpleFx, setSimpleFx } from '../prefs';
+import { useSoundMode, setSoundMode, unlockAudio, sfx, sayClips, AUDIO_ENABLED } from '../audio';
 import { ROLES, characterURL } from '../../shared/roles';
 
 // state.voice from the server: { members, talking: [{pid, channel}], canTalk, channel }
@@ -52,7 +53,29 @@ const CHANNEL_LABEL = { speech: '按住說話', wolves: '按住和狼隊友說�
  * so it is always within thumb reach without covering the table.
  */
 export function PttDock() {
-  return <div className="ptt-dock"><FxToggle /><PushToTalk dock /></div>;
+  return <div className="ptt-dock"><FxToggle />{AUDIO_ENABLED ? <SoundToggle /> : null}<PushToTalk dock /></div>;
+}
+
+const SOUND_NEXT = { all: 'sfx', sfx: 'off', off: 'all' } as const;
+const SOUND_LABEL = { all: '旁白', sfx: '音效', off: '靜音' };
+
+/** Bottom-left: 旁白 (sound effects + 粵語 narrator) → 音效 (effects only) → 靜音. */
+export function SoundToggle() {
+  const m = useSoundMode();
+  const next = () => { const n = SOUND_NEXT[m]; setSoundMode(n); unlockAudio(); if (n !== 'off') sfx('ding'); if (n === 'all') sayClips(['on'], '旁白已開啟。'); };
+  const title = m === 'all'
+    ? '音效＋粵語旁白；點一下只留音效'
+    : m === 'sfx' ? '只有音效；點一下靜音' : '靜音；點一下開啟音效與旁白';
+  return (
+    <button type="button" className={`fx-toggle sound-toggle is-${m}`} onClick={next} title={title} aria-label={`聲音：${SOUND_LABEL[m]}`}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" />
+        {m === 'off' ? <path d="M17 9l5 6M22 9l-5 6" /> : <path d="M16.5 8.5a5 5 0 0 1 0 7" />}
+        {m === 'all' ? <path d="M19 6a8.5 8.5 0 0 1 0 12" /> : null}
+      </svg>
+      <span>{SOUND_LABEL[m]}</span>
+    </button>
+  );
 }
 
 /** Bottom-left switch: 動畫 ↔ 簡易 (skip transitions and cinematics, show plain notices). */

@@ -117,7 +117,7 @@ Lobby → host picks a pack (or custom roles) and rules → 確認身分 → nig
 
 **Notes**: tap any seat to tag it (狼, 好人, 金水, 查殺, 銀水, role guesses) and add a remark. Notes stay on the player's device only.
 
-Speeches are meant for voice (in person or a call). Speakers can also type, and wolves get a private chat during their night step.
+Speeches are meant for voice (in person or a call). Speakers can also type.
 
 ## Project layout
 
@@ -168,3 +168,20 @@ On your turn to speak, the text panel has a » button that tucks it into a 「�
 While someone speaks, a ring draws itself around their portrait; a full circle means their time is up (it turns red for the last 10 seconds). If the room setting 延長發言 is on (lobby rules, on by default), the host or the sheriff can add 30 seconds to the current speech — including their own — up to 3 times per speech; the judge's feed notes each extension.
 
 Transitions play over the table with a see-through backdrop and let taps through, so seats, notes, the » tabs and the talk bar stay usable while they run (the bottom-left 動畫/簡易 switch still turns them off entirely).
+
+## Sound effects and 粵語 narration
+
+`src/audio.ts` synthesises the sound effects with Web Audio (no audio files): role reveal (shimmer), night falls (drone + howl), role calls (gong), your own move at night (two-note chime), a private result such as a 預言家 check (sparkle), every seat tap / choice (soft click), dawn (bells), deaths (toll) or 平安夜 (chimes), vote (gavel), result (drum), exile, shot, self-destruct, duel, bear roar, 白痴 (boing), sheriff (fanfare), badge (whoosh), your speaking turn (ding), the last 5 s of your own speech or vote (ticks), throws (whoosh + splat) and the win (good or wolf).
+
+The narrator (`src/cues.ts`) reads each stage in Cantonese — 「天黑請閉眼」, 「狼人請開眼，確認隊友，揀今晚要殺嘅人」, 「昨晚死咗嘅係 三號 同埋 十二號」, 「請 五號 發言」, 「六號 帶走咗 一號」… The voice is **recorded into the game** (`public/voice/*.mp3`, recorded in Higgsfield), so every player hears the same voice on any phone or computer. Lines with one seat number are recorded whole for every seat; lines with two seats are stitched from fragments. `public/voice/clips.json` lists which lines have a recording; a line without one is simply not read out (a missing joining word such as 「同埋」 just leaves a short gap). The lines live in `shared/voiceLines.ts`; 「PK」 is narrated as 「對決」.
+
+The speaker button at the bottom-left cycles 旁白 (effects + narration) → 音效 (effects only) → 靜音, and is remembered per device. Sound starts after the player's first tap (browser rule). `AUDIO_ENABLED` in `src/audio.ts` is the master switch.
+
+### Re-recording narrator lines
+
+`npx tsx scripts/voice-batches.ts` lists the 296 lines in 10 recording batches. Record each batch in one go with the same voice and about a second's pause between lines, then cut it into clips:
+
+    npx tsx scripts/voice-batches.ts > voice-batches.json
+    python3 scripts/split-voice.py voice-batches.json 04 voice-04.mp3 public/voice
+
+The script cuts at the N−1 longest pauses, trims and loudness-normalises each clip, and prints every clip's length so a bad cut stands out.

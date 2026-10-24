@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { sfx } from './audio';
 import { useEffect, useState } from 'react';
 
 // WebSocket first; if a proxy blocks it, fall back to HTTP long-polling.
@@ -17,7 +18,7 @@ export function call(event: string, payload?: unknown): Promise<any> {
     socket.emit(event, payload, res => { clearTimeout(t); resolve(res || {}); });
   });
 }
-export const act = a => socket.emit('act', a);
+export const act = a => { sfx('tap'); socket.emit('act', a); };
 
 const KEY = 'ww.session';
 export function loadSession() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
