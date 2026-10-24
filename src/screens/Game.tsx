@@ -305,7 +305,7 @@ export default function Game({ state }: any) {
   return (
     <div className={`app game time-${game.time} has-dock`}>
       <Scene mode={sceneMode(game)} />
-      <div className={`shell shell-game ${cine || !introDone ? 'is-veiled' : ''}`}>
+      <div className={`shell shell-game ${cine ? 'is-veiled' : ''}`}>
         <header className="topbar">
           {canEverBoom ? (
             <button type="button" className={`tb-boom ${boomArmed ? 'is-armed' : ''}`} disabled={!pr.canSelfDestruct}

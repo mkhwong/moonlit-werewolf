@@ -166,3 +166,5 @@ On your turn to speak, the text panel has a » button that tucks it into a 「�
 ## Speech timer and 延長發言
 
 While someone speaks, a ring draws itself around their portrait; a full circle means their time is up (it turns red for the last 10 seconds). If the room setting 延長發言 is on (lobby rules, on by default), the host or the sheriff can add 30 seconds to the current speech — including their own — up to 3 times per speech; the judge's feed notes each extension.
+
+Transitions play over the table with a see-through backdrop and let taps through, so seats, notes, the » tabs and the talk bar stay usable while they run (the bottom-left 動畫/簡易 switch still turns them off entirely).
