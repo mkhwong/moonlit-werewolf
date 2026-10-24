@@ -1078,13 +1078,13 @@ export class Game { [key: string]: any;
           const sk = LUCKY_SKILLS[a.skill];
           if (teamOf(t.role) === 'wolf') {
             n.merchantFail = true;
-            this.secret(`奇蹟商人把${sk.name}交給 ${t.seat}號（狼人陣營），交易失敗`);
+            this.secret(`奇蹟商人把${sk.item}交給 ${t.seat}號（狼人陣營），交易失敗`);
           } else {
             this.lucky = { pid: t.id, skill: a.skill, used: false, night: this.day };
-            this.plog(t.id, `你成為幸運兒，獲得一次性技能：${sk.from}的${sk.name}`);
-            this.secret(`奇蹟商人把${sk.name}交給 ${t.seat}號`);
+            this.plog(t.id, `你成為幸運兒，獲得「${sk.item}」：一次性${sk.from}的${sk.name}`);
+            this.secret(`奇蹟商人把${sk.item}交給 ${t.seat}號`);
           }
-          this.plog(me.id, `你把「${sk.name}」交給了 ${t.seat}號`);
+          this.plog(me.id, `你把「${sk.item}」交給了 ${t.seat}號`);
         } else if (a.type === 'skip') {
           this.plog(me.id, '今晚沒有交易');
         } else return;
@@ -1316,9 +1316,10 @@ export class Game { [key: string]: any;
         if (pv.result) return { kind: 'result', target: pv.result.target, value: pv.result.value, mode: 'seer' };
         if (pv.done || !L || L.used) return { kind: 'info', text: '你已行動，請閉眼' };
         const sk = LUCKY_SKILLS[L.skill];
-        const first = L.night === this.day ? '奇蹟商人選你成為幸運兒！' : '';
+        const gift = L.night === this.day; // received tonight → the client plays the gift animation
+        const first = gift ? `奇蹟商人送你「${sk.item}」！` : '';
         return {
-          kind: 'pick', title: `幸運兒・${sk.from}的${sk.name}`,
+          kind: 'pick', title: `幸運兒・${sk.item}`, skill: L.skill, gift,
           desc: `${first}一次性技能：${sk.desc}。可以留到之後的晚上再用。`,
           targets: L.skill === 'guard' ? alive : others, skipLabel: '先不用', confirmLabel: L.skill === 'check' ? '查驗' : L.skill === 'poison' ? '下毒' : '守護',
           danger: L.skill === 'poison',

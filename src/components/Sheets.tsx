@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ItemImg } from './LuckyItems';
 import Emblem, { Avatar } from './Emblem';
 import { characterURL, ROLES, ROLE_ORDER, TEAM_NAME, MECH_SKILL, LONE_WOLVES, LUCKY_SKILLS, nightNumberLabel, dayNumberLabel } from '../../shared/roles';
 import { tagsFor } from '../notes';
@@ -41,7 +42,7 @@ function roleExtra(game) {
   const me = game.me;
   if (!me) return null;
   const seat = id => game.players.find(p => p.id === id)?.seat;
-  const lucky = me.lucky ? <p className="role-mates">你是幸運兒：{LUCKY_SKILLS[me.lucky.skill].from}的{LUCKY_SKILLS[me.lucky.skill].name}（{me.lucky.used ? '已使用' : '未使用'}）</p> : null;
+  const lucky = me.lucky ? <p className="role-mates lucky-note"><ItemImg skill={me.lucky.skill} size={28} />你是幸運兒：{LUCKY_SKILLS[me.lucky.skill].item}（{LUCKY_SKILLS[me.lucky.skill].from}的{LUCKY_SKILLS[me.lucky.skill].name}，{me.lucky.used ? '已使用' : '未使用'}）</p> : null;
   if (me.merchantUsed !== undefined) return <>{lucky}<p className="role-mates">{me.merchantUsed ? '你已完成交易' : '尚未交易'}</p></>;
   if (me.dreamLast !== undefined) return <>{lucky}<p className="role-mates">{me.dreamLast ? `昨晚的夢遊者：${seat(me.dreamLast)}號` : '尚未有夢遊者'}</p></>;
   if (lucky) return lucky;

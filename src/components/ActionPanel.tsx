@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Emblem from './Emblem';
 import { act } from '../socket';
+import { ItemImg, LuckyGift, flyItemToSeat } from './LuckyItems';
 import { ROLES, MECH_SKILL } from '../../shared/roles';
 
 export const SPEECH_LABEL = { sheriff: '競選發言', sheriffPk: '競選 PK 發言', day: '發言', pk: 'PK 發言', lastWords: '遺言' };
@@ -47,23 +48,24 @@ function Extras({ pr, mode, setMode, sel, P }: any) {
 
 function MerchantPanel({ pr, sel, P }: any) {
   const [skill, setSkill] = useState(null);
-  const sk = skill ? pr.skills[skill] : null;
+  const trade = () => {
+    flyItemToSeat(skill, document.querySelector(`.item-card[data-skill="${skill}"] .item-img`), sel);
+    act({ type: 'trade', target: sel, skill });
+  };
+  // Compact on purpose (one line + one row) so it stays below the seat columns. No skip: the timer runs out instead.
   return (
     <>
-      <h3>奇蹟商人・交易</h3>
-      <p>全場一次。選一個技能，再點選一名玩家成為幸運兒。送給狼人的話交易失敗，你會在天亮時出局。</p>
-      <div className="skill-pick" role="radiogroup" aria-label="選擇技能">
-        {Object.entries(pr.skills).map(([k, v]: any) => (
-          <button key={k} type="button" role="radio" aria-checked={skill === k} className={skill === k ? 'on' : ''} onClick={() => setSkill(k)}>
-            <b>{v.name}</b><small>{v.from}・{v.desc}</small>
-          </button>
-        ))}
-      </div>
-      <div className="row">
-        <button className="btn btn-gold" disabled={!sel || !skill} onClick={() => act({ type: 'trade', target: sel, skill })}>
-          {sel && sk ? `把${sk.name}交給 ${P[sel]?.seat}號` : !skill ? '請先選擇技能' : '請點選一名玩家'}
-        </button>
-        <button className="btn btn-ghost" onClick={() => act({ type: 'skip' })}>今晚不交易</button>
+      <p className="merchant-ask">你想與誰交易？{sel ? <b>{P[sel]?.seat}號</b> : null}</p>
+      <div className="item-row">
+        <div className="item-pick" role="radiogroup" aria-label="選擇禮物">
+          {Object.entries(pr.skills).map(([k, v]: any) => (
+            <button key={k} type="button" role="radio" data-skill={k} aria-checked={skill === k} className={`item-card ${skill === k ? 'on' : ''}`} onClick={() => setSkill(k)}>
+              <ItemImg skill={k} size={44} />
+              <b>{v.item}</b>
+            </button>
+          ))}
+        </div>
+        <button className="btn btn-gold item-confirm" disabled={!sel || !skill} onClick={trade}>確認</button>
       </div>
     </>
   );
@@ -80,8 +82,18 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
     case 'pick':
       body = (
         <>
-          <h3>{pr.title}</h3>
-          {pr.desc ? <p>{pr.desc}</p> : null}
+          {pr.skill ? <LuckyGift skill={pr.skill} id={`${game.id}:${ph.id}`} key={ph.id} /> : null}
+          {pr.skill ? (
+            <div className="lucky-head">
+              <ItemImg skill={pr.skill} size={60} className={pr.gift ? 'is-new' : ''} />
+              <div><h3>{pr.title}</h3>{pr.desc ? <p>{pr.desc}</p> : null}</div>
+            </div>
+          ) : (
+            <>
+              <h3>{pr.title}</h3>
+              {pr.desc ? <p>{pr.desc}</p> : null}
+            </>
+          )}
           <div className="row">
             <button className={`btn ${pr.danger ? 'btn-shu' : 'btn-moon'}`} disabled={!sel} onClick={() => act({ type: 'pick', target: sel })}>
               {sel ? `${pr.confirmLabel} ${seat(sel)}` : '請點選上方玩家'}

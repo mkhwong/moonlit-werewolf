@@ -10,6 +10,7 @@ import { act, call, call as emit, useNow, now } from '../socket';
 import { useNotes } from '../notes';
 import { useAudioCues } from '../cues';
 import { sfx } from '../audio';
+import { preloadItems } from '../components/LuckyItems';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt, throwBlocked } from '../components/Throw';
 import { PttDock, RoleFigure, VoiceCtx } from '../components/VoiceControls';
 import { hasTransition, playTransition, preloadTransitions, playTurn, preloadTurns, TURN_FOR_STEP, TURN_FOR_SHOOTER } from '../transitions';
@@ -75,6 +76,7 @@ function useRoleTransitions(game, pr, mode) {
   useEffect(() => {
     const roles = Object.keys(game.composition);
     preloadTransitions(roles);
+    if (roles.includes('miracleMerchant')) preloadItems();
     if (!me) return;
     // Decode this player's own turn scenes plus the public ones.
     const mine = [

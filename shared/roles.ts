@@ -100,9 +100,10 @@ export const NO_BOOM = ['wolfBeauty', 'gargoyle', 'hiddenWolf', 'spiritKnight'];
 
 // Skills the Miracle Merchant can hand to the 幸運兒
 export const LUCKY_SKILLS = {
-  check: { name: '查驗', from: '預言家', desc: '查驗一名玩家是好人或狼人' },
-  poison: { name: '毒藥', from: '女巫', desc: '毒殺一名玩家' },
-  guard: { name: '守護', from: '守衛', desc: '守護一名玩家免受狼刀' },
+  // item = the gift's name, art = public/items/<art>.webp
+  check: { name: '查驗', from: '預言家', desc: '查驗一名玩家是好人或狼人', item: '預言之眼', art: 'check' },
+  poison: { name: '毒藥', from: '女巫', desc: '毒殺一名玩家', item: '女巫毒藥', art: 'poison' },
+  guard: { name: '守護', from: '守衛', desc: '守護一名玩家免受狼刀', item: '守護之盾', art: 'guard' },
 };
 
 // Character art + full-screen transitions from the 「角色轉場」 pack (public/characters/<art>.webp).
