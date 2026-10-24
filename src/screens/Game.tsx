@@ -3,12 +3,13 @@ import Scene from '../components/Scene';
 import Seats from '../components/Seats';
 import JudgeFeed from '../components/JudgeFeed';
 import ActionPanel, { SPEECH_LABEL } from '../components/ActionPanel';
-import CinematicLayer, { FULL_CINE } from '../components/Cinematic';
+import CinematicLayer, { FULL_CINE, VoteRecord } from '../components/Cinematic';
 import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
 import { act, call, useNow, now } from '../socket';
 import { useNotes } from '../notes';
-import { PttDock, VoiceCtx } from '../components/VoiceControls';
+import { ThrowLayer, ThrowFlyout, ItemArt, throwAt, throwBlocked } from '../components/Throw';
+import { PttDock, RoleFigure, VoiceCtx } from '../components/VoiceControls';
 import { hasTransition, playTransition, preloadTransitions, playTurn, preloadTurns, TURN_FOR_STEP, TURN_FOR_SHOOTER } from '../transitions';
 import { ROLES, TEAM_NAME, NIGHT_STEPS, NO_BOOM, nightNumberLabel, dayNumberLabel } from '../../shared/roles';
 
@@ -233,13 +234,20 @@ export default function Game({ state }: any) {
   useEffect(() => { if (!pr.canSelfDestruct) setBoomArmed(false); }, [pr.canSelfDestruct]);
 
   useEffect(() => { setSel(null); setMode(null); }, [ph?.id, pr.kind]);
+  // 票型: every vote result pops up and stays until 確認; tapping a vote line in the feed reopens it.
+  const [voteRec, setVoteRec] = useState(null);
+  useEffect(() => { if (ph?.type === 'voteResult') setVoteRec(ph.data); }, [ph?.id]);
+  // 擲物 mode: after picking an item, every other player's seat blinks; tap one to throw.
+  const [throwItem, setThrowItem] = useState(null);
+  useEffect(() => { if (throwItem && (throwBlocked(game) || cine)) setThrowItem(null); }, [game.time, game.me?.alive, cine]);
 
   const P = useMemo(() => Object.fromEntries(game.players.map(p => [p.id, p])), [game.players]);
   const online = useMemo(() => Object.fromEntries(room.players.map(p => [p.id, p.online])), [room.players]);
   const me = game.me;
 
   let targets = null;
-  if (introDone && !cine) {
+  if (throwItem) targets = game.players.filter(p => p.id !== game.me?.id).map(p => p.id);
+  else if (introDone && !cine) {
     if (pr.kind === 'pick' || pr.kind === 'vote' || pr.kind === 'merchant') targets = pr.targets;
     else if (pr.kind === 'wolf' && !pr.myLocked) targets = pr.targets;
     else if (pr.kind === 'witch' && mode === 'poison') targets = pr.targets;
@@ -253,8 +261,12 @@ export default function Game({ state }: any) {
   }
 
   const onSeat = pid => {
+    if (throwItem) {
+      if (pid !== me?.id) { throwAt(throwItem, pid); setThrowItem(null); }
+      return;
+    }
     if (targets && targets.includes(pid)) {
-      if (pr.kind === 'wolf') act({ type: 'pick', target: pid });
+      if (pr.kind === 'wolf') act(pr.myPick === pid ? { type: 'unpick' } : { type: 'pick', target: pid });
       else setSel(s => (s === pid ? null : pid));
       return;
     }
@@ -283,7 +295,7 @@ export default function Game({ state }: any) {
   const call = ph ? judgeCall(ph, P) : '';
 
   return (
-    <div className={`app game time-${game.time} has-dock ${me ? 'has-dock-role' : ''}`}>
+    <div className={`app game time-${game.time} has-dock`}>
       <Scene mode={sceneMode(game)} />
       <div className={`shell shell-game ${cine || !introDone ? 'is-veiled' : ''}`}>
         <header className="topbar">
@@ -294,6 +306,12 @@ export default function Game({ state }: any) {
               title={pr.canSelfDestruct ? '自爆：公開狼人身分出局，白天立即結束並進入黑夜' : '發言或上警階段才能自爆'}>
               <Emblem id="wolfTeam" size={20} />{boomArmed ? '確認自爆' : '自爆'}
             </button>
+          ) : null}
+          {pr.kind === 'wolf' && introDone ? (
+            <button type="button" className={`tb-boom tb-skip ${me.id in pr.picks && !pr.picks[me.id] ? 'is-on' : ''}`}
+              aria-pressed={me.id in pr.picks && !pr.picks[me.id]}
+              onClick={() => act(me.id in pr.picks && !pr.picks[me.id] ? { type: 'unpick' } : { type: 'skip' })}
+              title="空刀：今晚不殺人（再按一次取消）">空刀</button>
           ) : null}
           <div className="tb-left">
             <div className="tb-day">{dayLabel}</div>
@@ -315,16 +333,20 @@ export default function Game({ state }: any) {
           <span className="tool-room">房間 {room.code}</span>
         </nav>
 
-        <div className="table">
+        <div className={`table ${throwItem ? 'is-throwing' : ''}`}>
           <Seats side="left" players={left} {...seatProps} />
-          <JudgeFeed game={game} P={P} line={call} />
+          <JudgeFeed game={game} P={P} line={call} onVote={setVoteRec} />
           <Seats side="right" players={right} {...seatProps} />
         </div>
 
-        <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} />
+        {/* Bottom row: your character on the left, the action panel on the right. */}
+        <div className="bottom-row">
+          {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} onClick={() => setSheet('role')} /> : null}
+          <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} />
+        </div>
       </div>
 
-      {ph?.type !== 'reveal' ? <PttDock role={me?.role} dead={me && !me.alive} onRole={() => setSheet('role')} /> : null}
+      {ph?.type !== 'reveal' ? <PttDock /> : null}
       {ph?.type === 'reveal' && me ? <RoleReveal game={game} pr={pr} /> : null}
       <CinematicLayer game={game} playersById={P} />
 
@@ -337,7 +359,17 @@ export default function Game({ state }: any) {
           <span aria-hidden>»</span>
         </button>
       ) : null}
+      {!game.finished && !cine && ph?.type !== 'reveal' ? (
+        <button type="button" className={`guide-tab throw-tab ${throwItem ? 'is-armed' : ''}`}
+          onClick={() => { if (throwItem) setThrowItem(null); else setSheet(sheet === 'throw' ? null : 'throw'); }}
+          aria-label={throwItem ? '取消擲物' : '擲物：雞蛋、發霉番茄、便便'} aria-expanded={sheet === 'throw'}>
+          {throwItem ? <ItemArt id={throwItem} size={20} /> : <span aria-hidden>»</span>}
+        </button>
+      ) : null}
       {sheet === 'guide' ? <GuidePopup game={game} onClose={() => setSheet(null)} /> : null}
+      {sheet === 'throw' ? <ThrowFlyout game={game} onPick={it => { setThrowItem(it); setSheet(null); }} onClose={() => setSheet(null)} /> : null}
+      <ThrowLayer />
+      {voteRec ? <VoteRecord data={voteRec} players={P} onClose={() => setVoteRec(null)} /> : null}
       {sheet === 'host' ? <HostSheet finished={game.finished} onClose={() => setSheet(null)} /> : null}
     </div>
   );

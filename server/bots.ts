@@ -49,14 +49,13 @@ export function botThink(game: any, pid: string, memo: Map<string, string>, time
       else if (pr.targets?.length) act({ type: 'pick', target: pick(pr.targets) });
       else if (pr.skipLabel) act({ type: 'skip' });
     }, 1200, 3500); break;
-    case 'wolf':
-      if (pr.myLocked) break;
-      if (pr.myPick == null) {
-        // Follow a teammate's pick if there is one, otherwise choose a non-wolf.
-        const mates = Object.values(pr.picks || {}).filter(Boolean) as string[];
-        later(() => act({ type: 'pick', target: mates.length && chance(0.8) ? mates[0] : pick(notMate(pr.targets)) }), 1200, 3000);
-      } else later(() => act({ type: 'lock' }), 600, 1500);
+    case 'wolf': {
+      // Picking is the decision (no confirm). Follow a teammate's pick if there is one.
+      const mates = Object.entries(pr.picks || {}).filter(([w, t]) => w !== pid && t).map(([, t]) => t) as string[];
+      if (pr.myPick == null) later(() => act({ type: 'pick', target: mates.length && chance(0.8) ? mates[0] : pick(notMate(pr.targets)) }), 1200, 3000);
+      else if (mates.length && !mates.includes(pr.myPick) && chance(0.7)) later(() => act({ type: 'pick', target: mates[0] }), 1500, 3500);
       break;
+    }
     case 'witch': later(() => {
       if (pr.canSave && chance(0.6)) act({ type: 'save' });
       else if (pr.poison && chance(0.2) && pr.targets?.length) act({ type: 'poison', target: pick(pr.targets) });

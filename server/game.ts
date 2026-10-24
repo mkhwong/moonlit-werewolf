@@ -91,10 +91,12 @@ export class Game { [key: string]: any;
   isAlive(id) { const p = this.get(id); return !!p && p.alive; }
   ms(sec) { return sec * 1000 * SCALE; }
   scaled(ms) { return ms * SCALE; }
-  log(text, kind = 'info') {
-    const e = { day: this.day, time: this.time, text, kind, at: Date.now() };
+  log(text, kind = 'info', extra: any = null) {
+    const e: any = { day: this.day, time: this.time, text, kind, at: Date.now() };
+    if (extra) Object.assign(e, extra);
     this.publicLog.push(e);
     this.history.push(e);
+    return e;
   }
   plog(pid, text) { (this.privateLog[pid] ||= []).push({ day: this.day, time: this.time, text }); }
   secret(text) { this.history.push({ day: this.day, time: this.time, text, kind: 'secret' }); }
@@ -305,7 +307,17 @@ export class Game { [key: string]: any;
         if (t && this.isAlive(t)) tally[t] = (tally[t] || 0) + 1;
       }
       const max = Math.max(0, ...Object.values(tally));
-      n.kill = max ? choice(Object.keys(tally).filter(k => tally[k] === max)) : null;
+      const top = max ? Object.keys(tally).filter(k => tally[k] === max) : [];
+      const skips = pv.actors.filter(id => id in pv.picks && !pv.picks[id]).length;
+      // Most votes wins (空刀 counts as a vote for nobody); a tie between players is settled at random.
+      n.kill = max && max >= skips ? choice(top) : null;
+      if (pv.actors.length) {
+        const split = new Set(pv.actors.map(id => pv.picks[id] ?? '')).size > 1;
+        this.wolfResult = {
+          day: this.day, actors: [...pv.actors], kill: n.kill,
+          note: n.kill && top.length > 1 && max >= skips ? '隊友票數相同，系統隨機決定' : split ? '依多數票決定' : '',
+        };
+      }
       for (const id of pv.actors) this.plog(id, n.kill ? `狼隊擊殺了 ${this.seat(n.kill)}號` : '狼隊今晚空刀');
       this.secret(n.kill ? `狼人擊殺 ${this.seat(n.kill)}號` : '狼人空刀');
     }
@@ -685,8 +697,10 @@ export class Game { [key: string]: any;
     const parts = Object.keys(counts)
       .sort((a, b) => counts[b] - counts[a])
       .map(t => `${this.seat(t)}號 ${counts[t]}票（${this.seats(by[t])}）`);
-    this.log(`${label}：${parts.join('；') || '全員棄票'}${abstain.length && parts.length ? `；棄票：${this.seats(abstain)}` : ''}`, 'vote');
-    await this.cinematic('voteResult', result, CINE.voteResult);
+    // The full record rides on the log entry so players can reopen it from the judge feed.
+    this.log(`${label}：${parts.join('；') || '全員棄票'}${abstain.length && parts.length ? `；棄票：${this.seats(abstain)}` : ''}`, 'vote',
+      { vote: { ...result, day: this.day } });
+    await this.cinematic('voteResult', { ...result, day: this.day }, CINE.voteResult);
     return result;
   }
 
@@ -965,12 +979,16 @@ export class Game { [key: string]: any;
     };
     switch (step) {
       case 'wolf': {
-        if (pv.locked[me.id]) return;
+        // No confirm step: a wolf's current pick (or 空刀) is their vote, changeable until the step ends.
         if (a.type === 'pick' && ok(a.target)) pv.picks[me.id] = a.target;
-        else if (a.type === 'skip') { pv.picks[me.id] = null; pv.locked[me.id] = true; }
-        else if (a.type === 'lock' && pv.picks[me.id]) pv.locked[me.id] = true;
+        else if (a.type === 'skip') pv.picks[me.id] = null;
+        else if (a.type === 'unpick') delete pv.picks[me.id];
         else return;
-        if (pv.actors.every(id => pv.locked[id])) this.completeSoon(ph, { min: 5000, delay: 900 });
+        const all = pv.actors.every(id => id in pv.picks);
+        const same = all && new Set(pv.actors.map(id => pv.picks[id] ?? '')).size === 1;
+        // Everyone agrees → end after a short grace period; any change cancels it.
+        if (same) this.completeSoon(ph, { min: 5000, delay: 4000 });
+        else { clearTimeout(ph.soon); ph.soon = null; }
         break;
       }
       case 'guard': {
@@ -1206,7 +1224,12 @@ export class Game { [key: string]: any;
     const step = ph.data.step;
     const pv = ph.priv;
     const info = NIGHT_STEPS[step];
-    if (!pv.actors.includes(me.id)) return { kind: 'sleep', text: info.ambient, dead: !me.alive };
+    if (!pv.actors.includes(me.id)) {
+      const wr = this.wolfResult;
+      const notice = wr && wr.day === this.day && this.time === 'night' && wr.actors.includes(me.id)
+        ? { kill: wr.kill, note: wr.note } : null;
+      return { kind: 'sleep', text: info.ambient, dead: !me.alive, wolfNotice: notice };
+    }
     const n = this.night;
     const result = mode => ({ kind: 'result', target: pv.result.target, value: pv.result.value, mode });
     switch (step) {

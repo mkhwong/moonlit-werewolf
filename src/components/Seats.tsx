@@ -20,15 +20,16 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
           !p.alive && 'is-dead',
           selectable && 'is-selectable',
           isSel && 'is-selected',
+          wolfPicks && wolfPicks[p.id] && 'is-victim',
           speaking === p.id && 'is-speaking',
           talking?.has(p.id) && 'is-talking',
           p.id === me?.id && 'is-me',
           targets && !selectable && 'is-muted',
         ].filter(Boolean).join(' ');
         const mateRole = p.mate ? `，狼隊友（${ROLES[p.role]?.name}）` : '';
-        const label = `${p.seat}號 ${p.name}${mateRole}${p.alive ? '' : '，已出局'}${p.sheriff ? '，警長' : ''}${tag ? `，筆記：${tag.label}` : ''}`;
+        const label = `${p.seat}號 ${p.name}${mateRole}${wolfPicks && wolfPicks[p.id] ? `，狼隊目標（${wolfPicks[p.id].join('、')}號選擇）` : ''}${p.alive ? '' : '，已出局'}${p.sheriff ? '，警長' : ''}${tag ? `，筆記：${tag.label}` : ''}`;
         return (
-          <button key={p.id} type="button" role="listitem" className={cls} onClick={() => onSeat(p.id)} aria-label={label} aria-pressed={isSel}>
+          <button key={p.id} type="button" role="listitem" data-pid={p.id} className={cls} onClick={() => onSeat(p.id)} aria-label={label} aria-pressed={isSel}>
             <span className="seat-medal">
               <Avatar name={p.name} size={compact ? 36 : 44} dim={!p.alive} />
               {!p.alive ? <i className="seat-x" aria-hidden /> : null}

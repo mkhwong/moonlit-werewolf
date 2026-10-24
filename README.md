@@ -11,7 +11,7 @@ There is no voice switch: a player's first tap in a room connects voice and asks
 - **Day speeches, PK and 遺言:** only the player whose turn it is can talk; everyone else listens. Their seat glows while they speak.
 - **Night:** wolves can hold to talk during the wolf step, heard only by other wolves in voice. Nobody else hears them or sees that they are talking.
 - In a game the talk button is a slim bar pinned to the bottom of the screen (about 6% of its height, never more than 8%), so it is always within thumb reach without covering the table.
-- Your role's character stands in the middle just above the bar; tap it to see your skills.
+- Your role's character stands bottom-left, beside the action panel and above the bar; tap it to see your skills.
 - **免按住** (the lock beside the bar) turns the button into a tap-on / tap-off switch for long speeches.
 
 The server decides who may talk and who hears it; when your turn ends your mic is cut off.
@@ -27,7 +27,7 @@ In the lobby the host can switch on 測試模式:
 
 ## Character transitions
 
-Night role calls and the opening role reveal use the 「角色轉場」 pack: `src/transitions/werewolfTransitions.js` (the drop-in module) with the cut-out art in `public/characters/`. Roles without art (隱狼, 惡靈騎士, 攝夢人, 獵魔人, 幸運兒) fall back to the tarot-card cut-in. The server sizes each night role-call intro to the transition's length (`CHARACTER_ART` in `shared/roles.ts`).
+Night role calls and the opening role reveal use the 「角色轉場」 pack: `src/transitions/werewolfTransitions.js` (the drop-in module) with the cut-out art in `public/characters/`. Every role has art; only the 幸運兒 step (a gift, not a role) falls back to the tarot-card cut-in. The server sizes each night role-call intro to the transition's length (`CHARACTER_ART` in `shared/roles.ts`).
 
 The same pack's 18 **回合動畫** (turn animations, scene backgrounds in `public/turns/bg/`) play at the matching moments:
 
@@ -138,3 +138,23 @@ scripts/bots.js       bot players for live testing
 - Add or edit a pack: `PACKS` in `shared/roles.js`.
 - Animation lengths: `CINE` in `server/game.js` (the CSS uses the phase length, so they stay in sync).
 - Colours and fonts: top of `client/src/styles.css`.
+
+## Wolf kill (no confirm)
+
+Wolves get no panel and no text chat (they talk with the mic). They tap a player — that is their choice; tap again to clear it, or press 空刀 (top-left). Every proposed victim gets a pulsing red ring with the seat numbers of the wolves who chose them. Choices can change until the wolf step ends. The kill is whoever has the most wolf votes (空刀 counts as a vote for nobody; a tie between players is settled at random). If every wolf agrees, the step ends about 4 seconds later. For the rest of that night each wolf sees 「今晚狼隊擊殺 N號」 in their panel.
+
+## 擲物 (second » tab)
+
+The red » tab under the role tab opens a small fly-out over the left seat column with just an egg, a mouldy tomato and a poop. Tap one and every other player's seat starts blinking; tap a seat to throw (tap the tab again to cancel). Everyone sees it arc from your seat and splat on theirs. Living players can throw by day (not at night, and not once out, so nobody can pass hidden information); there is a short cooldown between throws.
+
+## Seating plan (lobby)
+
+Before the game starts the lobby shows the table as chairs in two rows facing each other — one chair per role in the chosen setup (e.g. 2 × 6 for 12 players). New players take the first free chair; anyone can press **站起來** and tap an empty chair to move. The host can still **打亂座位** or remove players with ×. The game can't start while anyone is standing. (If 隨機座位 is on in the settings, seats are shuffled again at the start.)
+
+## 動畫 / 簡易 switch
+
+The round button at the bottom-left (next to the talk bar) switches animations off: no character transitions, turn animations or full-screen cinematics — each one becomes a short plain notice (e.g. 「預言家請睜眼」, 「3號 被放逐」). It is remembered on that device and can be switched back any time.
+
+## 票型 (vote records)
+
+Every vote result pops up as a 票型 card and stays until the player presses 確認. Vote lines in the judge's feed are tappable (查看票型 ›) to reopen that record.

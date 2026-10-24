@@ -1,6 +1,7 @@
 import React from 'react';
 import Emblem, { Avatar, roleColor } from './Emblem';
 import { useNow } from '../socket';
+import { useSimpleFx } from '../prefs';
 import { ROLES, NIGHT_STEPS, CHARACTER_ART, nightNumberLabel, dayNumberLabel } from '../../shared/roles';
 
 // Phases that are pure cinematics (the whole phase is the animation)
@@ -187,7 +188,24 @@ function SheriffIntro() {
   );
 }
 
-function VoteResult({ data, players }: any) {
+/** 票型 pop-up: stays until 確認; reopened from the judge feed. */
+export function VoteRecord({ data, players, onClose }: any) {
+  React.useEffect(() => {
+    const k = e => { if (e.key === 'Escape' || e.key === 'Enter') onClose(); };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [onClose]);
+  return (
+    <div className="vrec-backdrop" role="dialog" aria-modal="true" aria-label={`${VOTE_LABEL[data.kind]}票型`}>
+      <div className="vrec">
+        <VoteResult data={data} players={players} still />
+        <button type="button" className="btn btn-gold btn-lg vrec-ok" onClick={onClose} autoFocus>確認</button>
+      </div>
+    </div>
+  );
+}
+
+function VoteResult({ data, players, still }: any) {
   const rows = Object.keys(data.counts).sort((a, b) => data.counts[b] - data.counts[a]);
   const isPk = data.kind.endsWith('Pk');
   const sheriffKind = data.kind.startsWith('sheriff');
@@ -196,9 +214,9 @@ function VoteResult({ data, players }: any) {
   else if (data.tied.length) verdict = isPk ? (sheriffKind ? '再次平票，警徽流失' : '再次平票，無人出局') : `平票！${data.tied.map(t => players[t]?.seat + '號').join('、')} 進入 PK`;
   else verdict = sheriffKind ? '無人投票' : '全員棄票，無人出局';
   return (
-    <div className="cine cine-votes">
+    <div className={`cine cine-votes ${still ? 'is-still' : ''}`}>
       <div className="ledger">
-        <div className="vr-head">{VOTE_LABEL[data.kind]}</div>
+        <div className="vr-head">{data.day ? `${dayNumberLabel(data.day)}・` : ''}{VOTE_LABEL[data.kind]}</div>
         <div className="vr-rows">
           {rows.map((t, i) => (
             <div key={t} className={`vr-row ${data.winner === t ? 'vr-top' : ''} ${data.tied.includes(t) ? 'vr-tie' : ''}`} style={{ animationDelay: `${400 + i * 280}ms` }}>
@@ -235,9 +253,36 @@ function SpeechOrder({ data, players }: any) {
   );
 }
 
+/** 簡易模式: one plain line (and an optional second) for each cinematic. */
+function simpleText(ph, game, P): [string, string?] | null {
+  const d = ph.data || {};
+  const who = id => `${P[id]?.seat}號${P[id]?.name ? ` ${P[id].name}` : ''}`;
+  switch (ph.type) {
+    case 'nightfall': return [`${nightNumberLabel(d.day)}・天黑請閉眼`];
+    case 'dawn': return [`${dayNumberLabel(d.day)}・天亮了`];
+    case 'night': { const s = NIGHT_STEPS[d.step]; return [`${s.title}請睜眼`, s.sub]; }
+    case 'sheriffSignup': return ['警長競選', '欲競選警長者，請「上警」'];
+    case 'vote': return [VOTE_LABEL[d.kind]];
+    case 'announce': return d.deaths.length ? ['昨夜死亡', d.deaths.map(who).join('、')] : ['平安夜', '昨晚無人死亡'];
+    case 'voteResult': return null; // shown as the 票型 pop-up instead
+    case 'speechOrder': return [`由 ${P[d.order[0]]?.seat}號 開始發言`, `${d.dir === 1 ? '順序' : '逆序'}${d.sheriff ? `，警長 ${P[d.sheriff]?.seat}號 最後歸票` : ''}`];
+    case 'sheriffResult': return d.pid ? [`${who(d.pid)} 當選警長`] : ['警徽流失', d.reason];
+    case 'badgeFx': return d.to ? ['警徽移交', `${P[d.from]?.seat}號 → ${who(d.to)}`] : ['警徽被撕毀'];
+    case 'exileFx': return [`${who(d.pid)} 被放逐`];
+    case 'idiotFx': return [`${P[d.pid]?.seat}號 是白痴`, '免於放逐，但失去投票權'];
+    case 'shotFx': return [`${P[d.shooter]?.seat}號 ${ROLES[d.role]?.name}${d.role === 'whiteWolfKing' ? '帶人' : '開槍'}`, `帶走了 ${who(d.target)}`];
+    case 'selfDestructFx': return [`${P[d.pid]?.seat}號 ${d.wwk ? '白狼王' : '狼人'}自爆`, `白天結束，進入黑夜${d.badgeLost ? '・警徽流失' : ''}`];
+    case 'duelFx': return [`${P[d.knight]?.seat}號 騎士 決鬥 ${P[d.target]?.seat}號`, d.success ? `${P[d.target]?.seat}號 是狼人，出局` : `${P[d.target]?.seat}號 是好人，騎士出局`];
+    case 'bearFx': return d.roar ? ['熊咆哮了', '熊的左右鄰座中有狼人'] : ['熊沒有咆哮'];
+    case 'charmFx': return [`${who(d.pid)} 隨狼美人殉情`];
+    default: return null;
+  }
+}
+
 export default function CinematicLayer({ game, playersById }: any) {
   const ph = game.phase;
   const t = useNow(120);
+  const simple = useSimpleFx();
   if (!ph) return null;
   const full = FULL_CINE.has(ph.type);
   const introEnd = ph.startedAt + ph.introMs;
@@ -246,6 +291,15 @@ export default function CinematicLayer({ game, playersById }: any) {
   if (t - ph.startedAt > dur + 400) return null;
   const P = playersById;
   const d = ph.data || {};
+  if (simple) {
+    const txt = simpleText(ph, game, P);
+    if (!txt) return null;
+    return (
+      <div key={ph.id} className="cine-simple" aria-live="polite">
+        <div className="cs-card"><b>{txt[0]}</b>{txt[1] ? <span>{txt[1]}</span> : null}</div>
+      </div>
+    );
+  }
   let body = null;
   switch (ph.type) {
     case 'nightfall': body = <Nightfall day={d.day} />; break;
@@ -266,7 +320,7 @@ export default function CinematicLayer({ game, playersById }: any) {
       />
     ); break;
     case 'announce': body = <Announce deaths={d.deaths} day={d.day} players={P} />; break;
-    case 'voteResult': body = <VoteResult data={d} players={P} />; break;
+    case 'voteResult': return null; // the 票型 pop-up (VoteRecord) shows it until 確認
     case 'speechOrder': body = <SpeechOrder data={d} players={P} />; break;
     case 'sheriffResult': body = d.pid
       ? <Impact color="#c9a45c" emblem="badge" head={`${P[d.pid]?.seat}號 ${P[d.pid]?.name}`} sub="當選警長" note="放逐投票時警長擁有 1.5 票" />

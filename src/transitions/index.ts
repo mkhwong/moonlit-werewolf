@@ -1,6 +1,7 @@
 // Bridge between the game and the 「角色轉場」 transition module (werewolfTransitions.js).
 import './werewolfTransitions.js';
 import { CHARACTER_ART } from '../../shared/roles';
+import { isSimpleFx } from '../prefs';
 
 type Handle = Promise<void> & { skip(): void };
 type WT = {
@@ -39,6 +40,7 @@ export function preloadTransitions(roles: string[]) {
 
 /** Play a role's transition; returns a function that ends it early. */
 export function playTransition(role: string, opts: Record<string, unknown> = {}): () => void {
+  if (isSimpleFx()) return () => {};
   const W = ensureImages();
   const meta = CHARACTER_ART[role];
   if (!W || !meta) return () => {};
@@ -70,6 +72,7 @@ export function preloadTurns(ids: string[]) {
 
 /** Play a turn animation; returns a function that ends it early. */
 export function playTurn(id: string, opts: Record<string, unknown> = {}): () => void {
+  if (isSimpleFx()) return () => {};
   const W = ensureImages();
   if (!W || !W.TURN_BY_ID?.[id]) return () => {};
   try {

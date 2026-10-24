@@ -125,6 +125,10 @@ export const CHARACTER_ART: Record<string, { art: string; ms: number }> = {
   bear: { art: 'bear', ms: 4200 },
   villager: { art: 'villager', ms: 3800 },
   miracleMerchant: { art: 'miracle-merchant', ms: 4400 },
+  spiritKnight: { art: 'ghost-knight', ms: 4400 },
+  hiddenWolf: { art: 'hidden-wolf', ms: 4200 },
+  dreamweaver: { art: 'dreamweaver', ms: 4400 },
+  demonHunter: { art: 'demon-hunter', ms: 4200 },
 };
 export const characterURL = (role: string) => (CHARACTER_ART[role] ? `/characters/${CHARACTER_ART[role].art}.webp` : null);
 

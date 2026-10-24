@@ -23,6 +23,8 @@ const ROLES = [
   { id: 'wolf-beauty',      zh: '狼美人',   en: 'Wolf Beauty',      faction: 'wolf',     duration: 4000, tagline: '魅惑一名玩家，出局時與其殉情' },
   { id: 'mech-wolf',        zh: '機械狼',   en: 'Mechanical Wolf',  faction: 'wolf',     duration: 4000, tagline: '學習一名玩家的技能' },
   { id: 'gargoyle',         zh: '石像鬼',   en: 'Gargoyle',         faction: 'wolf',     duration: 4200, tagline: '每晚查驗一名玩家的具體身份' },
+  { id: 'ghost-knight',     zh: '惡靈騎士', en: 'Ghost Knight',     faction: 'wolf',     duration: 4400, tagline: '夜晚刀毒不死，查驗或毒殺他的神職將遭反噬' },
+  { id: 'hidden-wolf',      zh: '隱狼',     en: 'Hidden Wolf',      faction: 'wolf',     duration: 4200, tagline: '預言家查驗為好人，暗中潛伏伺機而動' },
   { id: 'seer',             zh: '預言家',   en: 'Seer',             faction: 'god',      duration: 4200, tagline: '每晚查驗一名玩家的陣營' },
   { id: 'psychic',          zh: '通靈師',   en: 'Psychic',          faction: 'god',      duration: 4200, tagline: '每晚查驗一名玩家的具體身份' },
   { id: 'witch',            zh: '女巫',     en: 'Witch',            faction: 'god',      duration: 4000, tagline: '一瓶解藥，一瓶毒藥' },
@@ -34,6 +36,8 @@ const ROLES = [
   { id: 'bear',             zh: '熊',       en: 'Bear',             faction: 'god',      duration: 4200, tagline: '鄰座有狼人時，天亮會咆哮' },
   { id: 'villager',         zh: '村民',     en: 'Villager',         faction: 'villager', duration: 3800, tagline: '沒有技能，憑推理與投票取勝' },
   { id: 'miracle-merchant', zh: '奇蹟商人', en: 'Miracle Merchant', faction: 'god',      duration: 4400, tagline: '將一項技能贈予一名玩家' },
+  { id: 'dreamweaver',      zh: '攝夢人',   en: 'Dreamweaver',      faction: 'god',      duration: 4400, tagline: '每晚選一名夢遊者，使其免疫夜間傷害' },
+  { id: 'demon-hunter',     zh: '獵魔人',   en: 'Demon Hunter',     faction: 'god',      duration: 4200, tagline: '夜晚狩獵一名玩家：是狼則狼死，是好人則自己出局' },
 ];
 const ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
 
@@ -639,6 +643,92 @@ const FX = {
     return { reveal: 950 };
   },
 
+  // 惡靈騎士: green eyes light in the dark, four chains bind him and shatter; a seer's gaze is reflected back.
+  'ghost-knight'(c) {
+    const { cx, cy, S, W, H, CW, CH } = c;
+    const ex = cx + (0.576 - 0.5) * CW, ey = cy + (0.25 - 0.5) * CH, ed = ((0.611 - 0.541) / 2) * CW;
+    c.P.every(0, 99999, () => {
+      if (Math.random() < 0.45) { const a = Math.random() * TAU, r = S * rand(0.42, 0.85); c.P.add({ kind: 'smoke', x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r * 0.8, vx: -Math.cos(a) * 0.35, vy: rand(-0.9, -0.3), size: rand(40, 90), grow: 0.8, rgb: pick(['120,14,28', '84,8,22', '150,30,40']), life: rand(1600, 2600), alpha: 0.55, fadeIn: 400 }); }
+    });
+    [-1, 1].forEach((sd) => {
+      const e = c.el('div', { left: `${ex + sd * ed - S * 0.05}px`, top: `${ey - S * 0.05}px`, width: `${S * 0.1}px`, height: `${S * 0.1}px`, borderRadius: '50%', background: 'radial-gradient(circle,#f4fff6 0 10%,#4dff88 26%,rgba(40,255,120,.35) 50%,transparent 70%)' }, c.fx2);
+      c.A(e, [{ opacity: 0, transform: 'scale(.2)' }, { opacity: 1, transform: 'scale(1)', offset: 0.3 }, { opacity: 1, transform: 'scale(.8)', offset: 0.75 }, { opacity: 1, transform: 'scale(1.9)' }], { duration: 640, delay: 120, easing: 'ease-out' });
+      c.A(e, [{ opacity: 1 }, { opacity: 0 }], { duration: 460, delay: 760, fill: 'forwards' });
+    });
+    const L = S * 0.075;
+    const chainSVG = (len) => {
+      let s = '';
+      for (let i = 0, x = 0; x < len; i++, x += L * 0.78) {
+        s += i % 2 ? `<rect x="${(x - L * 0.46).toFixed(1)}" y="${(-L * 0.08).toFixed(1)}" width="${(L * 0.92).toFixed(1)}" height="${(L * 0.16).toFixed(1)}" rx="${(L * 0.08).toFixed(1)}" fill="#a9afb8" stroke="#140f12" stroke-width="2"/>`
+          : `<ellipse cx="${x.toFixed(1)}" rx="${(L * 0.5).toFixed(1)}" ry="${(L * 0.3).toFixed(1)}" fill="none" stroke="#140f12" stroke-width="${(L * 0.22).toFixed(1)}"/><ellipse cx="${x.toFixed(1)}" rx="${(L * 0.5).toFixed(1)}" ry="${(L * 0.3).toFixed(1)}" fill="none" stroke="#c4cad2" stroke-width="${(L * 0.11).toFixed(1)}"/>`;
+      }
+      return s;
+    };
+    const R = Math.hypot(W, H) * 0.62, r1 = S * 0.2;
+    [-2.55, -0.6, 2.5, 0.65].forEach((a, i) => {
+      const len = R - r1, x0 = cx + Math.cos(a) * R, y0 = cy + Math.sin(a) * R, xe = cx + Math.cos(a) * r1, ye = cy + Math.sin(a) * r1;
+      const ch = c.svg(len, L, `<g transform="translate(${L * 0.5},${L / 2})">${chainSVG(len - L)}</g>`,
+        { left: `${x0}px`, top: `${y0 - L / 2}px`, transformOrigin: '0 50%', transform: `rotate(${(a * 180) / Math.PI + 180}deg)`, filter: 'drop-shadow(0 0 6px rgba(255,40,60,.65))' });
+      const at = 260 + i * 70;
+      c.A(ch, [{ clipPath: 'inset(-20% 100% -20% 0)' }, { clipPath: 'inset(-20% 0% -20% 0)' }], { duration: 260, delay: at, easing: 'cubic-bezier(.5,0,.9,.6)' });
+      c.A(ch, Array.from({ length: 7 }, (_, k) => ({ translate: k === 6 ? '0 0' : `${rand(-2, 2)}px ${rand(-2, 2)}px` })), { duration: 220, delay: 560, easing: 'linear', fill: 'forwards' });
+      c.A(ch, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 800, fill: 'forwards' });
+      c.burstAt(800, 16, () => { const t = rand(0.02, 1), sp = rand(3, 10), d = Math.random() * TAU; return { kind: 'shard', x: x0 + (xe - x0) * t, y: y0 + (ye - y0) * t, vx: Math.cos(d) * sp, vy: Math.sin(d) * sp - 2, ay: 0.3, size: rand(4, 9), vr: rand(-0.4, 0.4), color: pick(['#c4cad2', '#8b919a', '#e2e6ec']), life: rand(700, 1200) }; });
+      c.burstAt(800, 8, () => { const t = rand(0.3, 1), sp = rand(4, 9), d = Math.random() * TAU; return { kind: 'spark', x: x0 + (xe - x0) * t, y: y0 + (ye - y0) * t, vx: Math.cos(d) * sp, vy: Math.sin(d) * sp, drag: 0.04, size: 2, trail: 3, life: 500, color: '#7dffa8', glow: true }; });
+    });
+    c.flash(800, '#5dff92', 300, 0.3);
+    c.shake(800, 1.8, 520);
+    c.cardIn(780, 'drop');
+    c.ring(820, { color: '#5dff92', to: 2.4, width: 6, dur: 700 });
+    c.ring(900, { color: '#ff3a4e', to: 3, width: 10, dur: 800 });
+    c.P.focus(820, 1700, { color: '140,255,180', alpha: 0.28, r0: S * 0.62, r1: S * 0.35 });
+    c.P.every(900, 99999, () => { if (Math.random() < 0.22) c.P.add({ kind: 'flame', hist: [], x: cx + rand(-CW * 0.38, CW * 0.38), y: cy + CH * rand(0.05, 0.45), vx: rand(-0.3, 0.3), vy: rand(-2.4, -1.1), size: rand(5, 9), rgb: '70,255,130', life: rand(900, 1500), alpha: 0.75 }); });
+    // a seer's gaze strikes him and is thrown back (反噬)
+    const hx = cx + CW * 0.4, hy = cy - CH * 0.2, sx = W + S * 0.1, sy = cy - H * 0.55;
+    const ang = Math.atan2(hy - sy, hx - sx), dist = Math.hypot(hx - sx, hy - sy);
+    const beam = (color, glow, from, to, at, back) => {
+      const b = c.el('div', { left: `${from[0]}px`, top: `${from[1] - 3}px`, width: `${dist}px`, height: '6px', borderRadius: '3px', transformOrigin: '0 50%', transform: `rotate(${back ? ang + Math.PI : ang}rad)`,
+        background: `linear-gradient(90deg,transparent,${color} 30%,#fff)`, boxShadow: `0 0 14px 3px ${glow}` }, c.fx2);
+      c.A(b, [{ clipPath: 'inset(0 100% 0 0)', opacity: 1 }, { clipPath: 'inset(0 0 0 0)', opacity: 1, offset: 0.55 }, { clipPath: 'inset(0 0 0 100%)', opacity: 0.6 }], { duration: 420, delay: at, easing: 'ease-in' });
+      c.A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 10, delay: at + 420, fill: 'forwards' });
+    };
+    beam('#c7a6ff', 'rgba(160,110,255,.8)', [sx, sy], [hx, hy], 1550, false);
+    const shield = c.svg(S * 0.5, S * 0.5, `<svg viewBox="-50 -50 100 100" width="100%" height="100%" style="overflow:visible;filter:drop-shadow(0 0 10px #4dff88)"><path d="M0,-46 L40,-23 L40,23 L0,46 L-40,23 L-40,-23 Z" fill="rgba(77,255,136,.18)" stroke="#9dffbf" stroke-width="3"/><path d="M0,-30 L26,-15 L26,15 L0,30 L-26,15 L-26,-15 Z" fill="none" stroke="#9dffbf" stroke-width="1.5" opacity=".7"/></svg>`, { left: `${hx - S * 0.25}px`, top: `${hy - S * 0.25}px` }, c.fx2);
+    c.A(shield, [{ opacity: 0, transform: 'scale(.3) rotate(-30deg)' }, { opacity: 1, transform: 'scale(1.05) rotate(0)', offset: 0.35 }, { opacity: 0, transform: 'scale(1.5) rotate(10deg)' }], { duration: 650, delay: 1780, easing: 'ease-out' });
+    c.burstAt(1790, 18, () => { const d = Math.random() * TAU, sp = rand(3, 8); return { kind: 'spark', x: hx, y: hy, vx: Math.cos(d) * sp, vy: Math.sin(d) * sp, drag: 0.05, size: 2, trail: 3, life: 500, color: pick(['#d2baff', '#9dffbf']), glow: true }; });
+    beam('#5dff92', 'rgba(60,255,130,.8)', [hx, hy], [sx, sy], 1830, true);
+    c.flash(1800, '#9dffbf', 240, 0.18);
+    return { reveal: 1000, titleStyle: 'shake' };
+  },
+
+  // 隱狼: a seer's searchlight sweeps the fog and reads "好人"; then the wolf steps out of the shadow and hushes.
+  'hidden-wolf'(c) {
+    const { cx, cy, S, W, H, CW, CH } = c;
+    c.P.every(0, 99999, () => {
+      if (Math.random() < 0.5) { const sd = Math.random() < 0.5 ? -1 : 1; c.P.add({ kind: 'smoke', x: sd < 0 ? rand(-60, W * 0.32) : rand(W * 0.68, W + 60), y: rand(H * 0.4, H + 40), vx: -sd * rand(0.3, 1.1), vy: rand(-0.45, -0.1), size: rand(60, 130), grow: 0.6, rgb: pick(['70,100,170', '110,140,210', '50,70,130']), life: rand(2200, 3400), alpha: 0.42, fadeIn: 600 }); }
+    });
+    c.burstAt(0, 26, () => ({ kind: 'smoke', x: cx + rand(-S * 0.4, S * 0.4), y: cy + rand(-S * 0.35, S * 0.45), vx: rand(-0.4, 0.4), vy: rand(-0.4, 0.1), size: rand(60, 120), grow: 0.5, rgb: pick(['80,110,190', '120,150,220']), life: rand(1300, 1800), alpha: 0.5, fadeIn: 300 }));
+    const R = S * 0.95;
+    const spot = c.el('div', { left: `${-R / 2}px`, top: `${cy - R / 2}px`, width: `${R}px`, height: `${R}px`, borderRadius: '50%', mixBlendMode: 'screen',
+      background: 'radial-gradient(circle,rgba(230,215,255,.6) 0,rgba(175,145,255,.28) 42%,transparent 70%)' });
+    c.A(spot, [{ transform: 'translateX(0)', opacity: 0 }, { opacity: 1, offset: 0.12 }, { transform: `translateX(${cx}px)`, opacity: 1, offset: 0.48 }, { transform: `translateX(${cx}px)`, opacity: 1, offset: 0.66 }, { transform: `translateX(${W + R}px)`, opacity: 0 }], { duration: 1500, delay: 60, easing: 'ease-in-out' });
+    const chip = c.el('div', { left: `${cx}px`, top: `${cy - S * 0.08}px`, transform: 'translate(-50%,-50%)', padding: '.5em 1.1em', borderRadius: '999px', whiteSpace: 'nowrap',
+      background: 'rgba(14,40,26,.85)', border: '2px solid #8be496', color: '#d9ffe0', fontWeight: '700', letterSpacing: '.12em', fontSize: `${Math.max(18, S * 0.075)}px`, boxShadow: '0 0 22px rgba(139,228,150,.55)' }, c.fx2, '查驗結果 · 好人 ✓');
+    c.A(chip, [{ opacity: 0, transform: 'translate(-50%,-50%) scale(.6)' }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1.08)', offset: 0.6 }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1)' }], { duration: 300, delay: 720, easing: 'cubic-bezier(.2,.9,.3,1.3)' });
+    c.A(chip, [{ opacity: 1, filter: 'blur(0)', transform: 'translate(-50%,-50%) scale(1)' }, { opacity: 0.8, filter: 'blur(1px) hue-rotate(160deg)', transform: 'translate(-52%,-50%) scale(1)', offset: 0.3 }, { opacity: 0, filter: 'blur(14px) hue-rotate(160deg)', transform: 'translate(-50%,-80%) scale(1.25)' }], { duration: 520, delay: 1180, easing: 'ease-in', fill: 'forwards' });
+    c.burstAt(1250, 14, () => ({ kind: 'smoke', x: cx + rand(-S * 0.18, S * 0.18), y: cy - S * 0.08 + rand(-20, 20), vx: rand(-1.2, 1.2), vy: rand(-1.2, -0.3), size: rand(30, 60), grow: 1, rgb: '120,150,220', life: 900, alpha: 0.5 }));
+    c.cardIn(1100, 'shadow');
+    // eyes glint, then the hush
+    [[0.574, 0.302], [0.676, 0.31]].forEach(([fx, fy], i) => c.burstAt(1700 + i * 40, 1, () => ({ kind: 'star', x: cx + (fx - 0.5) * CW, y: cy + (fy - 0.5) * CH, size: S * 0.04, life: 650, color: '#ffe066', glow: true, vr: 0.04, fadePow: 1.5 })));
+    const fx0 = cx + (0.565 - 0.5) * CW, fy0 = cy + (0.39 - 0.5) * CH;
+    [0, 160, 320].forEach((d) => c.ring(1900 + d, { x: fx0, y: fy0, from: 0.75, to: 0.06, width: 2, color: '#bcd0ff', dur: 700 }));
+    const hush = c.el('div', { left: `${cx + (0.24 - 0.5) * CW}px`, top: `${cy + (0.24 - 0.5) * CH}px`, transform: 'translate(-50%,-50%)', color: '#d6e2ff', fontSize: `${S * 0.13}px`, fontWeight: '700', letterSpacing: '.1em', whiteSpace: 'nowrap', textShadow: '0 0 14px rgba(140,170,255,.9)' }, c.fx2, '噓…');
+    c.A(hush, [{ opacity: 0, transform: 'translate(-30%,-50%) rotate(-6deg)', filter: 'blur(6px)' }, { opacity: 1, transform: 'translate(-50%,-50%) rotate(-6deg)', filter: 'blur(0)', offset: 0.3 }, { opacity: 1, transform: 'translate(-55%,-58%) rotate(-6deg)', filter: 'blur(0)', offset: 0.75 }, { opacity: 0, transform: 'translate(-60%,-70%) rotate(-6deg)', filter: 'blur(4px)' }], { duration: 1500, delay: 1950, easing: 'ease-out' });
+    const dim = c.el('div', { inset: '0', background: 'radial-gradient(circle at 50% 42%,transparent 28%,rgba(2,4,14,.6) 75%)' }, c.fx2);
+    c.A(dim, [{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: 1900, easing: 'ease-in-out' });
+    return { reveal: 1350, titleStyle: 'whisper' };
+  },
+
   'miracle-merchant'(c) {
     const { cx, cy, S, H } = c;
     const bw = S * 0.5, bx = cx - bw / 2, by = cy + S * 0.02;
@@ -658,6 +748,87 @@ const FX = {
     c.burstAt(970, 40, () => { const a = Math.random() * TAU, sp = rand(3, 11); return { kind: 'star', x: cx, y: by + bw * 0.3, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, drag: 0.05, size: rand(4, 9), color: pick(['#fff6c4', '#ffe27a', '#ffffff', '#b8f5ec']), life: rand(800, 1400), glow: true }; });
     c.cardIn(1000, 'emerge');
     return { reveal: 1250 };
+  },
+
+  // 攝夢人: a pastel dream sky, a spiral of dream smoke drawn into her glass, butterflies settle, bubbles rise.
+  dreamweaver(c) {
+    const { cx, cy, S, W, H, CW, CH } = c;
+    const gx = cx + (0.19 - 0.5) * CW, gy = cy + (0.56 - 0.5) * CH;
+    const sky = c.el('div', { inset: '0', background: 'radial-gradient(60% 50% at 28% 30%,rgba(255,150,220,.32),transparent 70%),radial-gradient(55% 45% at 76% 64%,rgba(120,220,255,.26),transparent 70%),radial-gradient(70% 60% at 50% 48%,rgba(170,120,255,.34),transparent 75%)' }, c.bgFx);
+    c.A(sky, [{ opacity: 0, transform: 'scale(1.25) rotate(-8deg)' }, { opacity: 1, transform: 'scale(1) rotate(0)' }], { duration: 1600, easing: 'ease-out' });
+    for (let i = 0; i < 120; i++) c.P.add({ x: rand(0, W), y: rand(0, H), size: rand(0.6, 1.8), life: 99999, color: pick(['#ffffff', '#ffd6f2', '#d6ccff', '#c8f2ff']), twinkle: rand(140, 420), fadeIn: rand(100, 1200), alpha: 0.9, fadePow: 50 });
+    const moon = c.svg(S * 0.3, S * 0.3, `<svg viewBox="-50 -50 100 100" width="100%" height="100%" style="overflow:visible;filter:drop-shadow(0 0 12px rgba(255,220,250,.8))"><path d="M10,-44 A46,46 0 1,0 30,38 A36,36 0 1,1 10,-44 Z" fill="#fff1fb"/></svg>`, { left: `${W * 0.16 - S * 0.15}px`, top: `${H * 0.16 - S * 0.15}px` }, c.bgFx);
+    c.A(moon, [{ opacity: 0, transform: 'translateY(30px) rotate(-20deg)' }, { opacity: 0.85, transform: 'none' }], { duration: 1400, delay: 200, easing: 'ease-out' });
+    const spiral = (rot, color) => { let d = ''; for (let k = 0; k <= 90; k++) { const th = k * 0.13, r = 6 + k * 1.02, a = th + rot; d += (k ? 'L' : 'M') + (Math.cos(a) * r).toFixed(1) + ',' + (Math.sin(a) * r).toFixed(1); } return `<path d="${d}" fill="none" stroke="${color}" stroke-width="3.2" stroke-linecap="round" pathLength="1" class="wwt-draw"/>`; };
+    const sp = c.svg(S * 1.7, S * 1.7, `<svg viewBox="-100 -100 200 200" width="100%" height="100%" style="overflow:visible;filter:drop-shadow(0 0 6px rgba(255,190,240,.9))">${spiral(0, '#ffb3e6')}${spiral(TAU / 3, '#b8a6ff')}${spiral((2 * TAU) / 3, '#9ef0ff')}</svg>`, { left: `${cx - S * 0.85}px`, top: `${cy - S * 0.85}px` });
+    sp.querySelectorAll('.wwt-draw').forEach((p, i) => c.A(p, [{ strokeDasharray: '1 1', strokeDashoffset: -1 }, { strokeDasharray: '1 1', strokeDashoffset: 0 }], { duration: 700, delay: 60 + i * 80, easing: 'ease-out' }));
+    c.A(sp, [{ transform: 'rotate(0) scale(.7)', opacity: 0 }, { transform: 'rotate(120deg) scale(1)', opacity: 1, offset: 0.55 }, { transform: `translate(${gx - cx}px,${gy - cy}px) rotate(420deg) scale(.04)`, opacity: 0.2 }], { duration: 1350, easing: 'cubic-bezier(.45,0,.75,.6)' });
+    c.A(sp, [{ opacity: 0.2 }, { opacity: 0 }], { duration: 10, delay: 1350, fill: 'forwards' });
+    c.cardIn(650, 'blur', 950);
+    c.flash(1360, '#ffd6f2', 360, 0.3);
+    c.ring(1360, { x: gx, y: gy, color: '#ffc8ef', from: 0.05, to: 0.9, width: 4, dur: 700 });
+    c.burstAt(1360, 30, () => { const a = rand(-Math.PI * 0.95, -Math.PI * 0.05), v = rand(2, 7); return { kind: pick(['star', 'star', 'bubble']), x: gx, y: gy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, drag: 0.04, size: rand(3, 8), color: pick(['#ffd6f2', '#d6ccff', '#c8f2ff', '#ffffff']), life: rand(900, 1500), glow: true }; });
+    c.P.every(1400, 99999, () => { if (Math.random() < 0.3) c.P.add({ kind: 'bubble', x: gx + rand(-10, 10), y: gy, vx: rand(-0.6, 0.6), vy: rand(-1.6, -0.7), size: rand(3, 9), life: rand(1600, 2400), color: pick(['#ffb3e6', '#b8a6ff', '#9ef0ff', '#ffffff']), fadeIn: 200 }); });
+    const fly = (sxp, syp, tx, ty, size, c1, c2, at, dur, land) => {
+      const el = c.svg(size, size * 0.8, `<svg viewBox="-50 -40 100 80" width="100%" height="100%" style="overflow:visible;filter:drop-shadow(0 0 6px ${c1})">
+        <g class="wwt-w"><path d="M-2,-2 C-20,-38 -52,-34 -44,-8 C-40,4 -18,6 -2,0 Z" fill="${c1}" stroke="#2b1830" stroke-width="3"/><path d="M-2,2 C-30,6 -38,30 -20,32 C-8,33 -2,18 -2,4 Z" fill="${c2}" stroke="#2b1830" stroke-width="3"/></g>
+        <g transform="scale(-1,1)"><g class="wwt-w"><path d="M-2,-2 C-20,-38 -52,-34 -44,-8 C-40,4 -18,6 -2,0 Z" fill="${c1}" stroke="#2b1830" stroke-width="3"/><path d="M-2,2 C-30,6 -38,30 -20,32 C-8,33 -2,18 -2,4 Z" fill="${c2}" stroke="#2b1830" stroke-width="3"/></g></g>
+        <ellipse rx="3.6" ry="17" fill="#2b1830"/><path d="M-1,-16 Q-8,-30 -12,-32 M1,-16 Q8,-30 12,-32" stroke="#2b1830" stroke-width="2" fill="none"/></svg>`, { left: `${tx - size / 2}px`, top: `${ty - size * 0.4}px` }, c.fx2);
+      el.querySelectorAll('.wwt-w').forEach((w) => c.A(w, [{ transform: 'scaleX(1)' }, { transform: 'scaleX(.18)' }], { duration: 130, iterations: 40, direction: 'alternate', easing: 'ease-in-out' }));
+      const dx = sxp - tx, dy = syp - ty, nx = -dy / Math.hypot(dx, dy), ny = dx / Math.hypot(dx, dy), amp = S * 0.1;
+      const kf = Array.from({ length: 9 }, (_, k) => { const t = k / 8, w = Math.sin(t * Math.PI * 2.5) * amp * (1 - t), e = 1 - Math.pow(1 - t, 2); return { transform: `translate(${(dx * (1 - e) + nx * w).toFixed(1)}px,${(dy * (1 - e) + ny * w).toFixed(1)}px) rotate(${(Math.sin(t * 9) * 18).toFixed(0)}deg)`, opacity: t === 0 ? 0 : 1 }; });
+      c.A(el, kf, { duration: dur, delay: at, easing: 'linear' });
+      if (land) c.A(el, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.7)' }], { duration: 350, delay: at + dur, fill: 'forwards' });
+      else c.A(el, [{ transform: 'translate(0,0)' }, { transform: `translate(${(S * 0.03).toFixed(1)}px,${(-S * 0.04).toFixed(1)}px) rotate(8deg)` }], { duration: 700, delay: at + dur, iterations: 6, direction: 'alternate', easing: 'ease-in-out', fill: 'forwards' });
+    };
+    const P_ = (fx, fy) => [cx + (fx - 0.5) * CW, cy + (fy - 0.5) * CH];
+    fly(W + 40, cy - S * 0.6, ...P_(0.655, 0.115), S * 0.13, '#8fd8ff', '#c8ecff', 300, 1250, true);
+    fly(-40, cy - S * 0.2, ...P_(-0.05, 0.22), S * 0.16, '#ffb3e6', '#ffd6f2', 420, 1300, false);
+    fly(W + 40, cy + S * 0.3, ...P_(1.06, 0.4), S * 0.14, '#c8a6ff', '#e6d6ff', 560, 1250, false);
+    fly(cx - S * 0.2, -40, ...P_(0.3, -0.04), S * 0.12, '#9ef0ff', '#d8fbff', 700, 1100, false);
+    return { reveal: 1250, titleStyle: 'float' };
+  },
+
+  // 獵魔人: demon eyes in the fog, a silver sigil locks on, a crossbow bolt strikes; she appears in the embers.
+  'demon-hunter'(c) {
+    const { cx, cy, S, W, H, CW, CH } = c;
+    const tx = cx + S * 0.6, ty = cy - S * 0.16;
+    c.P.every(0, 99999, () => { if (Math.random() < 0.4) c.P.add({ kind: 'smoke', x: rand(-60, W + 60), y: rand(H * 0.55, H + 40), vx: rand(-0.6, 0.6), vy: rand(-0.4, -0.1), size: rand(70, 140), grow: 0.5, rgb: pick(['150,160,180', '110,120,140']), life: rand(2400, 3400), alpha: 0.3, fadeIn: 700 }); });
+    c.burstAt(0, 10, () => ({ kind: 'smoke', x: tx + rand(-S * 0.2, S * 0.2), y: ty + rand(-S * 0.15, S * 0.15), vx: rand(-0.3, 0.3), vy: rand(-0.3, 0.1), size: rand(50, 90), grow: 0.4, rgb: '90,10,20', life: 900, alpha: 0.6, fadeIn: 200 }));
+    const eyes = c.el('div', { left: `${tx - S * 0.1}px`, top: `${ty - S * 0.035}px`, width: `${S * 0.2}px`, height: `${S * 0.07}px`,
+      background: 'radial-gradient(50% 50% at 22% 50%,#fff1e0 0 12%,#ff3b2f 30%,rgba(255,40,30,.35) 60%,transparent 75%),radial-gradient(50% 50% at 78% 50%,#fff1e0 0 12%,#ff3b2f 30%,rgba(255,40,30,.35) 60%,transparent 75%)' }, c.fx2);
+    c.A(eyes, [{ opacity: 0, transform: 'scaleY(0)' }, { opacity: 1, transform: 'scaleY(1)', offset: 0.2 }, { opacity: 1, transform: 'scaleY(.1)', offset: 0.42 }, { opacity: 1, transform: 'scaleY(1)', offset: 0.55 }, { opacity: 1, transform: 'scaleY(1)' }], { duration: 800, delay: 100 });
+    c.A(eyes, [{ opacity: 1, filter: 'brightness(1)' }, { opacity: 1, filter: 'brightness(3)', offset: 0.3 }, { opacity: 0, filter: 'brightness(1)', transform: 'scale(1.6)' }], { duration: 260, delay: 900, fill: 'forwards' });
+    const demon = c.svg(S * 0.46, S * 0.46, `<svg viewBox="-100 -100 200 200" width="100%" height="100%" style="overflow:visible;filter:drop-shadow(0 0 10px rgba(255,50,40,.55))"><path d="M-58,-22 C-66,-58 -84,-78 -96,-98 C-68,-84 -46,-64 -34,-44 L34,-44 C46,-64 68,-84 96,-98 C84,-78 66,-58 58,-22 C68,8 52,46 0,72 C-52,46 -68,8 -58,-22 Z" fill="#0a0306" stroke="rgba(255,70,50,.55)" stroke-width="2.5"/></svg>`, { left: `${tx - S * 0.23}px`, top: `${ty - S * 0.21}px` });
+    c.A(demon, [{ opacity: 0, transform: 'scale(.9)' }, { opacity: 0.95, transform: 'scale(1)' }], { duration: 500, delay: 60, easing: 'ease-out' });
+    c.A(demon, [{ opacity: 0.95, filter: 'brightness(1)' }, { opacity: 0.9, filter: 'brightness(4)', offset: 0.25 }, { opacity: 0, filter: 'brightness(1)', transform: 'scale(1.35)' }], { duration: 300, delay: 905, fill: 'forwards' });
+    c.burstAt(905, 22, () => { const d = Math.random() * TAU, v = rand(2, 9); return { kind: 'shard', x: tx + rand(-S * 0.12, S * 0.12), y: ty + rand(-S * 0.12, S * 0.1), vx: Math.cos(d) * v, vy: Math.sin(d) * v - 1, ay: 0.25, size: rand(4, 9), vr: rand(-0.4, 0.4), color: pick(['#1a0a0e', '#3a1418', '#0a0306']), life: rand(600, 1000) }; });
+    const R = S * 0.42;
+    const sig = c.svg(R * 2, R * 2, `<svg viewBox="-100 -100 200 200" width="100%" height="100%" style="overflow:visible;filter:drop-shadow(0 0 6px rgba(220,230,255,.9))">
+      <g fill="none" stroke="#e4ebf6" stroke-width="2.5"><circle r="92"/><circle r="70" stroke-dasharray="6 8" opacity=".8"/><path d="M0,-100 L0,-62 M0,100 L0,62 M-100,0 L-62,0 M100,0 L62,0"/></g>
+      ${Array.from({ length: 8 }, (_, i) => { const an = (i / 8) * TAU + 0.39, x = Math.cos(an) * 81, y = Math.sin(an) * 81; return `<path d="M${(x - 4).toFixed(1)},${(y - 4).toFixed(1)} l8,8 m-8,0 l8,-8" stroke="#e4ebf6" stroke-width="2" transform="rotate(${((an * 180) / Math.PI).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`; }).join('')}</svg>`, { left: `${tx - R}px`, top: `${ty - R}px` }, c.fx2);
+    c.A(sig, [{ transform: `translate(${-W * 0.7}px,${S * 0.2}px) rotate(-180deg) scale(1.8)`, opacity: 0 }, { opacity: 1, offset: 0.3 }, { transform: 'translate(0,0) rotate(0) scale(1)', opacity: 1 }], { duration: 520, delay: 250, easing: 'cubic-bezier(.2,.8,.3,1)' });
+    c.A(sig, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.82)', opacity: 1, offset: 0.4 }, { transform: 'scale(.9)', opacity: 1 }], { duration: 160, delay: 780, fill: 'forwards' });
+    c.A(sig, [{ transform: 'scale(.9)', opacity: 1 }, { transform: 'scale(2.2)', opacity: 0 }], { duration: 360, delay: 940, easing: 'ease-out', fill: 'forwards' });
+    const sx = -S * 0.1, sy = cy + S * 0.3, ang = Math.atan2(ty - sy, tx - sx), dist = Math.hypot(tx - sx, ty - sy), BL = S * 0.34, BH = S * 0.06;
+    const bolt = c.svg(BL, BH, `<svg viewBox="0 -10 200 20" width="100%" height="100%" preserveAspectRatio="none" style="overflow:visible;filter:drop-shadow(0 0 6px rgba(220,235,255,.95))">
+      <path d="M-260,0 L150,-2 L150,2 Z" fill="rgba(230,240,255,.55)"/><rect x="20" y="-2.2" width="150" height="4.4" fill="#cfd6e0" stroke="#2b1830" stroke-width="1"/>
+      <path d="M200,0 L166,-9 L172,0 L166,9 Z" fill="#f2f6fb" stroke="#2b1830" stroke-width="1.5"/><path d="M20,-2 L4,-9 L30,-2 Z M20,2 L4,9 L30,2 Z" fill="#8a2a2a" stroke="#2b1830" stroke-width="1"/></svg>`,
+      { left: `${sx}px`, top: `${sy - BH / 2}px`, transformOrigin: '0 50%' }, c.fx2);
+    c.A(bolt, [{ transform: `rotate(${ang}rad) translateX(${-BL}px)`, opacity: 1 }, { transform: `rotate(${ang}rad) translateX(${dist - BL}px)`, opacity: 1 }], { duration: 150, delay: 760, easing: 'linear' });
+    c.A(bolt, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, delay: 910, fill: 'forwards' });
+    c.flash(905, '#fff1dc', 280, 0.5);
+    c.shake(905, 1.7, 480);
+    c.ring(905, { x: tx, y: ty, color: '#ff8a3a', from: 0.1, to: 1.4, width: 6, dur: 600 });
+    c.burstAt(905, 46, () => { const d = Math.random() * TAU, v = rand(3, 13); return { kind: pick(['spark', 'spark', 'glow']), x: tx, y: ty, vx: Math.cos(d) * v, vy: Math.sin(d) * v - 1.5, ay: 0.12, drag: 0.03, size: rand(2, 4), trail: 3, rgb: '255,150,60', color: pick(['#ffb347', '#ff7a2a', '#ffd27a']), life: rand(600, 1300), glow: true }; });
+    c.burstAt(905, 14, () => ({ kind: 'smoke', x: tx + rand(-20, 20), y: ty + rand(-20, 20), vx: rand(-2, 2), vy: rand(-1.6, 0.4), size: rand(40, 80), grow: 1, rgb: pick(['60,30,30', '120,110,120']), life: 1000, alpha: 0.5 }));
+    const rune = c.svg(S * 1.5, S * 1.5, `<svg viewBox="-100 -100 200 200" width="100%" height="100%" style="filter:drop-shadow(0 0 5px rgba(210,225,255,.7))"><g fill="none" stroke="#d6e0f0" stroke-width="1.4" opacity=".75"><circle r="96"/><circle r="88" stroke-dasharray="2 5"/><path d="M0,-88 L76,44 L-76,44 Z"/><circle r="44" stroke-dasharray="1 7"/></g></svg>`, { left: `${cx - S * 0.75}px`, top: `${cy - S * 0.75}px` });
+    c.A(rune, [{ transform: 'rotate(-40deg) scale(.6)', opacity: 0 }, { transform: 'rotate(0) scale(1)', opacity: 1, offset: 0.2 }, { transform: 'rotate(70deg) scale(1)', opacity: 1 }], { duration: 3300, delay: 900, easing: 'linear' });
+    c.cardIn(940, 'flash');
+    c.P.focus(940, 1700, { color: '230,235,255', alpha: 0.26, r0: S * 0.62, r1: S * 0.35 });
+    [[0.491, 0.297], [0.551, 0.305]].forEach(([fx, fy], i) => c.burstAt(1500 + i * 30, 1, () => ({ kind: 'star', x: cx + (fx - 0.5) * CW, y: cy + (fy - 0.5) * CH, size: S * 0.03, life: 600, color: '#ffc46b', glow: true, vr: 0.05, fadePow: 1.5 })));
+    c.P.every(950, 99999, () => { if (Math.random() < 0.35) c.P.add({ x: cx + rand(-CW * 0.6, CW * 0.6), y: cy + CH * rand(0, 0.55), vx: rand(-0.5, 0.5), vy: rand(-1.6, -0.6), size: rand(1, 2.4), life: rand(1400, 2200), color: pick(['#ffb347', '#ffd27a', '#ff8a3a']), glow: true, twinkle: rand(80, 160) }); });
+    return { reveal: 1080 };
   },
 };
 
@@ -758,6 +929,7 @@ function playRoleTransition(roleId, opts = {}) {
         { opacity: 1, transform: 'translateX(-1%)', clipPath: 'inset(0 0 0 0)', filter: 'drop-shadow(-3px 0 0 rgba(255,0,90,.6)) drop-shadow(3px 0 0 rgba(0,240,255,.6))', offset: 0.8 },
         { opacity: 1, transform: 'none', clipPath: 'inset(0 0 0 0)', filter: 'none' }], 460, 'linear'],
       roar: [[{ opacity: 0, transform: 'scale(.3)' }, { opacity: 1, transform: 'scale(1.2)', offset: 0.45 }, { opacity: 1, transform: 'scale(.95)', offset: 0.7 }, { opacity: 1, transform: 'scale(1)' }], 560, 'cubic-bezier(.2,.9,.3,1.3)'],
+      shadow: [[{ opacity: 0, transform: 'scale(.97)', filter: 'brightness(0) blur(10px)' }, { opacity: 0.3, filter: 'brightness(0) blur(6px)', offset: 0.3 }, { opacity: 0.95, filter: 'brightness(.3) blur(2px)', offset: 0.62 }, { opacity: 1, transform: 'none', filter: 'brightness(1) blur(0)' }], 1000, 'ease-in-out'],
       emerge: [[{ opacity: 0, transform: `translateY(${S * 0.3}px) scale(.2)` }, { opacity: 1, transform: 'translateY(-6%) scale(1.08)', offset: 0.65 }, { opacity: 1, transform: 'none' }], 700, 'cubic-bezier(.2,.8,.3,1)'],
     };
     const [kf, d, ease] = K[kind] || K.pop;
@@ -779,7 +951,9 @@ function playRoleTransition(roleId, opts = {}) {
   spans.forEach((s, i) => {
     const at = reveal + 40 + i * 85;
     if (reduce) return c.A(s, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 250 });
-    if (titleStyle === 'wobble') c.A(s, [{ opacity: 0, transform: 'translateY(70%) rotate(-30deg) scale(.3)' }, { opacity: 1, transform: 'translateY(-18%) rotate(12deg) scale(1.2)', offset: 0.55 }, { opacity: 1, transform: 'translateY(4%) rotate(-5deg)', offset: 0.8 }, { opacity: 1, transform: 'none' }], { duration: 620, delay: at, easing: 'ease-out' });
+    if (titleStyle === 'whisper') c.A(s, [{ opacity: 0, transform: 'translateX(-.35em)', filter: 'blur(10px)' }, { opacity: 0.6, filter: 'blur(3px)', offset: 0.5 }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 760, delay: at + i * 60, easing: 'ease-out' });
+    else if (titleStyle === 'float') c.A(s, [{ opacity: 0, transform: 'translateY(45%) scale(.9)', filter: 'blur(6px)' }, { opacity: 1, transform: 'translateY(-10%) scale(1.04)', filter: 'blur(0)', offset: 0.6 }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 820, delay: at + i * 40, easing: 'ease-out' });
+    else if (titleStyle === 'wobble') c.A(s, [{ opacity: 0, transform: 'translateY(70%) rotate(-30deg) scale(.3)' }, { opacity: 1, transform: 'translateY(-18%) rotate(12deg) scale(1.2)', offset: 0.55 }, { opacity: 1, transform: 'translateY(4%) rotate(-5deg)', offset: 0.8 }, { opacity: 1, transform: 'none' }], { duration: 620, delay: at, easing: 'ease-out' });
     else c.A(s, [{ opacity: 0, transform: 'translateY(30%) scale(1.9)', filter: 'blur(8px)' }, { opacity: 1, transform: 'scale(.93)', filter: 'blur(0)', offset: 0.65 }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 460, delay: at, easing: 'cubic-bezier(.2,.9,.3,1.15)' });
   });
   if (titleStyle === 'scramble' && !reduce) {

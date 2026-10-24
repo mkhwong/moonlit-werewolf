@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Emblem from './Emblem';
 import { act } from '../socket';
-import { MicIcon } from './VoiceControls';
 import { ROLES, MECH_SKILL } from '../../shared/roles';
 
 export const SPEECH_LABEL = { sheriff: '競選發言', sheriffPk: '競選 PK 發言', day: '發言', pk: 'PK 發言', lastWords: '遺言' };
@@ -20,24 +19,6 @@ function SpeechBox() {
       <input value={text} onChange={e => setText(e.target.value)} maxLength={200} placeholder="可選：輸入文字發言" aria-label="文字發言" />
       <button className="btn btn-ghost btn-sm" type="submit" disabled={!text.trim()}>送出</button>
     </form>
-  );
-}
-
-function WolfChat({ chat, day, P }: any) {
-  const [text, setText] = useState('');
-  const list = useRef(null);
-  const msgs = chat.filter(m => m.day === day);
-  useEffect(() => { if (list.current) list.current.scrollTop = list.current.scrollHeight; }, [msgs.length]);
-  return (
-    <div className="wolfchat">
-      <div className="wolfchat-list" ref={list}>
-        {msgs.length ? msgs.map((m, i) => <p key={i}><b>{m.seat}號</b>{m.text}</p>) : <p className="muted">狼隊頻道：只有狼隊友看得到</p>}
-      </div>
-      <form onSubmit={e => { e.preventDefault(); if (text.trim()) { act({ type: 'wolfChat', text }); setText(''); } }}>
-        <input value={text} onChange={e => setText(e.target.value)} maxLength={120} placeholder="和狼隊友商量…" aria-label="狼隊頻道訊息" />
-        <button className="btn btn-sm btn-shu" type="submit" disabled={!text.trim()}>送出</button>
-      </form>
-    </div>
   );
 }
 
@@ -108,33 +89,9 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
         </>
       );
       break;
-    case 'wolf': {
-      const mates = pr.actors.filter(a => a !== me.id);
-      body = (
-        <>
-          <h3>選擇今晚的獵物</h3>
-          <p>{pr.solo ? '其他狼人已全部出局，由你獨自行動。' : `點選玩家，隊友會即時看到你的選擇。隊友：${mates.map(seat).join('、') || '無'}`}</p>
-          {!pr.solo ? (
-            <div className="wolf-picks">
-              {pr.actors.map(a => (
-                <span key={a} className={pr.locked[a] ? 'locked' : ''}>
-                  {seat(a)} → {a in pr.picks ? (pr.picks[a] ? seat(pr.picks[a]) : '空刀') : '未選'}{pr.locked[a] ? ' ✓' : ''}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          <div className="row">
-            <button className="btn btn-shu" disabled={!pr.myPick || pr.myLocked} onClick={() => act({ type: 'lock' })}>
-              {pr.myLocked ? '已確認' : pr.myPick ? `確認擊殺 ${seat(pr.myPick)}` : '請點選獵物'}
-            </button>
-            <button className="btn btn-ghost" disabled={pr.myLocked} onClick={() => act({ type: 'skip' })}>空刀</button>
-          </div>
-          {!pr.solo ? <p className="ptt-tip"><MicIcon size={15} />按住畫面下方的麥克風，只有狼隊友聽得到</p> : null}
-          {!pr.solo ? <WolfChat chat={game.wolfChat} day={game.day} P={P} /> : null}
-        </>
-      );
-      break;
-    }
+    case 'wolf':
+      // No panel for wolves: tap a seat to choose (tap again to clear), 空刀 is top-left, talk with the mic.
+      return null;
     case 'merchant':
       body = <MerchantPanel pr={pr} sel={sel} P={P} />;
       break;
@@ -262,10 +219,19 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
     case 'sleep':
       body = (
         <div className="sleep">
-          <Emblem id="sleep" size={56} />
+          <Emblem id="sleep" size={38} />
           <div>
-            <h3>{pr.dead ? '你已出局' : '請閉眼'}</h3>
-            <p>{pr.text}</p>
+            {pr.wolfNotice ? (
+              <>
+                <h3 className="wolf-notice">{pr.wolfNotice.kill ? `今晚狼隊擊殺 ${seat(pr.wolfNotice.kill)}` : '今晚狼隊空刀'}</h3>
+                <p>{pr.wolfNotice.note ? `${pr.wolfNotice.note}・` : ''}{pr.text}</p>
+              </>
+            ) : (
+              <>
+                <h3>{pr.dead ? '你已出局' : '請閉眼'}</h3>
+                <p>{pr.text}</p>
+              </>
+            )}
           </div>
         </div>
       );

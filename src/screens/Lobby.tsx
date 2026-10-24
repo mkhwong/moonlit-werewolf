@@ -50,6 +50,70 @@ function copyText(text) {
   return Promise.resolve();
 }
 
+/** Seating plan: chairs in two rows facing each other (like the game table). Tap an empty chair to sit. */
+function SeatPlan({ room, you, host, cfg, voiceV }: any) {
+  const N = room.seatCount;
+  const bySeat = new Map(room.players.filter(p => p.seat != null).map(p => [p.seat, p]));
+  const standing = room.players.filter(p => p.seat == null);
+  const half = Math.ceil(N / 2);
+  const sit = seat => call('sit', { seat });
+  const Chair = ({ seat }: any) => {
+    const p: any = bySeat.get(seat);
+    if (!p) {
+      return (
+        <li>
+          <button type="button" className="sp-seat sp-empty" onClick={() => sit(seat)} aria-label={`坐到 ${seat}號`}>
+            <span className="sp-num">{seat}</span><span className="sp-chair" aria-hidden /><span className="sp-name muted">空位・點我坐下</span>
+          </button>
+        </li>
+      );
+    }
+    const mine = p.id === you.id;
+    const talking = voiceV?.talking?.some(t => t.pid === p.id);
+    return (
+      <li>
+        <div className={`sp-seat ${mine ? 'is-mine' : ''} ${p.online ? '' : 'offline'} ${talking ? 'is-talking' : ''}`}>
+          <span className="sp-num">{seat}</span>
+          <Avatar name={p.name || '?'} size={30} />
+          <span className="sp-name">
+            {p.name ? (p.bot ? p.name.split('・').pop() : p.name) : <i className="muted">輸入暱稱中…</i>}
+            <span className="sp-tags">
+              {mine ? <span className="pill pill-gold">你</span> : null}
+              {p.id === room.hostId ? <span className="pill pill-gold">房主</span> : null}
+              {p.bot ? <span className="pill pill-bot">電腦</span> : null}
+              {talking ? <span className="pill pill-talk"><MicIcon size={11} /></span> : null}
+              {cfg.testMode && p.pref ? <span className="pill">想當{ROLES[p.pref]?.name}</span> : null}
+              {!p.online ? <span className="pill">離線</span> : null}
+            </span>
+          </span>
+          {host && !mine ? <button className="sp-kick" onClick={() => call('kick', { id: p.id })} aria-label={`移出 ${p.name || seat + '號'}`}>×</button> : null}
+        </div>
+      </li>
+    );
+  };
+  return (
+    <div className="seatplan">
+      <div className="sp-table">
+        <ol className="sp-col">{Array.from({ length: half }, (_, i) => <Chair key={i + 1} seat={i + 1} />)}</ol>
+        <div className="sp-board" aria-hidden><span>{N}</span><small>人局</small></div>
+        <ol className="sp-col">{Array.from({ length: N - half }, (_, i) => <Chair key={half + i + 1} seat={half + i + 1} />)}</ol>
+      </div>
+      {standing.length ? (
+        <div className="sp-standing">
+          <span className="sp-standing-label">站著的玩家</span>
+          {standing.map(p => (
+            <span key={p.id} className={`sp-stander ${p.id === you.id ? 'is-mine' : ''}`}>
+              <Avatar name={p.name || '?'} size={24} />{p.name || '…'}{p.id === you.id ? '（你）' : ''}
+              {host && p.id !== you.id ? <button className="sp-kick" onClick={() => call('kick', { id: p.id })} aria-label={`移出 ${p.name}`}>×</button> : null}
+            </span>
+          ))}
+          {standing.some(p => p.id === you.id) ? <span className="small muted">點一個空位坐下</span> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function Lobby({ state, onLeave, notify }: any) {
   const { room, you } = state;
   const host = you.isHost;
@@ -99,23 +163,13 @@ export default function Lobby({ state, onLeave, notify }: any) {
 
         <section className="panel">
           <div className="sec-head">
-            <h2>玩家 <small>{n} 人</small></h2>
-            {host && n > 1 ? <button className="btn btn-ghost btn-sm" onClick={() => call('shuffleSeats')}>打亂座位</button> : null}
+            <h2>座位 <small>{n} 人・{room.seatCount} 個座位</small></h2>
+            <div className="row-tight">
+              {you.seat != null ? <button className="btn btn-ghost btn-sm" onClick={() => call('stand')}>站起來</button> : null}
+              {host && n > 1 ? <button className="btn btn-ghost btn-sm" onClick={() => call('shuffleSeats')}>打亂座位</button> : null}
+            </div>
           </div>
-          <ul className="plist">
-            {room.players.map(p => (
-              <li key={p.id} className={p.online ? '' : 'offline'}>
-                <Avatar name={p.name || '?'} seat={p.seat} size={34} />
-                <span className="plist-name">{p.name || <i className="muted">輸入暱稱中…</i>}{p.id === you.id ? '（你）' : ''}</span>
-                {p.id === room.hostId ? <span className="pill pill-gold">房主</span> : null}
-                {p.bot ? <span className="pill pill-bot">電腦</span> : null}
-                {voiceV?.talking?.some(t => t.pid === p.id) ? <span className="pill pill-talk"><MicIcon size={12} />說話中</span> : voiceV?.members?.includes(p.id) ? <span className="pill" title="已開啟語音"><MicIcon size={12} /></span> : null}
-                {cfg.testMode && p.pref ? <span className="pill">想當{ROLES[p.pref]?.name}</span> : null}
-                {!p.online ? <span className="pill">離線</span> : null}
-                {host && p.id !== you.id ? <button className="btn btn-ghost btn-xs" onClick={() => call('kick', { id: p.id })} aria-label={`移出 ${p.name || p.seat + '號'}`}>移出</button> : null}
-              </li>
-            ))}
-          </ul>
+          <SeatPlan room={room} you={you} host={host} cfg={cfg} voiceV={voiceV} />
           <p className="muted small">遊戲開始後房間會鎖定，新玩家無法加入；斷線的玩家可用原本的裝置重新連線。</p>
         </section>
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { voice, VoiceStatus } from '../voice';
 import Emblem from './Emblem';
+import { useSimpleFx, setSimpleFx } from '../prefs';
 import { ROLES, characterURL } from '../../shared/roles';
 
 // state.voice from the server: { members, talking: [{pid, channel}], canTalk, channel }
@@ -50,19 +51,37 @@ const CHANNEL_LABEL = { speech: '按住說話', wolves: '按住和狼隊友說�
  * Slim hold-to-talk bar pinned to the bottom of the screen (about 6% of its height),
  * so it is always within thumb reach without covering the table.
  */
-export function PttDock({ role, dead, onRole }: any) {
-  const R = role ? ROLES[role] : null;
-  const art = role ? characterURL(role) : null;
+export function PttDock() {
+  return <div className="ptt-dock"><FxToggle /><PushToTalk dock /></div>;
+}
+
+/** Bottom-left switch: 動畫 ↔ 簡易 (skip transitions and cinematics, show plain notices). */
+export function FxToggle() {
+  const simple = useSimpleFx();
   return (
-    <div className={`ptt-dock ${R ? 'has-role' : ''}`}>
-      {R ? (
-        <button type="button" className={`dock-role ${dead ? 'is-dead' : ''}`} onClick={onRole} style={{ '--c': R.color } as any}
-          aria-label={`我的身分：${R.name}，查看技能`}>
-          {art ? <img src={art} alt="" draggable={false} /> : <span className="dock-role-emblem"><Emblem id={role} size={64} /></span>}
-        </button>
-      ) : null}
-      <PushToTalk dock />
-    </div>
+    <button type="button" className={`fx-toggle ${simple ? 'is-simple' : ''}`} aria-pressed={!simple}
+      onClick={() => setSimpleFx(!simple)} title={simple ? '簡易模式：不播放動畫（點一下開啟動畫）' : '動畫開啟（點一下改為簡易提示）'}
+      aria-label={simple ? '動畫：關（簡易提示）' : '動畫：開'}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z" fill={simple ? 'none' : 'currentColor'} />
+        <path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
+        {simple ? <path d="M3 21L21 3" /> : null}
+      </svg>
+      <span>{simple ? '簡易' : '動畫'}</span>
+    </button>
+  );
+}
+
+/** Your role's character, bottom-left beside the action panel (tap for your skills). */
+export function RoleFigure({ role, dead, onClick }: any) {
+  const R = role ? ROLES[role] : null;
+  if (!R) return null;
+  const art = characterURL(role);
+  return (
+    <button type="button" className={`role-fig ${dead ? 'is-dead' : ''}`} onClick={onClick} style={{ '--c': R.color } as any}
+      aria-label={`我的身分：${R.name}，查看技能`}>
+      {art ? <img src={art} alt="" draggable={false} /> : <span className="role-fig-emblem"><Emblem id={role} size={72} /></span>}
+    </button>
   );
 }
 

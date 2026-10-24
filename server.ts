@@ -74,11 +74,45 @@ class Room { [key: string]: any;
 
   get(id) { return this.players.find(p => p.id === id); }
 
+  // ── Lobby seating plan: one chair per role in the chosen setup; players can stand up and pick a chair ──
+  seatCount() {
+    return Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, countRoles(this.roleCounts())));
+  }
+
+  /** Lowest empty chair, or null when every chair is taken (the player stands). */
   freeSeat() {
     const used = new Set(this.players.map(p => p.seat));
-    let s = 1;
-    while (used.has(s)) s++;
-    return s;
+    for (let s = 1; s <= this.seatCount(); s++) if (!used.has(s)) return s;
+    return null;
+  }
+
+  /** Keep seats valid when the setup changes: chairs that disappear send their player standing, then
+   *  anyone who did not choose to stand takes a free chair. */
+  normalizeSeats() {
+    if (this.status !== 'lobby') return;
+    const N = this.seatCount();
+    const seen = new Set();
+    for (const p of [...this.players].sort((a, b) => (a.seat ?? 99) - (b.seat ?? 99))) {
+      if (p.seat != null && (p.seat > N || seen.has(p.seat))) p.seat = null;
+      if (p.seat != null) seen.add(p.seat);
+    }
+    for (const p of this.players) if (p.seat == null && !p.stood) p.seat = this.freeSeat();
+  }
+
+  sit(p, seat) {
+    if (this.status !== 'lobby') return '遊戲已開始';
+    if (!Number.isInteger(seat) || seat < 1 || seat > this.seatCount()) return '沒有這個座位';
+    if (this.players.some(o => o.id !== p.id && o.seat === seat)) return '這個座位已經有人';
+    p.seat = seat;
+    p.stood = false;
+    return null;
+  }
+
+  stand(p) {
+    if (this.status !== 'lobby') return '遊戲已開始';
+    p.seat = null;
+    p.stood = true;
+    return null;
   }
 
   addPlayer() {
@@ -103,7 +137,7 @@ class Room { [key: string]: any;
   }
 
   pickNewHost() {
-    const humans = [...this.humans()].sort((a, b) => a.seat - b.seat);
+    const humans = [...this.humans()].sort((a, b) => (a.seat ?? 99) - (b.seat ?? 99));
     const next = humans.find(p => p.online) || humans[0];
     this.hostId = next ? next.id : null;
   }
@@ -118,6 +152,7 @@ class Room { [key: string]: any;
     const named = this.players.filter(p => p.name);
     if (named.length !== this.players.length) return '還有玩家未輸入暱稱';
     if (this.players.length < MIN_PLAYERS) return `至少需要 ${MIN_PLAYERS} 名玩家`;
+    if (this.players.some(p => p.seat == null)) return '還有玩家站著，請先入座';
     const counts = this.roleCounts();
     const total = countRoles(counts);
     if (total !== this.players.length) return `角色共 ${total} 個，但目前有 ${this.players.length} 名玩家`;
@@ -243,7 +278,8 @@ class Room { [key: string]: any;
         code: this.code,
         status: this.status,
         hostId: this.hostId,
-        players: [...this.players].sort((a, b) => a.seat - b.seat)
+        seatCount: this.seatCount(),
+        players: [...this.players].sort((a, b) => (a.seat ?? 99) - (b.seat ?? 99))
           .map(x => ({ id: x.id, name: x.name, seat: x.seat, online: x.online, bot: !!x.bot, pref: x.pref || null })),
         config: this.config,
         startProblem: this.status === 'lobby' ? this.startProblem() : null,
@@ -261,6 +297,7 @@ class Room { [key: string]: any;
     this.pending = true;
     setImmediate(() => {
       this.pending = false;
+      this.normalizeSeats();
       this.checkTalkers();
       for (const p of this.players) {
         if (p.socketId) io.to(p.socketId).emit('state', this.view(p));
@@ -421,11 +458,28 @@ io.on('connection', socket => {
     ack(cb)({ ok: true });
   });
 
+  socket.on('sit', (p, cb) => {
+    const c = ctx(socket);
+    if (!c) return ack(cb)({ ok: false });
+    const err = c.room.sit(c.player, p?.seat);
+    if (!err) c.room.broadcast();
+    ack(cb)(err ? { ok: false, error: err } : { ok: true });
+  });
+
+  socket.on('stand', (_p, cb) => {
+    const c = ctx(socket);
+    if (!c) return ack(cb)({ ok: false });
+    const err = c.room.stand(c.player);
+    if (!err) c.room.broadcast();
+    ack(cb)(err ? { ok: false, error: err } : { ok: true });
+  });
+
   socket.on('shuffleSeats', (_p, cb) => {
     const c = ctx(socket);
     if (!c || c.room.hostId !== c.player.id || c.room.status !== 'lobby') return ack(cb)({ ok: false });
-    const seats = shuffle(c.room.players.map((_, i) => i + 1));
-    c.room.players.forEach((pl, i) => { pl.seat = seats[i]; });
+    const N = c.room.seatCount();
+    const seats = shuffle(Array.from({ length: N }, (_, i) => i + 1));
+    shuffle([...c.room.players]).forEach((pl, i) => { pl.seat = seats[i] ?? null; pl.stood = pl.seat == null; });
     c.room.broadcast();
     ack(cb)({ ok: true });
   });
@@ -441,6 +495,29 @@ io.on('connection', socket => {
     const c = ctx(socket);
     if (!c || !c.room.game || c.room.status !== 'playing') return;
     c.room.game.handle(c.player.id, a);
+  });
+
+  // 擲物: eggs, mouldy tomatoes and poop thrown at another player — pure fun, seen by everyone.
+  // Only living players by day (or anyone once the game is over), so nobody can pass hidden information.
+  socket.on('throw', (p, cb) => {
+    const c = ctx(socket);
+    const reply = ack(cb);
+    if (!c || !c.room.game || c.room.status !== 'playing') return reply({ ok: false });
+    const g = c.room.game;
+    const item = p?.item;
+    if (!['egg', 'tomato', 'poop'].includes(item)) return reply({ ok: false });
+    const me = g.get(c.player.id);
+    const target = g.get(p?.target);
+    if (!target || target.id === c.player.id) return reply({ ok: false, error: '請選擇其他玩家' });
+    if (!g.finished) {
+      if (!me || !me.alive) return reply({ ok: false, error: '出局的玩家不能擲物' });
+      if (g.time !== 'day') return reply({ ok: false, error: '晚上不能擲物' });
+    }
+    const t = Date.now();
+    if (t - (c.player.lastThrow || 0) < 1500) return reply({ ok: false, error: '慢一點…' });
+    c.player.lastThrow = t;
+    for (const pl of c.room.players) if (pl.socketId) io.to(pl.socketId).emit('fx:throw', { from: c.player.id, to: target.id, item, at: t });
+    reply({ ok: true });
   });
 
   socket.on('host', (p, cb) => {
