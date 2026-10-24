@@ -270,7 +270,7 @@ function simpleText(ph, game, P): [string, string?] | null {
     case 'badgeFx': return d.to ? ['警徽移交', `${P[d.from]?.seat}號 → ${who(d.to)}`] : ['警徽被撕毀'];
     case 'exileFx': return [`${who(d.pid)} 被放逐`];
     case 'idiotFx': return [`${P[d.pid]?.seat}號 是白痴`, '免於放逐，但失去投票權'];
-    case 'shotFx': return [`${P[d.shooter]?.seat}號 ${ROLES[d.role]?.name}${d.role === 'whiteWolfKing' ? '帶人' : '開槍'}`, `帶走了 ${who(d.target)}`];
+    case 'shotFx': return [d.role === 'whiteWolfKing' ? `${P[d.shooter]?.seat}號 白狼王帶人` : `${P[d.shooter]?.seat}號 帶走了 ${P[d.target]?.seat}號`, d.role === 'whiteWolfKing' ? `帶走了 ${who(d.target)}` : `${P[d.target]?.name} 出局`];
     case 'selfDestructFx': return [`${P[d.pid]?.seat}號 ${d.wwk ? '白狼王' : '狼人'}自爆`, `白天結束，進入黑夜${d.badgeLost ? '・警徽流失' : ''}`];
     case 'duelFx': return [`${P[d.knight]?.seat}號 騎士 決鬥 ${P[d.target]?.seat}號`, d.success ? `${P[d.target]?.seat}號 是狼人，出局` : `${P[d.target]?.seat}號 是好人，騎士出局`];
     case 'bearFx': return d.roar ? ['熊咆哮了', '熊的左右鄰座中有狼人'] : ['熊沒有咆哮'];
@@ -332,13 +332,11 @@ export default function CinematicLayer({ game, playersById }: any) {
       break;
     case 'exileFx': body = <Impact color="#a8232c" avatar={P[d.pid]} seal="放逐" sfx="放逐" head={`${P[d.pid]?.seat}號 ${P[d.pid]?.name}`} sub="被投票放逐出局" shake />; break;
     case 'idiotFx': body = <Impact color={ROLES.idiot.color} emblem="idiot" sfx="翻牌" head={`${P[d.pid]?.seat}號 是白痴`} sub="免於放逐，但失去投票權" />; break;
-    case 'shotFx': body = (
-      <Impact
-        color={roleColor(d.role)} emblem={d.role} sfx={d.role === 'whiteWolfKing' ? '帶走' : '槍響'} shake
-        head={`${P[d.shooter]?.seat}號 ${ROLES[d.role]?.name}${d.role === 'whiteWolfKing' ? ' 帶人' : ' 開槍'}`}
-        sub={`帶走了 ${P[d.target]?.seat}號 ${P[d.target]?.name}`}
-      />
-    ); break;
+    case 'shotFx': body = d.role === 'whiteWolfKing'
+      ? <Impact color={roleColor(d.role)} emblem={d.role} sfx="帶走" shake head={`${P[d.shooter]?.seat}號 白狼王 帶人`} sub={`帶走了 ${P[d.target]?.seat}號 ${P[d.target]?.name}`} />
+      // Hunter / 狼王: the role is not announced — only who took whom.
+      : <Impact color="#a8232c" avatar={P[d.target]} seal="出局" sfx="帶走" shake head={`${P[d.shooter]?.seat}號 帶走了 ${P[d.target]?.seat}號`} sub={`${P[d.target]?.name} 出局`} />;
+      break;
     case 'selfDestructFx': body = (
       <Impact
         color="#d8434c" emblem={d.wwk ? 'whiteWolfKing' : 'wolfTeam'} sfx="自爆" shake

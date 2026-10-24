@@ -295,6 +295,8 @@ export default function Lobby({ state, onLeave, notify }: any) {
             <Seg label="夜晚死亡遺言" value={S.lastWordsNight} disabled={!host} onChange={v => setS({ lastWordsNight: v })} options={[['first', '僅首夜'], ['all', '每晚'], ['none', '無']]} /></div>
           <div className="rule"><span>開局隨機座位</span>
             <Seg label="開局隨機座位" value={S.randomSeats} disabled={!host} onChange={v => setS({ randomSeats: v })} options={[[false, '關'], [true, '開']]} /></div>
+          <div className="rule"><span>延長發言<small>房主或警長可為發言中的玩家（包括自己）加 30 秒，每段最多 3 次</small></span>
+            <Seg label="延長發言" value={S.allowExtend !== false} disabled={!host} onChange={v => setS({ allowExtend: v })} options={[[false, '關'], [true, '開']]} /></div>
           <h3>階段時間（秒）</h3>
           <div className="timers">
             {TIMER_FIELDS.map(f => (

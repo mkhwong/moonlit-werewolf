@@ -212,6 +212,7 @@ export const DEFAULT_SETTINGS = {
   sameGuardSaveDies: true,   // 同守同救 → 死亡
   lastWordsNight: 'first',   // first | all | none  (夜晚死亡是否有遺言)
   randomSeats: false,
+  allowExtend: true,         // 房主／警長可延長發言 30 秒
   timers: { night: 30, signup: 15, sheriffSpeech: 60, speech: 90, vote: 20, lastWords: 60, skill: 15, reveal: 15 },
 };
 

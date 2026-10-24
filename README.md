@@ -145,7 +145,7 @@ Wolves get no panel and no text chat (they talk with the mic). They tap a player
 
 ## 擲物 (second » tab)
 
-The red » tab under the role tab opens a small fly-out over the left seat column with just an egg, a mouldy tomato and a poop. Tap one and every other player's seat starts blinking; tap a seat to throw (tap the tab again to cancel). Everyone sees it arc from your seat and splat on theirs. Living players can throw by day (not at night, and not once out, so nobody can pass hidden information); there is a short cooldown between throws.
+The red 「» 擲物」 tab (under the left seat column, below 「» 提示」) opens a small fly-out over the left seat column with just an egg, a mouldy tomato and a poop. Tap one and every other player's seat starts blinking; tap a seat to throw (tap the tab again to cancel). Everyone sees it arc from your seat and splat on theirs. Living players can throw by day (not at night, and not once out, so nobody can pass hidden information); there is a short cooldown between throws.
 
 ## Seating plan (lobby)
 
@@ -158,3 +158,11 @@ The round button at the bottom-left (next to the talk bar) switches animations o
 ## 票型 (vote records)
 
 Every vote result pops up as a 票型 card and stays until the player presses 確認. Vote lines in the judge's feed are tappable (查看票型 ›) to reopen that record.
+
+## Speaking panel
+
+On your turn to speak, the text panel has a » button that tucks it into a 「發言 «」 tab under the right seat column, so the whole table stays visible while you talk; tap the tab to bring it back. It stays minimised for later turns until reopened. 結束發言 is a separate button that stays in the same place (bottom right, above the talk bar) either way.
+
+## Speech timer and 延長發言
+
+While someone speaks, a ring draws itself around their portrait; a full circle means their time is up (it turns red for the last 10 seconds). If the room setting 延長發言 is on (lobby rules, on by default), the host or the sheriff can add 30 seconds to the current speech — including their own — up to 3 times per speech; the judge's feed notes each extension.

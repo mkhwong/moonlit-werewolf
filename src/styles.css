@@ -456,8 +456,6 @@ p { margin: 0; line-height: 1.6; }
 .host-actions { display: flex; flex-direction: column; gap: 10px; }
 
 /* >> pop-up: role reminder + roles in this game */
-.shell-game { padding-left: 26px; }
-@media (min-width: 700px) { .shell-game { padding-left: 12px; } }
 .guide-tab {
   position: fixed; left: 0; top: 46%; z-index: 40; width: 22px; height: 64px; padding: 0 0 0 1px; border: 0; cursor: pointer;
   border-radius: 0 6px 6px 0; background: linear-gradient(90deg, #2a1a30, #160d1c); color: var(--gold);
@@ -658,8 +656,8 @@ p { margin: 0; line-height: 1.6; }
 /* Fly-out beside the red » tab, over the left seat column */
 .throw-catch { position: fixed; inset: 0; z-index: 72; }
 .throw-fly {
-  position: fixed; left: 28px; top: 44%; transform: translateY(-50%); width: 104px;
-  display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px;
+  position: fixed; left: var(--fly-x, 12px); bottom: var(--fly-bottom, 40%); width: auto;
+  display: flex; flex-direction: row; gap: 6px; padding: 8px; border-radius: 10px;
   background: rgba(18, 12, 24, .94); box-shadow: inset 0 0 0 1px #d8434c, 0 12px 30px rgba(0, 0, 0, .6);
   animation: guide-in .22s cubic-bezier(.2, .9, .3, 1) both;
 }
@@ -743,3 +741,71 @@ p { margin: 0; line-height: 1.6; }
 .jf-link:hover { color: var(--moon); }
 .jf-link:focus-visible { outline: 2px solid var(--lantern); outline-offset: 2px; border-radius: 3px; }
 .jf-more { display: inline-block; margin-left: 6px; font-size: 11px; color: var(--gold); white-space: nowrap; }
+
+/* Speaking panel: minimise » to a « tab on the right edge */
+.panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.panel-min {
+  flex: none; width: 30px; height: 30px; margin: -4px -4px 0 0; border: 0; border-radius: 6px; cursor: pointer;
+  color: var(--gold); background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(201, 164, 92, .45);
+  font-family: var(--serif); font-size: 20px; font-weight: 900; line-height: 1;
+}
+.panel-min:hover { background: rgba(201, 164, 92, .15); }
+.speech-tab {
+  position: fixed; right: 0; top: 46%; z-index: 40; width: 26px; padding: 8px 0 6px; border: 0; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border-radius: 6px 0 0 6px; background: linear-gradient(270deg, #2a1a30, #160d1c); color: var(--gold);
+  box-shadow: inset 1px 0 0 var(--gold), inset 0 1px 0 var(--gold), inset 0 -1px 0 var(--gold), -4px 0 14px rgba(0, 0, 0, .5);
+  font-family: var(--serif); font-size: 22px; font-weight: 900; line-height: 1;
+  animation: speech-tab-glow 1.4s ease-in-out infinite alternate;
+}
+.speech-tab small { font-family: var(--sans, inherit); font-size: 11px; writing-mode: vertical-rl; letter-spacing: .2em; }
+.speech-tab:focus-visible, .panel-min:focus-visible { outline: 2px solid var(--lantern); outline-offset: 2px; }
+@keyframes speech-tab-glow { from { box-shadow: inset 1px 0 0 var(--gold), inset 0 1px 0 var(--gold), inset 0 -1px 0 var(--gold), -4px 0 14px rgba(0, 0, 0, .5); } to { box-shadow: inset 1px 0 0 var(--gold), inset 0 1px 0 var(--gold), inset 0 -1px 0 var(--gold), -4px 0 18px rgba(240, 192, 106, .55); } }
+@media (prefers-reduced-motion: reduce) { .speech-tab { animation: none; } }
+.bottom-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.bottom-right > .action { flex: none; }
+.end-speech { width: 50%; align-self: flex-end; box-shadow: 0 8px 22px rgba(0, 0, 0, .55); }
+.shell-game { min-height: 100dvh; box-sizing: border-box; }
+.shell-game > .bottom-row { margin-top: auto; }
+
+/* Speech timer ring around the speaker's portrait, and the ＋30 秒 button */
+.seat-ring { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); transform: rotate(-90deg); pointer-events: none; overflow: visible; }
+.seat-ring .sr-track { fill: none; stroke: rgba(0, 0, 0, .55); stroke-width: 7; }
+.seat-ring .sr-fill { fill: none; stroke: var(--lantern); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .25s linear; filter: drop-shadow(0 0 4px rgba(240, 192, 106, .9)); }
+.seat-ring.is-low .sr-fill { stroke: #ff4b55; filter: drop-shadow(0 0 5px rgba(255, 75, 85, .95)); animation: ring-low .5s ease-in-out infinite alternate; }
+@keyframes ring-low { from { opacity: 1; } to { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .seat-ring .sr-fill { transition: none; } .seat-ring.is-low .sr-fill { animation: none; } }
+.extend-speech { width: 50%; align-self: flex-end; display: flex; flex-direction: column; align-items: center; gap: 0; padding-block: 6px; font-size: 14px; line-height: 1.25; white-space: nowrap; background: rgba(18, 12, 24, .92); }
+.extend-speech small { margin-left: 0; font-size: 11px; color: var(--moon-2); font-weight: 400; }
+
+/* Tab strip under the seat columns (replaces the edge tabs), so the columns sit at the screen edges */
+.shell-game { padding-left: 6px; padding-right: 6px; }
+.shell-game .table { gap: 6px; }
+.tab-strip { display: flex; gap: 6px; align-items: center; min-height: 32px; }
+.strip-tab {
+  display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border: 0; border-radius: 8px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .06em; color: var(--gold);
+  background: linear-gradient(180deg, #2a1a30, #160d1c); box-shadow: inset 0 0 0 1px var(--gold), 0 4px 12px rgba(0, 0, 0, .45);
+}
+.strip-tab span { font-family: var(--serif); font-size: 18px; line-height: 1; }
+.strip-throw { color: #ff8a7a; background: linear-gradient(180deg, #3a1418, #1c0b0e); box-shadow: inset 0 0 0 1px #d8434c, 0 4px 12px rgba(0, 0, 0, .45); }
+.strip-throw.is-armed { color: #fff; background: #5a1a20; }
+.strip-speech { margin-left: auto; animation: speech-tab-glow 1.4s ease-in-out infinite alternate; }
+.strip-tab:focus-visible { outline: 2px solid var(--lantern); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .strip-speech { animation: none; } }
+.throw-fly { flex-wrap: wrap; max-width: calc(100vw - 24px); }
+.throw-fly .throw-item { width: 76px; }
+.throw-fly .throw-blocked { width: 100%; }
+.strip-tab { width: 40px; padding: 0; justify-content: center; }
+.strip-tab span { font-size: 22px; }
+
+/* Toolbar on one row with the room code; » tabs stacked under the left seat column, « under the right */
+.shell-game .toolbar { flex-wrap: nowrap; gap: 4px; }
+.shell-game .tool { padding: 5px 8px; min-height: 32px; font-size: 13px; flex: none; }
+.shell-game .toolbar .pill { font-size: 10px; padding: 1px 5px; flex: none; }
+.shell-game .tool-room { flex: none; margin-left: auto; font-size: 11px; white-space: nowrap; }
+.seat-col { display: flex; flex-direction: column; min-width: 0; }
+.col-tabs { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 8px; }
+.col-tabs .strip-tab { width: 100%; height: 30px; padding: 0 6px; justify-content: space-between; }
+.col-tabs .strip-tab small { font-size: 12px; letter-spacing: .1em; font-weight: 700; }
+.col-tabs .strip-speech { margin-left: 0; }

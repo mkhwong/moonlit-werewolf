@@ -6,7 +6,7 @@ import ActionPanel, { SPEECH_LABEL } from '../components/ActionPanel';
 import CinematicLayer, { FULL_CINE, VoteRecord } from '../components/Cinematic';
 import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
-import { act, call, useNow, now } from '../socket';
+import { act, call, call as emit, useNow, now } from '../socket';
 import { useNotes } from '../notes';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt, throwBlocked } from '../components/Throw';
 import { PttDock, RoleFigure, VoiceCtx } from '../components/VoiceControls';
@@ -35,7 +35,7 @@ function phaseLabel(ph, P) {
     case 'badge': return '移交警徽';
     case 'badgeFx': return '警徽';
     case 'wwkTake': return '白狼王帶人';
-    case 'shotFx': return '開槍';
+    case 'shotFx': return '帶走';
     case 'exileFx': return '放逐';
     case 'idiotFx': return '白痴翻牌';
     case 'selfDestructFx': return '自爆';
@@ -234,6 +234,12 @@ export default function Game({ state }: any) {
   useEffect(() => { if (!pr.canSelfDestruct) setBoomArmed(false); }, [pr.canSelfDestruct]);
 
   useEffect(() => { setSel(null); setMode(null); }, [ph?.id, pr.kind]);
+  // The speaking panel (text box + 結束發言) can be minimised to a « tab on the right; the choice sticks for later turns.
+  const [speechMin, setSpeechMin] = useState(false);
+  // 延長發言: host or sheriff, if the room allows it.
+  const isSheriff = !!(game.me && game.me.alive && game.players.find(p => p.id === game.me.id)?.sheriff);
+  const canExtend = !!(ph?.type === 'speech' && ph.endsAt && introDone && !cine && game.settings?.allowExtend !== false
+    && (you.isHost || isSheriff) && (ph.data.ext || 0) < 3);
   // 票型: every vote result pops up and stays until 確認; tapping a vote line in the feed reopens it.
   const [voteRec, setVoteRec] = useState(null);
   useEffect(() => { if (ph?.type === 'voteResult') setVoteRec(ph.data); }, [ph?.id]);
@@ -291,7 +297,9 @@ export default function Game({ state }: any) {
   const compact = game.players.length > 12;
   const vv = useContext(VoiceCtx);
   const talking = new Set((vv?.talking || []).map(t => t.pid));
-  const seatProps = { me, game, targets, selected: sel, onSeat, notes, wolfPicks, speaking, online, compact, talking };
+  const showTabs = !game.finished && ph?.type !== 'reveal';
+  const speechTimer = ph?.type === 'speech' && ph.endsAt ? { pid: ph.data.pid, start: ph.startedAt + ph.introMs, end: ph.endsAt } : null;
+  const seatProps = { me, game, targets, selected: sel, onSeat, notes, wolfPicks, speaking, online, compact, talking, speechTimer };
   const call = ph ? judgeCall(ph, P) : '';
 
   return (
@@ -334,15 +342,51 @@ export default function Game({ state }: any) {
         </nav>
 
         <div className={`table ${throwItem ? 'is-throwing' : ''}`}>
-          <Seats side="left" players={left} {...seatProps} />
+          <div className="seat-col">
+            <Seats side="left" players={left} {...seatProps} />
+            {/* » tabs under the left column: 提示 and 擲物 */}
+            {showTabs ? (
+              <div className="col-tabs">
+                <button type="button" className="strip-tab" onClick={() => setSheet('guide')} aria-label="打開提示：我的身分與本局角色">
+                  <span aria-hidden>»</span><small>提示</small>
+                </button>
+                <button type="button" className={`strip-tab strip-throw ${throwItem ? 'is-armed' : ''}`} aria-expanded={sheet === 'throw'}
+                  onClick={() => { if (throwItem) setThrowItem(null); else setSheet(sheet === 'throw' ? null : 'throw'); }}
+                  aria-label={throwItem ? '取消擲物' : '擲物：雞蛋、發霉番茄、便便'}>
+                  {throwItem ? <><ItemArt id={throwItem} size={18} /><small>取消</small></> : <><span aria-hidden>»</span><small>擲物</small></>}
+                </button>
+              </div>
+            ) : null}
+          </div>
           <JudgeFeed game={game} P={P} line={call} onVote={setVoteRec} />
-          <Seats side="right" players={right} {...seatProps} />
+          <div className="seat-col">
+            <Seats side="right" players={right} {...seatProps} />
+            {/* « under the right column: reopen the minimised speech panel */}
+            {showTabs && speechMin && pr.kind === 'speaking' && introDone && !cine ? (
+              <div className="col-tabs">
+                <button type="button" className="strip-tab strip-speech" onClick={() => setSpeechMin(false)} aria-label="展開發言視窗">
+                  <small>發言</small><span aria-hidden>«</span>
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {/* Bottom row: your character on the left, the action panel on the right. */}
         <div className="bottom-row">
           {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} onClick={() => setSheet('role')} /> : null}
-          <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} />
+          <div className="bottom-right">
+            <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} speechMin={speechMin} setSpeechMin={setSpeechMin} />
+            {canExtend ? (
+              <button type="button" className="btn btn-ghost extend-speech" onClick={() => emit('extendSpeech')}>
+                {ph.data.pid === me?.id ? '我的發言' : `${P[ph.data.pid]?.seat}號 發言`} ＋30 秒<small>剩 {3 - (ph.data.ext || 0)} 次</small>
+              </button>
+            ) : null}
+            {/* 結束發言 stays here on its own, whether or not the text panel is minimised. */}
+            {pr.kind === 'speaking' && introDone && !cine ? (
+              <button type="button" className="btn btn-moon btn-lg end-speech" onClick={() => act({ type: 'endSpeech' })}>結束{SPEECH_LABEL[pr.speechKind]}</button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -354,18 +398,6 @@ export default function Game({ state }: any) {
       {sheet === 'log' ? <LogSheet game={game} P={P} onClose={() => setSheet(null)} /> : null}
       {sheet === 'notes' ? <NotesSheet game={game} notes={notes} update={updateNote} onClose={() => setSheet(null)} /> : null}
       {sheet && sheet.note ? <NotesSheet game={game} notes={notes} update={updateNote} focus={sheet.note} onClose={() => setSheet(null)} /> : null}
-      {!game.finished && !cine && ph?.type !== 'reveal' ? (
-        <button type="button" className="guide-tab" onClick={() => setSheet('guide')} aria-label="打開提示：我的身分與本局角色">
-          <span aria-hidden>»</span>
-        </button>
-      ) : null}
-      {!game.finished && !cine && ph?.type !== 'reveal' ? (
-        <button type="button" className={`guide-tab throw-tab ${throwItem ? 'is-armed' : ''}`}
-          onClick={() => { if (throwItem) setThrowItem(null); else setSheet(sheet === 'throw' ? null : 'throw'); }}
-          aria-label={throwItem ? '取消擲物' : '擲物：雞蛋、發霉番茄、便便'} aria-expanded={sheet === 'throw'}>
-          {throwItem ? <ItemArt id={throwItem} size={20} /> : <span aria-hidden>»</span>}
-        </button>
-      ) : null}
       {sheet === 'guide' ? <GuidePopup game={game} onClose={() => setSheet(null)} /> : null}
       {sheet === 'throw' ? <ThrowFlyout game={game} onPick={it => { setThrowItem(it); setSheet(null); }} onClose={() => setSheet(null)} /> : null}
       <ThrowLayer />

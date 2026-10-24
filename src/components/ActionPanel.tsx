@@ -69,8 +69,10 @@ function MerchantPanel({ pr, sel, P }: any) {
   );
 }
 
-export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, P, me, introDone }: any) {
+export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, P, me, introDone, speechMin, setSpeechMin }: any) {
   if (!ph || !introDone) return null;
+  // The speaking panel can be tucked into a « tab on the right (Game renders the tab).
+  if (pr.kind === 'speaking' && speechMin) return null;
   const seat = id => (id ? `${P[id]?.seat}號` : '');
   let body = null;
 
@@ -170,10 +172,12 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
     case 'speaking':
       body = (
         <>
-          <h3>輪到你{SPEECH_LABEL[pr.speechKind]}</h3>
+          <div className="panel-head">
+            <h3>輪到你{SPEECH_LABEL[pr.speechKind]}</h3>
+            {setSpeechMin ? <button type="button" className="panel-min" onClick={() => setSpeechMin(true)} aria-label="縮小到右邊" title="縮小到右邊">»</button> : null}
+          </div>
           <p>{pr.speechKind === 'lastWords' ? '按住畫面下方的麥克風留下你的遺言，也可以輸入文字。' : '按住畫面下方的麥克風說出你的想法，也可以輸入文字。'}</p>
           <SpeechBox />
-          <div className="row"><button className="btn btn-moon" onClick={() => act({ type: 'endSpeech' })}>結束{SPEECH_LABEL[pr.speechKind]}</button></div>
         </>
       );
       break;

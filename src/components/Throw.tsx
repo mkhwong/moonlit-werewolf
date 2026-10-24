@@ -147,9 +147,12 @@ export function ThrowFlyout({ game, onPick, onClose }: any) {
     return () => window.removeEventListener('keydown', k);
   }, [onClose]);
   const blocked = throwBlocked(game);
+  // Open just above the 擲物 tab in the strip under the seats.
+  const anchor = typeof document !== 'undefined' ? document.querySelector('.strip-throw')?.getBoundingClientRect() : null;
+  const pos: any = anchor ? { '--fly-x': `${Math.max(6, anchor.left)}px`, '--fly-bottom': `${window.innerHeight - anchor.top + 6}px` } : {};
   return (
     <div className="throw-catch" onClick={onClose}>
-      <div className="throw-fly" role="dialog" aria-label="擲物" onClick={e => e.stopPropagation()}>
+      <div className="throw-fly" style={pos} role="dialog" aria-label="擲物" onClick={e => e.stopPropagation()}>
         {ITEMS.map(it => (
           <button key={it.id} type="button" className="throw-item" disabled={!!blocked} onClick={() => onPick(it.id)} aria-label={`擲${it.name}`}>
             <ItemArt id={it.id} size={44} /><span>{it.name}</span>

@@ -20,6 +20,7 @@ export const CINE = {
   bear: 4400, charm: 4000, voteTurn: 4000,
 };
 
+const MAX_EXTENSIONS = 3;
 const rnd = (a, b) => Math.round(a + Math.random() * (b - a));
 const choice = a => a[Math.floor(Math.random() * a.length)];
 const teamOf = r => ROLES[r].team;
@@ -542,17 +543,22 @@ export class Game { [key: string]: any;
     const shooterInGame = this.has('hunter') || this.has('wolfKing') || this.has('mechWolf');
     if (shooterInGame && d.cause !== 'selfDestruct' && d.cause !== 'charm' && d.cause !== 'dream') {
       // Every death gets a skill window so a hunter can't be spotted by its absence.
+      // Same window (and timer) for everyone; a player with nothing to fire ends it at a random moment,
+      // just like a hunter who decides not to shoot.
       const can = this.canShoot(p, d.cause);
-      const duration = can ? this.ms(this.settings.timers.skill) : this.scaled(rnd(4500, 8000));
-      const ph = await this.runPhase('skill', { pid: p.id }, {
-        duration, priv: { can, poisoned: d.cause === 'poison', done: false, target: null },
+      const running = this.runPhase('skill', { pid: p.id }, {
+        duration: this.ms(this.settings.timers.skill),
+        priv: { can, poisoned: d.cause === 'poison', done: false, target: null },
       });
+      if (!can) this.completeSoon(this.phase, { min: rnd(4500, 8000) });
+      const ph = await running;
       const t = ph.priv.target;
       if (can && t && this.isAlive(t)) {
-        p.revealed = p.role;
-        this.log(`${p.seat}號（${ROLES[p.role].name}）開槍帶走了 ${this.seat(t)}號`, 'shot');
-        this.secret(`${p.seat}號 ${ROLES[p.role].name} 開槍`);
-        await this.cinematic('shotFx', { shooter: p.id, target: t, role: p.role }, CINE.shot);
+        // The shooter's role stays hidden: everyone only learns who took whom
+        // (a hunter and a 狼王 look the same — players have to work it out).
+        this.log(`${p.seat}號 帶走了 ${this.seat(t)}號`, 'shot');
+        this.secret(`${p.seat}號 ${ROLES[p.role].name} 開槍帶走 ${this.seat(t)}號`);
+        await this.cinematic('shotFx', { shooter: p.id, target: t }, CINE.shot);
         await this.killAndResolve([{ pid: t, cause: 'shot' }], { lastWords: true });
       }
     }
@@ -582,6 +588,26 @@ export class Game { [key: string]: any;
 
   async lastWords(pid) {
     await this.runPhase('speech', { pid, kind: 'lastWords' }, { duration: this.ms(this.settings.timers.lastWords) });
+  }
+
+  // 延長發言: the room host or the sheriff can add 30 s to the current speech (up to 3 times per speech).
+  extendSpeech(byPid, isHost) {
+    const ph = this.phase;
+    if (this.settings.allowExtend === false) return '本局沒有開放延長發言';
+    if (!ph || ph.done || ph.type !== 'speech' || ph.endsAt == null) return '現在不是發言時間';
+    const by = this.get(byPid);
+    const isSheriff = !!(by && by.alive && this.sheriffId === byPid);
+    if (!isHost && !isSheriff) return '只有房主或警長可以延長發言';
+    if ((ph.data.ext || 0) >= MAX_EXTENSIONS) return `每段發言最多延長 ${MAX_EXTENSIONS} 次`;
+    ph.data.ext = (ph.data.ext || 0) + 1;
+    ph.endsAt += this.ms(30);
+    clearTimeout(ph.timer);
+    ph.timer = setTimeout(() => ph.finish('timeout'), Math.max(0, ph.endsAt - Date.now()));
+    const who = isSheriff ? `警長 ${by.seat}號` : '房主';
+    const self = byPid === ph.data.pid;
+    this.log(self ? `${who} 延長了自己的發言 30 秒` : `${who} 為 ${this.seat(ph.data.pid)}號 延長發言 30 秒`, 'info');
+    this.notify();
+    return null;
   }
 
   async speechTurn(pid, kind, sec) {
@@ -923,7 +949,7 @@ export class Game { [key: string]: any;
             this.completeSoon(ph, { min: 2000 });
           } else if (a.type === 'skip') {
             ph.priv.done = true;
-            this.completeSoon(ph, { min: 4500 });
+            this.completeSoon(ph, { min: rnd(4500, 8000) });
           }
         }
         break;
@@ -1207,7 +1233,7 @@ export class Game { [key: string]: any;
           return { kind: 'info', text: ph.priv.poisoned && shooter ? '你被毒殺，無法開槍' : '你沒有可發動的技能，請稍候' };
         }
         if (ph.priv.done) return { kind: 'info', text: ph.priv.target ? `你選擇帶走 ${this.seat(ph.priv.target)}號` : '你選擇不開槍' };
-        return { kind: 'pick', title: '是否開槍？', desc: '選擇一名玩家一同帶走，或放棄開槍（放棄則不會公開身分）', targets: others, skipLabel: '不開槍', confirmLabel: '開槍', danger: true };
+        return { kind: 'pick', title: '是否開槍？', desc: '選擇一名玩家一同帶走，或放棄開槍。公告只會說「你帶走了誰」，不會公開你的身分', targets: others, skipLabel: '不開槍', confirmLabel: '開槍', danger: true };
       }
       case 'badge':
         if (ph.data.pid !== me.id) return { kind: 'wait', text: `警長 ${this.seat(ph.data.pid)}號 正在移交警徽…` };

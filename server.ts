@@ -342,6 +342,7 @@ function sanitizeConfig(room, patch) {
     if (typeof s.sameGuardSaveDies === 'boolean') t.sameGuardSaveDies = s.sameGuardSaveDies;
     if (['first', 'all', 'none'].includes(s.lastWordsNight)) t.lastWordsNight = s.lastWordsNight;
     if (typeof s.randomSeats === 'boolean') t.randomSeats = s.randomSeats;
+    if (typeof s.allowExtend === 'boolean') t.allowExtend = s.allowExtend;
     if (s.timers && typeof s.timers === 'object') {
       for (const f of TIMER_FIELDS) {
         const v = Number(s.timers[f.key]);
@@ -488,6 +489,13 @@ io.on('connection', socket => {
     const c = ctx(socket);
     if (!c || c.room.hostId !== c.player.id) return ack(cb)({ ok: false, error: '只有房主可以開始遊戲' });
     const err = c.room.start();
+    ack(cb)(err ? { ok: false, error: err } : { ok: true });
+  });
+
+  socket.on('extendSpeech', (_p, cb) => {
+    const c = ctx(socket);
+    if (!c || !c.room.game || c.room.status !== 'playing') return ack(cb)({ ok: false });
+    const err = c.room.game.extendSpeech(c.player.id, c.room.hostId === c.player.id);
     ack(cb)(err ? { ok: false, error: err } : { ok: true });
   });
 

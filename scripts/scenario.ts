@@ -320,5 +320,69 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
   console.log('K ok: 隱狼 hidden from seer and bear, knows wolves, no self-destruct');
 }
 
+// L: a hunter's shot names only the seats — the role stays hidden, and every skill window looks the same.
+{
+  let shot = null, logLine = null, revealedSeen = 'unset', windows = [];
+  await scripted(
+    ['werewolf', 'werewolf', 'wolfKing', 'seer', 'witch', 'hunter', 'villager', 'villager', 'villager', 'villager'], {},
+    (g, step, act) => {
+      if (step === 'wolf') wolvesKill(act, [1, 2, 3], 6);
+      if (step === 'witch') act(5, { type: 'skip' });
+      if (step === 'seer') act(4, { type: 'pick', target: id(7) });
+    },
+    (g, ph) => {
+      if (ph.type === 'skill' && !windows.some(w => w.id === ph.id)) {
+        windows.push({ id: ph.id, len: ph.endsAt - ph.startedAt, pid: ph.data.pid });
+        if (ph.data.pid === id(6)) g.handle(id(6), { type: 'pick', target: id(1) });
+      }
+      if (ph.type === 'shotFx') shot = ph.data;
+      if (shot && ph.type === 'speech') {
+        logLine = g.publicLog.find(e => e.kind === 'shot')?.text;
+        revealedSeen = g.viewFor(id(7)).players.find(p => p.seat === 6).revealed;
+        return true;
+      }
+      return false;
+    });
+  assert.ok(shot, 'hunter shot');
+  assert.equal(shot.role, undefined, 'shot cinematic carries no role');
+  assert.equal(logLine, '6號 帶走了 1號');
+  assert.equal(revealedSeen, null, 'shooter role not revealed on the seat');
+  assert.ok(windows.length >= 2 && new Set(windows.map(w => w.len)).size === 1, 'all skill windows have the same timer');
+  console.log('L ok: hunter shot announced as "6號 帶走了 1號", role hidden, skill windows identical');
+}
+
+// M: 延長發言 — host or sheriff adds 30 s (max 3 per speech); others can't; the room setting can turn it off.
+{
+  let res = null;
+  await scripted(
+    ['werewolf', 'werewolf', 'seer', 'witch', 'villager', 'villager', 'villager', 'villager'], {},
+    (g, step, act) => {
+      if (step === 'wolf') wolvesSkip(act, [1, 2]);
+      if (step === 'witch') act(4, { type: 'skip' });
+    },
+    (g, ph) => {
+      if (ph.type !== 'speech' || res) return !!res;
+      const before = ph.endsAt;
+      const notAllowed = g.extendSpeech(id(5), false);
+      const r1 = g.extendSpeech(id(6), true);
+      const added = ph.endsAt - before;
+      g.extendSpeech(id(6), true); g.extendSpeech(id(6), true);
+      const capped = g.extendSpeech(id(6), true);
+      res = { notAllowed, r1, added, ext: ph.data.ext, capped, log: g.publicLog.at(-1).text };
+      return true;
+    });
+  assert.ok(res.notAllowed, 'non-host non-sheriff refused');
+  assert.equal(res.r1, null);
+  assert.equal(Math.round(res.added), Math.round(30000 * Number(process.env.WW_TIME_SCALE)));
+  assert.equal(res.ext, 3);
+  assert.ok(res.capped, 'fourth extension refused');
+  let off = null;
+  await scripted(['werewolf', 'werewolf', 'seer', 'witch', 'villager', 'villager', 'villager', 'villager'], { allowExtend: false },
+    (g, step, act) => { if (step === 'wolf') wolvesSkip(act, [1, 2]); if (step === 'witch') act(4, { type: 'skip' }); },
+    (g, ph) => { if (ph.type === 'speech') { off = g.extendSpeech(id(6), true); return true; } return false; });
+  assert.ok(off, 'setting off refuses');
+  console.log('M ok: 延長發言 by host/sheriff, +30 s, max 3, can be switched off');
+}
+
 console.log('all scenarios passed');
 process.exit(0);

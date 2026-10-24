@@ -1,10 +1,25 @@
+import { useNow } from '../socket';
 import React from 'react';
 import Emblem, { Avatar } from './Emblem';
 import { ROLES } from '../../shared/roles';
 import { findTag } from '../notes';
 
 // Players sit in two columns down the sides of the table; each seat is a framed cameo.
-export default function Seats({ side, players, me, game, targets, selected, onSeat, notes, wolfPicks, speaking, online, compact, talking }: any) {
+/** Speech timer: a ring that draws itself around the speaker's portrait; a full circle = time up. */
+function SpeechRing({ start, end }: any) {
+  const t = useNow(200);
+  const total = Math.max(1, end - start);
+  const done = Math.min(1, Math.max(0, (t - start) / total));
+  const low = end - t <= 10000;
+  return (
+    <svg className={`seat-ring ${low ? 'is-low' : ''}`} viewBox="0 0 100 100" aria-hidden>
+      <circle cx="50" cy="50" r="46" className="sr-track" />
+      <circle cx="50" cy="50" r="46" className="sr-fill" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - done} />
+    </svg>
+  );
+}
+
+export default function Seats({ side, players, me, game, targets, selected, onSeat, notes, wolfPicks, speaking, online, compact, talking, speechTimer }: any) {
   const E = game.election;
   const signed = new Set(E ? E.signed : []);
   const withdrawn = new Set(E ? E.withdrawn : []);
@@ -32,6 +47,7 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
           <button key={p.id} type="button" role="listitem" data-pid={p.id} className={cls} onClick={() => onSeat(p.id)} aria-label={label} aria-pressed={isSel}>
             <span className="seat-medal">
               <Avatar name={p.name} size={compact ? 36 : 44} dim={!p.alive} />
+              {speechTimer && speechTimer.pid === p.id ? <SpeechRing start={speechTimer.start} end={speechTimer.end} /> : null}
               {!p.alive ? <i className="seat-x" aria-hidden /> : null}
               <span className="seat-num">{p.seat}</span>
               {p.sheriff ? <span className="seat-badge" title="警長"><Emblem id="badge" size={20} /></span> : null}
