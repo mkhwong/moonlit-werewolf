@@ -316,16 +316,6 @@ export default function Game({ state }: any) {
     setSheet({ note: pid });
   };
 
-  if (game.finished) {
-    return (
-      <div className="app has-dock">
-        <Scene mode={sceneMode(game)} />
-        <div className="shell"><GameOver state={state} P={P} /></div>
-        <PttDock />
-      </div>
-    );
-  }
-
   const speaking = ph?.type === 'speech' ? ph.data.pid : null;
   const dayLabel = game.time === 'night' ? nightNumberLabel(Math.max(1, game.day)) : dayNumberLabel(game.day);
   const half = Math.ceil(game.players.length / 2);
@@ -347,6 +337,17 @@ export default function Game({ state }: any) {
   }, [game.claims]);
   const seatProps = { me, game, targets, selected: sel, onSeat, notes, wolfPicks, speaking, online, compact, talking, speechTimer, claimView };
   const call = ph ? (ph.type === 'reveal' && !me ? '玩家正在確認身分' : judgeCall(ph, P)) : '';
+
+  if (game.finished) {
+    return (
+      <div className="app has-dock">
+        <Scene mode={sceneMode(game)} />
+        <div className="shell"><GameOver state={state} P={P} /></div>
+        <PttDock />
+      </div>
+    );
+  }
+
 
   return (
     <div className={`app game time-${game.time} has-dock`}>
@@ -436,20 +437,21 @@ export default function Game({ state }: any) {
           {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} onClick={() => setSheet('role')} /> : null}
           <div className="bottom-right">
             <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} speechMin={speechMin} setSpeechMin={setSpeechMin} />
-            {/* One row: special skills (騎士決鬥 / 退水) on the left, ＋30 秒 on the right. */}
-            {canExtend || (introDone && !cine && me?.alive && hasSkillButtons(pr, mode)) ? (
-              <div className="skill-row">
-                {introDone && !cine && me?.alive ? <SkillButtons pr={pr} mode={mode} setMode={setMode} sel={sel} P={P} /> : null}
+            {/* Special skills (騎士決鬥 / 退水) get their own row; ＋30 秒 sits left of 結束發言. */}
+            {introDone && !cine && me?.alive && hasSkillButtons(pr, mode) ? (
+              <div className="skill-row"><SkillButtons pr={pr} mode={mode} setMode={setMode} sel={sel} P={P} /></div>
+            ) : null}
+            {canExtend || (pr.kind === 'speaking' && introDone && !cine) ? (
+              <div className="end-row">
                 {canExtend ? (
                   <button type="button" className="btn btn-ghost extend-speech" onClick={() => emit('extendSpeech')}>
                     {ph.data.pid === me?.id ? '我的發言' : `${P[ph.data.pid]?.seat}號 發言`} ＋30 秒<small>剩 {3 - (ph.data.ext || 0)} 次</small>
                   </button>
                 ) : null}
+                {pr.kind === 'speaking' && introDone && !cine ? (
+                  <button type="button" className="btn btn-moon btn-lg end-speech" onClick={() => act({ type: 'endSpeech' })}>結束{SPEECH_LABEL[pr.speechKind]}</button>
+                ) : null}
               </div>
-            ) : null}
-            {/* 結束發言 stays here on its own, whether or not the text panel is minimised. */}
-            {pr.kind === 'speaking' && introDone && !cine ? (
-              <button type="button" className="btn btn-moon btn-lg end-speech" onClick={() => act({ type: 'endSpeech' })}>結束{SPEECH_LABEL[pr.speechKind]}</button>
             ) : null}
           </div>
         </div>

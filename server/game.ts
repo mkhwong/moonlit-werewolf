@@ -77,6 +77,7 @@ export class Game { [key: string]: any;
     // In a mixed pack the bots ask a human wolf on night 1; stance stays null until someone (or the brain) sets it.
     this.wolfPlan = { stance: null, byHuman: false, jumper: null };
     this.privateLog = {};
+    this.checks = {};
     this.speechLog = [];
     this.wolfChat = [];
     this.history = [];
@@ -1068,6 +1069,7 @@ export class Game { [key: string]: any;
       const t = this.get(a.target);
       const value = mode === 'seer' ? seenTeam(t.role) : t.role;
       pv.result = { target: t.id, value };
+      if (value === 'wolf' || value === 'good') (this.checks[me.id] ||= {})[t.id] = value;
       if (step === 'seer' && t.role === 'spiritKnight' && !this.reflectUsed) {
         this.reflectUsed = true;
         n.reflect.push(me.id);
@@ -1202,6 +1204,7 @@ export class Game { [key: string]: any;
         if (L.skill === 'check') {
           const value = seenTeam(t.role);
           pv.result = { target: t.id, value };
+          (this.checks[me.id] ||= {})[t.id] = value;
           this.plog(me.id, `幸運兒查驗 ${t.seat}號：${value === 'wolf' ? '狼人' : '好人'}`);
           this.secret(`幸運兒查驗 ${t.seat}號：${value === 'wolf' ? '狼人' : '好人'}`);
           this.completeSoon(ph, { min: 4000, delay: 6000 });
@@ -1478,6 +1481,7 @@ export class Game { [key: string]: any;
       badgeLost: this.badgeLost,
       publicLog: this.publicLog,
       claims: this.claims,
+      checks: me ? (this.checks[me.id] || {}) : {},
       hasBots: this.players.some(p => p.bot),
       privateLog: me ? (this.privateLog[me.id] || []) : [],
       speechLog: this.speechLog.slice(-150),

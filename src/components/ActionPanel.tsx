@@ -223,7 +223,6 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
             <h3>輪到你{SPEECH_LABEL[pr.speechKind]}</h3>
             {setSpeechMin ? <button type="button" className="panel-min" onClick={() => setSpeechMin(true)} aria-label="縮小到右邊" title="縮小到右邊">»</button> : null}
           </div>
-          <p>{pr.speechKind === 'lastWords' ? '按住畫面下方的麥克風留下你的遺言。' : '按住畫面下方的麥克風說出你的想法。'}</p>
         </>
       );
       break;

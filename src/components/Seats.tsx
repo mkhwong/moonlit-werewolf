@@ -55,6 +55,7 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
               {speechTimer && speechTimer.pid === p.id ? <SpeechRing start={speechTimer.start} end={speechTimer.end} /> : null}
               {!p.alive ? <i className="seat-x" aria-hidden /> : null}
               <span className="seat-num">{p.seat}</span>
+              {game.checks?.[p.id] ? <span className={`seat-verdict v-${game.checks[p.id]}`}>{game.checks[p.id] === 'wolf' ? '狼' : '好人'}</span> : null}
               {p.sheriff ? <span className="seat-badge" title="警長"><Emblem id="badge" size={20} /></span> : null}
               {p.mate ? <span className="seat-mate" title="狼隊友"><Emblem id="werewolf" size={16} /></span> : null}
               {online && online[p.id] === false ? <span className="seat-offline" title="離線" /> : null}
@@ -65,12 +66,6 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
             </span>
             <span className="seat-name">{p.id === me?.id ? '我' : p.name}</span>
             {signed.has(p.id) ? <span className={`seat-chip ${withdrawn.has(p.id) ? 'chip-out' : 'chip-run'}`}>{withdrawn.has(p.id) ? '退水' : '競選'}</span> : null}
-            {claimedRole || marks.length ? (
-              <span className="seat-claims">
-                {claimedRole ? <i className="cm-role" style={{ '--c': ROLES[claimedRole]?.color }} title={`自稱${ROLES[claimedRole]?.name}`}>跳{ROLES[claimedRole]?.name}</i> : null}
-                {marks.map((m, i) => <i key={i} className={`cm-${m.value}`} title={`${m.by}號宣告`}>{MARK_NAME[m.value]}</i>)}
-              </span>
-            ) : null}
             {tag ? <span className="seat-tag" style={{ '--t': tag.color }}>{tag.label}</span> : null}
             {roleShown || p.revealed === 'wolfTeam' || p.idiotRevealed ? (
               <span className="seat-meta">
