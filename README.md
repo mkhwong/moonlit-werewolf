@@ -18,12 +18,22 @@ The server decides who may talk and who hears it; when your turn ends your mic i
 
 Audio goes directly between players' devices (WebRTC). If a network blocks that (some mobile carriers, strict Wi-Fi), audio for that pair is relayed through the game server automatically as 16 kHz μ-law (about 128 kbps per listener). To add a TURN relay instead, set `VOICE_ICE_SERVERS` to a JSON array of ICE servers. `metadata.json` requests microphone permission for the AI Studio preview.
 
-## 測試模式 (test mode)
+## 測試模式 (test mode) and computer players
 
-In the lobby the host can switch on 測試模式:
-- **加入 1 位電腦 / 補滿至 N 人** adds computer players (named 電腦・…). They run on the server, so this works in AI Studio and on any host with no extra scripts. They speak, vote, run for sheriff and use their skills on their own.
-- **我想當** lets each human pick the role they'll be dealt (or 隨機分配). If more people want a role than the pack has, whoever picked first gets it.
-- Switching test mode off removes the computers and clears role picks. A 測試模式 tag shows in the game toolbar.
+In the lobby the host can switch on 測試模式 to add computer players (and pick their own role for testing). The bots have three levels (規則 › 電腦玩家水平):
+
+- **新手** — the original random-but-legal player: random picks and votes, canned lines.
+- **普通 / 高手** — `server/brain.ts`. Each bot rebuilds a suspicion score per player every turn from only what its seat could know: its own night results, 宣告 claims, votes (who voted against confirmed-good players), night deaths (presumed good), booms, duels and the bear's roars. 預言家 claimants are ranked by credibility (contradictions with what the bot privately knows, dying at night, rival claims); the best one becomes its trusted seer.
+  - **預言家** claims, reports 查殺/金水, announces a 警徽流 (its two most suspicious unchecked players), follows it at night, and passes or tears the badge by the convention (last check good → pass to them; wolf → tear).
+  - **女巫** always saves the victim (never herself), poisons only near-certain wolves from night 2, and claims 銀水 when her saved player is called 查殺.
+  - **守衛** usually 空守s night 1 (同守同救), then protects the trusted seer; **攝夢人** shields the seer without repeating; **獵人/狼王** shoot the top suspect; **騎士** duels only collapsed fake seers; **通靈師/守墓人** claim with exact results when it exposes a lie; **奇蹟商人** gifts by situation (shield the seer / check / poison once the witch is gone); **熊** reads its own roars.
+  - **狼隊** converges on one kill (the believed seer, witch and guard claimers, the sheriff), and plays team tactics: maybe a 悍跳 jumper faking the seer script (fake 查殺s, fake 警徽流, badge to a mate), a 衝鋒 charger backing him and 倒鉤 lurkers siding with the real seer — or nobody jumps at all. A cornered jumper or 白狼王 may 自爆. In a mixed pack the bots ask the human wolf on night 1 (衝鋒/倒鉤 buttons) and follow the answer.
+
+`npx tsx scripts/braintest.ts 60 normal` plays bot-vs-bot games through the real pipeline and reports win rates (tuned to roughly 50/50 at 普通; 高手 wolves win more).
+
+## 宣告 (claim buttons)
+
+Because table talk is voice, structured claims keep the board readable (and are what the bots "hear"): while speaking, the ◆ 宣告 button offers 跳身分 (any good role in the setup), 查殺 / 金水 / 銀水 / 站邊 / 歸票 and 警徽流 — targeted ones are made by tapping a seat. Claims show as chips on seats (自稱 role on the claimer, 查殺/金水/銀水 marks on targets), as gold ◆ lines in the judge feed, and in `game.claims` for the bots.
 
 ## Character transitions
 
@@ -117,7 +127,7 @@ Lobby → host picks a pack (or custom roles) and rules → 確認身分 → nig
 
 **Notes**: tap any seat to tag it (狼, 好人, 金水, 查殺, 銀水, role guesses) and add a remark. Notes stay on the player's device only.
 
-Speeches are meant for voice (in person or a call). Speakers can also type.
+Speeches are meant for voice (in person or a call). 
 
 ## Project layout
 
@@ -198,3 +208,9 @@ The speaker button at the bottom-left cycles 旁白 (effects + narration) → �
     python3 scripts/split-voice.py voice-batches.json 04 voice-04.mp3 public/voice
 
 The script cuts at the N−1 longest pauses, trims and loudness-normalises each clip, and prints every clip's length so a bad cut stands out.
+
+## 電腦玩家（進階）
+- 狼人分工：悍跳（假預言家）／衝鋒（幫悍跳）／倒鉤（站真預言家）／深水；混合隊伍時電腦狼會問真人狼「衝鋒定倒鉤」。
+- 發牌時真人會平均分到好人與狼人，盡量減少電腦狼。
+- 真人沒有打字框，只有語音；「宣告」按鈕可由右側分頁收起／展開。
+- 上警報名時可按「◆ 宣告：我是預言家」，電腦玩家只會投畀有宣告身分的候選人（真預言家與悍跳狼會自動宣告）。

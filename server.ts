@@ -187,13 +187,16 @@ class Room { [key: string]: any;
     const seats = ordered.map((_, i) => i + 1);
     if (this.config.settings.randomSeats) shuffle(seats);
     ordered.forEach((p, i) => { p.seat = seats[i]; });
-    const roster = ordered.map(p => ({ id: p.id, name: p.name, seat: p.seat }));
+    const roster = ordered.map(p => ({ id: p.id, name: p.name, seat: p.seat, bot: !!p.bot }));
     this.game = new Game({
       roster,
       roleCounts: this.roleCounts(),
       settings: structuredClone(this.config.settings),
       notify: () => this.broadcast(),
     });
+    // With computer players at the table, deal so the real players split evenly between
+    // good and wolf (couples of humans face each other; bots fill whatever wolf seats remain).
+    balanceHumanTeams(this.game);
     // 測試模式: give each human the role they asked for, swapping with whoever drew it.
     if (this.config.testMode) {
       const fixed = new Set();
@@ -329,6 +332,33 @@ class Room { [key: string]: any;
   }
 }
 
+/** Humans half wolf, half good (rounded by coin flip), so the fewest possible bots play wolf. */
+function balanceHumanTeams(game) {
+  const humans = game.players.filter(p => !p.bot);
+  const bots = game.players.filter(p => p.bot);
+  if (!humans.length || !bots.length) return;
+  const isWolf = p => ROLES[p.role].team === 'wolf';
+  const wolfSeats = game.players.filter(isWolf).length;
+  const goodSeats = game.players.length - wolfSeats;
+  let want = Math.floor(humans.length / 2);
+  if (humans.length % 2 && Math.random() < 0.5) want++;
+  want = Math.max(humans.length - goodSeats, Math.min(wolfSeats, want));
+  const swap = (a, b) => { [a.role, b.role] = [b.role, a.role]; };
+  let guard = 50;
+  while (humans.filter(isWolf).length < want && guard--) {
+    const hg = shuffle(humans.filter(p => !isWolf(p)))[0];
+    const bw = shuffle(bots.filter(isWolf))[0];
+    if (!hg || !bw) break;
+    swap(hg, bw);
+  }
+  while (humans.filter(isWolf).length > want && guard--) {
+    const hw = shuffle(humans.filter(isWolf))[0];
+    const bg = shuffle(bots.filter(p => !isWolf(p)))[0];
+    if (!hw || !bg) break;
+    swap(hw, bg);
+  }
+}
+
 // ───────────────────────── validation ─────────────────────────
 /** 玩家人數: pick a preset of that size, or (custom / no preset) add or remove villagers, then wolves or gods. */
 function resizeSetup(room, size) {
@@ -399,6 +429,7 @@ function sanitizeConfig(room, patch) {
     if (['first', 'all', 'none'].includes(s.lastWordsNight)) t.lastWordsNight = s.lastWordsNight;
     if (typeof s.randomSeats === 'boolean') t.randomSeats = s.randomSeats;
     if (typeof s.allowExtend === 'boolean') t.allowExtend = s.allowExtend;
+    if (['easy', 'normal', 'hard'].includes(s.botLevel)) t.botLevel = s.botLevel;
     if (s.timers && typeof s.timers === 'object') {
       for (const f of TIMER_FIELDS) {
         const v = Number(s.timers[f.key]);

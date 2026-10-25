@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Scene from '../components/Scene';
 import Seats from '../components/Seats';
 import JudgeFeed from '../components/JudgeFeed';
-import ActionPanel, { SPEECH_LABEL, SkillButtons, hasSkillButtons } from '../components/ActionPanel';
+import ActionPanel, { SPEECH_LABEL, SkillButtons, hasSkillButtons, ClaimPanel } from '../components/ActionPanel';
 import CinematicLayer, { FULL_CINE, VoteRecord } from '../components/Cinematic';
 import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
@@ -226,6 +226,7 @@ export default function Game({ state }: any) {
   const [sel, setSel] = useState(null);
   const [mode, setMode] = useState(null);
   const [sheet, setSheet] = useState(null);
+  const [claimOpen, setClaimOpen] = useState(false);
   const [notes, updateNote] = useNotes(game.id, you.id);
   useRoleTransitions(game, pr, mode);
   // Private night results land on the seat (好人 / 狼人 / the role), and the wolves see their kill's claw marks.
@@ -255,7 +256,7 @@ export default function Game({ state }: any) {
   }, [boomArmed]);
   useEffect(() => { if (!pr.canSelfDestruct) setBoomArmed(false); }, [pr.canSelfDestruct]);
 
-  useEffect(() => { setSel(null); setMode(null); }, [ph?.id, pr.kind]);
+  useEffect(() => { setSel(null); setMode(null); setClaimOpen(false); }, [ph?.id, pr.kind]);
   // The speaking panel (text box + 結束發言) can be minimised to a « tab on the right; the choice sticks for later turns.
   const [speechMin, setSpeechMin] = useState(false);
   // 延長發言: host or sheriff, if the room allows it.
@@ -281,6 +282,7 @@ export default function Game({ state }: any) {
     else if (pr.kind === 'wolf' && !pr.myLocked) targets = pr.targets;
     else if (pr.kind === 'witch' && mode === 'poison') targets = pr.targets;
     else if (mode === 'duel' && pr.canDuel) targets = pr.duelTargets;
+    else if (mode?.claim) targets = game.players.filter(p => p.alive && p.id !== me?.id && (mode.claim.kind !== 'flow' || p.id !== mode.claim.first)).map(p => p.id);
   }
 
   let wolfPicks = null;
@@ -292,6 +294,17 @@ export default function Game({ state }: any) {
   const onSeat = pid => {
     if (throwItem) {
       if (pid !== me?.id) { throwAt(throwItem, pid); setThrowItem(null); }
+      return;
+    }
+    if (mode?.claim && pid !== me?.id && game.players.find(p => p.id === pid)?.alive) {
+      const c = mode.claim;
+      if (c.kind === 'flow') {
+        if (!c.first) { sfx('tap'); setMode({ claim: { ...c, first: pid } }); return; }
+        if (pid !== c.first) { act({ type: 'claim', claim: { kind: 'flow', flow: [c.first, pid] } }); setMode(null); }
+        return;
+      }
+      act({ type: 'claim', claim: { kind: c.kind, value: c.value, target: pid } });
+      setMode(null);
       return;
     }
     if (targets && targets.includes(pid)) {
@@ -322,7 +335,16 @@ export default function Game({ state }: any) {
   const talking = new Set((vv?.talking || []).map(t => t.pid));
   const showTabs = !game.finished && ph?.type !== 'reveal';
   const speechTimer = ph?.type === 'speech' && ph.endsAt ? { pid: ph.data.pid, start: ph.startedAt + ph.introMs, end: ph.endsAt } : null;
-  const seatProps = { me, game, targets, selected: sel, onSeat, notes, wolfPicks, speaking, online, compact, talking, speechTimer };
+  const claimView = useMemo(() => {
+    const roleOf = {}; const marks = {};
+    for (const c of game.claims || []) {
+      if (c.kind === 'role') roleOf[c.pid] = c.role;
+      else if (c.kind === 'result') (marks[c.target] ||= []).push({ by: c.seat, value: c.value });
+      else if (c.kind === 'witch' && c.value === 'save') (marks[c.target] ||= []).push({ by: c.seat, value: 'silver' });
+    }
+    return { roleOf, marks };
+  }, [game.claims]);
+  const seatProps = { me, game, targets, selected: sel, onSeat, notes, wolfPicks, speaking, online, compact, talking, speechTimer, claimView };
   const call = ph ? (ph.type === 'reveal' && !me ? '玩家正在確認身分' : judgeCall(ph, P)) : '';
 
   return (
@@ -386,10 +408,16 @@ export default function Game({ state }: any) {
           <div className="seat-col">
             <Seats side="right" players={right} {...seatProps} />
             {/* « under the right column: reopen the minimised speech panel */}
-            {showTabs && speechMin && pr.kind === 'speaking' && introDone && !cine ? (
+            {showTabs && pr.kind === 'speaking' && introDone && !cine ? (
               <div className="col-tabs">
-                <button type="button" className="strip-tab strip-speech" onClick={() => setSpeechMin(false)} aria-label="展開發言視窗">
-                  <small>發言</small><span aria-hidden>«</span>
+                {speechMin ? (
+                  <button type="button" className="strip-tab strip-speech" onClick={() => setSpeechMin(false)} aria-label="展開發言視窗">
+                    <small>發言</small><span aria-hidden>«</span>
+                  </button>
+                ) : null}
+                <button type="button" className={`strip-tab strip-claim ${claimOpen || mode?.claim ? 'is-on' : ''}`} aria-expanded={claimOpen}
+                  onClick={() => { if (mode?.claim) setMode(null); setClaimOpen(o => !o); }} aria-label="宣告：跳身分、報查殺金水">
+                  <small>宣告</small><span aria-hidden>«</span>
                 </button>
               </div>
             ) : null}
@@ -420,6 +448,8 @@ export default function Game({ state }: any) {
         </div>
       </div>
 
+      {(claimOpen || mode?.claim) && pr.kind === 'speaking' && introDone && !cine
+        ? <ClaimPanel game={game} mode={mode} setMode={setMode} onClose={() => setClaimOpen(false)} /> : null}
       {ph?.type !== 'reveal' ? <PttDock /> : null}
       {ph?.type === 'reveal' && me ? <RoleReveal game={game} pr={pr} /> : null}
       <CinematicLayer game={game} playersById={P} />

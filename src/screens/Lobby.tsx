@@ -185,6 +185,10 @@ function SetupSheet({ room, you, counts, onClose }: any) {
           <div className="rule"><span>測試模式<small>加入電腦玩家試玩，並可指定自己的身分</small></span>
             <Seg label="測試模式" value={!!cfg.testMode} onChange={v => setCfg({ testMode: v })} options={[[false, '關'], [true, '開']]} /></div>
           {cfg.testMode ? (
+            <div className="rule"><span>電腦玩家水平<small>高手會推理、跳身分、報查殺金水，甚至悍跳與自爆</small></span>
+              <Seg label="電腦玩家水平" value={S.botLevel || 'normal'} onChange={v => setS({ botLevel: v })} options={[['easy', '新手'], ['normal', '普通'], ['hard', '高手']]} /></div>
+          ) : null}
+          {cfg.testMode ? (
             <div className="row testmode-row">
               <button className="btn btn-moon btn-sm" disabled={seated >= N} onClick={() => call('addBots', { count: 1 })}>加入 1 位電腦</button>
               <button className="btn btn-gold btn-sm" disabled={seated >= N} onClick={() => call('addBots', { count: N - seated })}>

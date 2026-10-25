@@ -1071,3 +1071,43 @@ html .wwt > .wwt-hint { display: none !important; }
 .seat.is-fx .seat-medal { animation: seat-fx 2.4s ease-out; }
 @keyframes seat-fx { 0% { box-shadow: 0 0 0 0 var(--fx); } 30% { box-shadow: 0 0 0 4px var(--fx), 0 0 26px var(--fx); } 100% { box-shadow: 0 3px 8px rgba(0, 0, 0, .7); } }
 @media (prefers-reduced-motion: reduce) { .sfx-layer { display: none; } }
+
+/* ── 宣告 (claims) ── */
+.claim-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.claim-bar .claim-open { min-height: 32px; font-size: 13px; color: var(--gold); }
+.claim-hint { font-size: 11.5px; color: var(--moon-3); }
+.claim-bar.is-picking { justify-content: space-between; padding: 4px 0 0; font-size: 13.5px; font-weight: 700; color: var(--lantern); }
+.claim-grid { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.claim-grid button {
+  border: 0; border-radius: 3px; min-height: 32px; padding: 4px 9px; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700;
+  color: var(--c, var(--moon)); background: rgba(5, 3, 8, .55); box-shadow: inset 0 0 0 1px currentColor;
+}
+.claim-grid .cl-wolf { color: #ff6a74; }
+.claim-grid .cl-gold { color: #e9b949; }
+.claim-grid .cl-silver { color: #c9d3e6; }
+.claim-grid .cl-close { color: var(--moon-3); min-width: 32px; padding: 4px 6px; box-shadow: inset 0 0 0 1px rgba(232, 220, 192, .3); }
+.seat-claims { display: flex; gap: 2px; max-width: 76px; flex-wrap: wrap; justify-content: center; }
+.seat-claims i {
+  font-style: normal; font-size: 9.5px; font-weight: 700; line-height: 1; padding: 2px 4px; border-radius: 2px;
+  color: var(--c, var(--moon)); background: rgba(10, 6, 14, .9); box-shadow: inset 0 0 0 1px currentColor; white-space: nowrap;
+}
+.seat-claims .cm-wolf { color: #ff6a74; }
+.seat-claims .cm-good { color: #e9b949; }
+.seat-claims .cm-silver { color: #c9d3e6; }
+.jf-claim { color: #ebc97e; }
+.jf-claim::before { content: '◆ '; font-size: 9px; vertical-align: middle; }
+/* 宣告 as a side tab + floating panel (minimizable / expandable from the right) */
+.strip-claim { color: #e9b949; background: linear-gradient(180deg, #30250f, #171003); box-shadow: inset 0 0 0 1px #e9b949, 0 4px 12px rgba(0, 0, 0, .45); }
+.strip-claim.is-on { color: #1f1405; background: linear-gradient(#e9c96a, #b08a30); }
+.claim-fly {
+  position: fixed; right: 8px; bottom: calc(var(--dock-space) + 8px); z-index: 45; width: min(252px, calc(100vw - 16px));
+  padding: 10px; border-radius: 8px; background: rgba(16, 10, 22, .96);
+  box-shadow: inset 0 0 0 1px #e9b949, 0 14px 34px rgba(0, 0, 0, .65); animation: fade-in .15s both;
+}
+.claim-fly .claim-grid { margin-top: 0; }
+.claim-fly .claim-hint { margin: 8px 0 0; font-size: 11px; color: var(--moon-3); }
+.claim-fly.is-picking { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13.5px; font-weight: 700; color: var(--lantern); }
+/* The bottom-right stack must not swallow taps meant for the tabs behind its empty space */
+.bottom-right { pointer-events: none; }
+.bottom-right > * { pointer-events: auto; }
+.signup-claimed { display: inline-flex; align-items: center; min-height: 46px; padding: 0 12px; font-size: 14px; font-weight: 700; color: #e9b949; }

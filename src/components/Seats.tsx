@@ -19,7 +19,9 @@ function SpeechRing({ start, end }: any) {
   );
 }
 
-export default function Seats({ side, players, me, game, targets, selected, onSeat, notes, wolfPicks, speaking, online, compact, talking, speechTimer }: any) {
+const MARK_NAME = { wolf: '查殺', good: '金水', silver: '銀水' };
+
+export default function Seats({ side, players, me, game, targets, selected, onSeat, notes, wolfPicks, speaking, online, compact, talking, speechTimer, claimView }: any) {
   const E = game.election;
   const signed = new Set(E ? E.signed : []);
   const withdrawn = new Set(E ? E.withdrawn : []);
@@ -41,8 +43,11 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
           p.id === me?.id && 'is-me',
           targets && !selectable && 'is-muted',
         ].filter(Boolean).join(' ');
+        const claimedRole = claimView?.roleOf?.[p.id];
+        const marks = (claimView?.marks?.[p.id] || []).slice(-2);
         const mateRole = p.mate ? `，狼隊友（${ROLES[p.role]?.name}）` : '';
-        const label = `${p.seat}號 ${p.name}${mateRole}${wolfPicks && wolfPicks[p.id] ? `，狼隊目標（${wolfPicks[p.id].join('、')}號選擇）` : ''}${p.alive ? '' : '，已出局'}${p.sheriff ? '，警長' : ''}${tag ? `，筆記：${tag.label}` : ''}`;
+        const claimText = `${claimedRole ? `，自稱${ROLES[claimedRole]?.name}` : ''}${marks.map(m => `，被${m.by}號宣告${MARK_NAME[m.value]}`).join('')}`;
+        const label = `${p.seat}號 ${p.name}${mateRole}${claimText}${wolfPicks && wolfPicks[p.id] ? `，狼隊目標（${wolfPicks[p.id].join('、')}號選擇）` : ''}${p.alive ? '' : '，已出局'}${p.sheriff ? '，警長' : ''}${tag ? `，筆記：${tag.label}` : ''}`;
         return (
           <button key={p.id} type="button" role="listitem" data-pid={p.id} className={cls} onClick={() => onSeat(p.id)} aria-label={label} aria-pressed={isSel}>
             <span className="seat-medal">
@@ -60,6 +65,12 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
             </span>
             <span className="seat-name">{p.id === me?.id ? '我' : p.name}</span>
             {signed.has(p.id) ? <span className={`seat-chip ${withdrawn.has(p.id) ? 'chip-out' : 'chip-run'}`}>{withdrawn.has(p.id) ? '退水' : '競選'}</span> : null}
+            {claimedRole || marks.length ? (
+              <span className="seat-claims">
+                {claimedRole ? <i className="cm-role" style={{ '--c': ROLES[claimedRole]?.color }} title={`自稱${ROLES[claimedRole]?.name}`}>跳{ROLES[claimedRole]?.name}</i> : null}
+                {marks.map((m, i) => <i key={i} className={`cm-${m.value}`} title={`${m.by}號宣告`}>{MARK_NAME[m.value]}</i>)}
+              </span>
+            ) : null}
             {tag ? <span className="seat-tag" style={{ '--t': tag.color }}>{tag.label}</span> : null}
             {roleShown || p.revealed === 'wolfTeam' || p.idiotRevealed ? (
               <span className="seat-meta">

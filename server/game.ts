@@ -46,7 +46,7 @@ export class Game { [key: string]: any;
     this.settings = settings;
     this.notify = notify || (() => {});
     this.players = roster.map((p, i) => ({
-      id: p.id, seat: p.seat, name: p.name, role: pool[i],
+      id: p.id, seat: p.seat, name: p.name, bot: !!p.bot, role: pool[i],
       alive: true, canVote: true, idiotRevealed: false, revealed: null,
       deathDay: null, deathCause: null,
     })).sort((a, b) => a.seat - b.seat);
@@ -72,6 +72,10 @@ export class Game { [key: string]: any;
     this.speechPlan = null;
     this.night = null;
     this.publicLog = [];
+    this.claims = [];           // 宣告 made with the claim buttons: who jumped which role, 查殺/金水, 站邊…
+    // 狼隊戰術 for the computer wolves: 衝鋒 backs the wolf team's fake 預言家, 倒鉤 hides beside the real one.
+    // In a mixed pack the bots ask a human wolf on night 1; stance stays null until someone (or the brain) sets it.
+    this.wolfPlan = { stance: null, byHuman: false, jumper: null };
     this.privateLog = {};
     this.speechLog = [];
     this.wolfChat = [];
@@ -462,14 +466,14 @@ export class Game { [key: string]: any;
       CINE.announceBase + CINE.announcePer * deaths.length);
     if (this.has('bear')) {
       const roar = this.bearRoars(new Set(deaths.map(d => d.pid)));
-      this.log(roar ? '熊咆哮了' : '熊沒有咆哮', 'bear');
+      this.log(roar ? '熊咆哮了' : '熊沒有咆哮', 'bear', { bear: { roar, day: this.day } });
       await this.cinematic('bearFx', { roar }, CINE.bear);
     }
     if (!deaths.length) {
       this.log(`第${this.day}夜是平安夜`, 'peace');
       return;
     }
-    this.log(`第${this.day}夜死亡：${this.seats(deaths.map(d => d.pid))}`, 'death');
+    this.log(`第${this.day}夜死亡：${this.seats(deaths.map(d => d.pid))}`, 'death', { deaths: deaths.map(d => d.pid), day: this.day });
     const s = this.settings.lastWordsNight;
     const lw = s === 'all' || (s === 'first' && this.day === 1);
     await this.killAndResolve(deaths, { lastWords: lw });
@@ -556,7 +560,7 @@ export class Game { [key: string]: any;
       if (can && t && this.isAlive(t)) {
         // The shooter's role stays hidden: everyone only learns who took whom
         // (a hunter and a 狼王 look the same — players have to work it out).
-        this.log(`${p.seat}號 帶走了 ${this.seat(t)}號`, 'shot');
+        this.log(`${p.seat}號 帶走了 ${this.seat(t)}號`, 'shot', { shot: { from: p.id, to: t } });
         this.secret(`${p.seat}號 ${ROLES[p.role].name} 開槍帶走 ${this.seat(t)}號`);
         await this.cinematic('shotFx', { shooter: p.id, target: t }, CINE.shot);
         await this.killAndResolve([{ pid: t, cause: 'shot' }], { lastWords: true });
@@ -577,11 +581,11 @@ export class Game { [key: string]: any;
     const t = ph.priv.target;
     if (t && this.isAlive(t)) {
       this.sheriffId = t;
-      this.log(`${p.seat}號 將警徽移交給 ${this.seat(t)}號`, 'badge');
+      this.log(`${p.seat}號 將警徽移交給 ${this.seat(t)}號`, 'badge', { badge: { from: p.id, to: t } });
     } else {
       this.sheriffId = null;
       this.badgeLost = true;
-      this.log(`${p.seat}號 撕毀了警徽`, 'badge');
+      this.log(`${p.seat}號 撕毀了警徽`, 'badge', { badge: { from: p.id, to: null, torn: true } });
     }
     await this.cinematic('badgeFx', { from: p.id, to: this.sheriffId }, CINE.badgeFx);
   }
@@ -792,7 +796,7 @@ export class Game { [key: string]: any;
       return;
     }
     this.lastExiled = p.id;
-    this.log(`${p.seat}號 被放逐出局`, 'exile');
+    this.log(`${p.seat}號 被放逐出局`, 'exile', { exiled: p.id, day: this.day });
     await this.cinematic('exileFx', { pid: p.id }, CINE.exile);
     await this.killAndResolve([{ pid: p.id, cause: 'vote' }], { lastWords: true });
   }
@@ -828,7 +832,7 @@ export class Game { [key: string]: any;
   }
 
   async handleDuelFail(it) {
-    this.log(`${this.seat(it.pid)}號 騎士與 ${this.seat(it.target)}號 決鬥，對方是好人，騎士以死謝罪`, 'duel');
+    this.log(`${this.seat(it.pid)}號 騎士與 ${this.seat(it.target)}號 決鬥，對方是好人，騎士以死謝罪`, 'duel', { duel: { knight: it.pid, target: it.target, success: false } });
     await this.cinematic('duelFx', { knight: it.pid, target: it.target, success: false }, CINE.duel);
     await this.killAndResolve([{ pid: it.pid, cause: 'duel' }], { lastWords: false });
   }
@@ -840,7 +844,7 @@ export class Game { [key: string]: any;
       const inElection = !!it.inElection;
       p.revealed = wwk ? 'whiteWolfKing' : 'wolfTeam';
       if (inElection) this.badgeLost = true;
-      this.log(`${p.seat}號 ${wwk ? '白狼王' : '狼人'}自爆${inElection ? '，警徽流失' : ''}，白天結束`, 'boom');
+      this.log(`${p.seat}號 ${wwk ? '白狼王' : '狼人'}自爆${inElection ? '，警徽流失' : ''}，白天結束`, 'boom', { boom: p.id });
       await this.cinematic('selfDestructFx', { pid: p.id, wwk, badgeLost: inElection }, CINE.selfDestruct);
       const deaths = [{ pid: p.id, cause: 'selfDestruct' }];
       if (wwk) {
@@ -858,7 +862,7 @@ export class Game { [key: string]: any;
     } else if (it.type === 'duelWin') {
       const t = this.get(it.target);
       t.revealed = 'wolfTeam';
-      this.log(`${this.seat(it.pid)}號 騎士與 ${t.seat}號 決鬥，對方是狼人！白天結束`, 'duel');
+      this.log(`${this.seat(it.pid)}號 騎士與 ${t.seat}號 決鬥，對方是狼人！白天結束`, 'duel', { duel: { knight: it.pid, target: t.id, success: true } });
       await this.cinematic('duelFx', { knight: it.pid, target: t.id, success: true }, CINE.duel);
       await this.killAndResolve([{ pid: t.id, cause: 'duel' }], { lastWords: false });
     }
@@ -895,6 +899,77 @@ export class Game { [key: string]: any;
     if (this.speechLog.length > 400) this.speechLog.splice(0, this.speechLog.length - 400);
   }
 
+  /** 宣告 buttons: structured claims made during your own speech (election, day, PK or last words).
+   *  Everyone sees them as chips on the seats and lines in the judge feed; bots read them too. */
+  tryClaim(me, c) {
+    const ph = this.phase;
+    if (!ph || ph.done || !c || typeof c !== 'object') return;
+    const mySpeech = ph.type === 'speech' && ph.data.pid === me.id;
+    // During 上警報名 a candidate may announce an identity (one tap), nothing more.
+    const inSignup = ph.type === 'sheriffSignup' && me.alive && this.election?.signed.has(me.id) && c.kind === 'role';
+    if (!mySpeech && !inSignup) return;
+    const t = this.get(c.target);
+    const seatOf = id => `${this.seat(id)}號`;
+    const put = (entry, replace) => {
+      if (replace) this.claims = this.claims.filter(x => !(x.pid === me.id && replace(x)));
+      this.claims.push({ day: this.day, pid: me.id, seat: me.seat, at: Date.now(), ...entry });
+      if (this.claims.length > 240) this.claims.splice(0, this.claims.length - 240);
+    };
+    switch (c.kind) {
+      case 'role': {
+        const r = ROLES[c.role];
+        if (!r || r.team !== 'good') return;
+        put({ kind: 'role', role: c.role }, x => x.kind === 'role');
+        this.log(`${me.seat}號 宣告：我是${r.name}`, 'claim', { claim: { pid: me.id, kind: 'role', role: c.role } });
+        break;
+      }
+      case 'result': {
+        if (!t || t.id === me.id || !['wolf', 'good'].includes(c.value)) return;
+        put({ kind: 'result', target: t.id, value: c.value }, x => x.kind === 'result' && x.target === t.id);
+        this.log(`${me.seat}號 宣告：${seatOf(t.id)} 是${c.value === 'wolf' ? '查殺' : '金水'}`, 'claim',
+          { claim: { pid: me.id, kind: 'result', target: t.id, value: c.value } });
+        break;
+      }
+      case 'witch': {
+        if (!t || t.id === me.id || !['save', 'poison'].includes(c.value)) return;
+        put({ kind: 'witch', target: t.id, value: c.value }, x => x.kind === 'witch' && x.target === t.id);
+        this.log(`${me.seat}號 宣告：${c.value === 'save' ? `${seatOf(t.id)} 是銀水（我救的）` : `我毒了 ${seatOf(t.id)}`}`, 'claim',
+          { claim: { pid: me.id, kind: 'witch', target: t.id, value: c.value } });
+        break;
+      }
+      case 'side': {
+        if (!t || t.id === me.id) return;
+        put({ kind: 'side', target: t.id }, x => x.kind === 'side' && x.day === this.day);
+        this.log(`${me.seat}號 宣告：站邊 ${seatOf(t.id)}`, 'claim', { claim: { pid: me.id, kind: 'side', target: t.id } });
+        break;
+      }
+      case 'rally': {
+        if (!t || t.id === me.id) return;
+        put({ kind: 'rally', target: t.id }, x => x.kind === 'rally' && x.day === this.day);
+        this.log(`${me.seat}號 宣告：歸票 ${seatOf(t.id)}`, 'claim', { claim: { pid: me.id, kind: 'rally', target: t.id } });
+        break;
+      }
+      case 'flow': {
+        const a = this.get(c.flow?.[0]); const b = this.get(c.flow?.[1]);
+        if (!a || !b || a.id === b.id || a.id === me.id || b.id === me.id) return;
+        put({ kind: 'flow', flow: [a.id, b.id] }, x => x.kind === 'flow');
+        this.log(`${me.seat}號 宣告：警徽流 先${a.seat}號 後${b.seat}號`, 'claim', { claim: { pid: me.id, kind: 'flow', flow: [a.id, b.id] } });
+        break;
+      }
+      default: break;
+    }
+  }
+
+  /** A human wolf answers the bots' night-1 tactics question: 衝鋒 or 倒鉤. */
+  tryWolfPlan(me, stance) {
+    const ph = this.phase;
+    if (!ph || ph.done || ph.type !== 'night' || ph.data.step !== 'wolf') return;
+    if (!ph.priv.actors.includes(me.id) || me.bot || !['charge', 'lurk'].includes(stance)) return;
+    this.wolfPlan.stance = stance;
+    this.wolfPlan.byHuman = true;
+    this.wolfChat.push({ day: this.day, pid: me.id, seat: me.seat, text: stance === 'charge' ? '（戰術：衝鋒，幫狼隊預言家打）' : '（戰術：倒鉤，躲喺真預言家嗰邊）' });
+  }
+
   tryWolfChat(me, text) {
     const ph = this.phase;
     if (!ph || ph.done || ph.type !== 'night' || ph.data.step !== 'wolf' || !ph.priv.actors.includes(me.id)) return;
@@ -913,6 +988,8 @@ export class Game { [key: string]: any;
       case 'duel': this.tryDuel(me, a.target); return this.notify();
       case 'withdraw': this.tryWithdraw(me); return this.notify();
       case 'say': this.trySay(me, a.text); return this.notify();
+      case 'claim': this.tryClaim(me, a.claim); return this.notify();
+      case 'wolfPlan': this.tryWolfPlan(me, a.stance); return this.notify();
       case 'wolfChat': this.tryWolfChat(me, a.text); return this.notify();
       default: break;
     }
@@ -1259,11 +1336,16 @@ export class Game { [key: string]: any;
     const n = this.night;
     const result = mode => ({ kind: 'result', target: pv.result.target, value: pv.result.value, mode });
     switch (step) {
-      case 'wolf':
+      case 'wolf': {
+        const pack = this.players.filter(p => this.isPackWolf(p));
+        const askPlan = this.day === 1 && !me.bot && !this.wolfPlan.stance
+          && pack.some(p => p.bot) && pack.some(p => !p.bot);
         return {
           kind: 'wolf', targets: alive, picks: pv.picks, locked: pv.locked, actors: pv.actors,
           myPick: pv.picks[me.id] ?? null, myLocked: !!pv.locked[me.id], solo: me.role === 'mechWolf',
+          askPlan: askPlan || undefined, stance: this.wolfPlan.stance || undefined,
         };
+      }
       case 'guard':
         if (pv.done) return { kind: 'info', text: n.guard ? `今晚守護 ${this.seat(n.guard)}號` : '今晚空守' };
         return {
@@ -1397,6 +1479,7 @@ export class Game { [key: string]: any;
       sheriffId: this.sheriffId,
       badgeLost: this.badgeLost,
       publicLog: this.publicLog,
+      claims: this.claims,
       privateLog: me ? (this.privateLog[me.id] || []) : [],
       speechLog: this.speechLog.slice(-150),
       wolfChat: meWolf || wolfStepActor || all ? this.wolfChat : [],

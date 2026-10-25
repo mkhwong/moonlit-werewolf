@@ -3,24 +3,46 @@ import Emblem from './Emblem';
 import { act } from '../socket';
 import { ItemImg, LuckyGift, flyItemToSeat } from './LuckyItems';
 import { playPotion, playSkillFx, fxForStep } from './SkillFx';
-import { ROLES, MECH_SKILL } from '../../shared/roles';
+import { ROLES, ROLE_ORDER, MECH_SKILL } from '../../shared/roles';
 
 export const SPEECH_LABEL = { sheriff: '競選發言', sheriffPk: '競選 PK 發言', day: '發言', pk: 'PK 發言', lastWords: '遺言' };
+const CLAIM_TARGETED = {
+  'result:wolf': '查殺', 'result:good': '金水', 'witch:save': '銀水', side: '站邊', rally: '歸票', flow: '警徽流',
+};
 const VOTE_TITLE = { sheriff: '投票選出警長', sheriffPk: '警長 PK 投票', exile: '放逐投票', exilePk: '放逐 PK 投票' };
 
-function SpeechBox() {
-  const [text, setText] = useState('');
-  const send = e => {
-    e.preventDefault();
-    if (!text.trim()) return;
-    act({ type: 'say', text });
-    setText('');
-  };
+/** 宣告 panel: opened from the 宣告« tab beside the seats. Claim a role with one tap,
+ *  or pick 查殺/金水/銀水/站邊/歸票/警徽流 and then tap a seat. */
+export function ClaimPanel({ game, mode, setMode, onClose }: any) {
+  if (mode?.claim) {
+    const c = mode.claim;
+    const label = CLAIM_TARGETED[c.value ? `${c.kind}:${c.value}` : c.kind];
+    return (
+      <div className="claim-fly is-picking" role="dialog" aria-label="宣告">
+        <span>{c.kind === 'flow' ? (c.first ? '警徽流：再點第二位' : '警徽流：點選第一位') : `${label}：請點選玩家`}</span>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMode(null)}>取消</button>
+      </div>
+    );
+  }
+  const roles = ROLE_ORDER.filter(r => game.composition[r] && ROLES[r].team === 'good');
+  const claimRole = r => { act({ type: 'claim', claim: { kind: 'role', role: r } }); onClose(); };
+  const pickTarget = (kind, value = undefined) => { setMode({ claim: { kind, value } }); onClose(); };
   return (
-    <form className="say" onSubmit={send}>
-      <input value={text} onChange={e => setText(e.target.value)} maxLength={200} placeholder="可選：輸入文字發言" aria-label="文字發言" />
-      <button className="btn btn-ghost btn-sm" type="submit" disabled={!text.trim()}>送出</button>
-    </form>
+    <div className="claim-fly" role="dialog" aria-label="宣告">
+      <div className="claim-grid">
+        {roles.map(r => (
+          <button key={r} type="button" style={{ '--c': ROLES[r].color } as any} onClick={() => claimRole(r)}>跳{ROLES[r].name}</button>
+        ))}
+        <button type="button" className="cl-wolf" onClick={() => pickTarget('result', 'wolf')}>查殺</button>
+        <button type="button" className="cl-gold" onClick={() => pickTarget('result', 'good')}>金水</button>
+        <button type="button" className="cl-silver" onClick={() => pickTarget('witch', 'save')}>銀水</button>
+        <button type="button" onClick={() => pickTarget('side')}>站邊</button>
+        <button type="button" onClick={() => pickTarget('rally')}>歸票</button>
+        <button type="button" className="cl-gold" onClick={() => pickTarget('flow')}>警徽流</button>
+        <button type="button" className="cl-close" onClick={onClose} aria-label="收起宣告">«</button>
+      </div>
+      <p className="claim-hint">宣告會顯示給所有玩家，電腦玩家都會聽。</p>
+    </div>
   );
 }
 
@@ -104,8 +126,20 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
       );
       break;
     case 'wolf':
-      // No panel for wolves: tap a seat to choose (tap again to clear), 空刀 is top-left, talk with the mic.
-      return null;
+      // No panel for wolves (tap a seat to choose; 空刀 top-left) — except the night-1 tactics question
+      // a mixed pack's bots put to a human wolf.
+      if (!pr.askPlan) return null;
+      body = (
+        <>
+          <h3>狼隊戰術（電腦狼聽你指揮）</h3>
+          <p>衝鋒＝幫狼隊的假預言家打；倒鉤＝扮好人站邊真預言家。</p>
+          <div className="row">
+            <button className="btn btn-shu" onClick={() => act({ type: 'wolfPlan', stance: 'charge' })}>衝鋒</button>
+            <button className="btn btn-moon" onClick={() => act({ type: 'wolfPlan', stance: 'lurk' })}>倒鉤</button>
+          </div>
+        </>
+      );
+      break;
     case 'merchant':
       body = <MerchantPanel pr={pr} sel={sel} P={P} />;
       break;
@@ -177,7 +211,17 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
             <button className={`btn ${pr.on ? 'btn-gold' : 'btn-moon'}`} onClick={() => act({ type: 'signup', on: !pr.on })} aria-pressed={pr.on}>
               <Emblem id="badge" size={22} />{pr.on ? '已上警（點擊取消）' : '上警'}
             </button>
+            {pr.on && game.composition.seer ? (
+              (game.claims || []).some(c => c.pid === me?.id && c.kind === 'role' && c.role === 'seer') ? (
+                <span className="signup-claimed">◆ 已宣告：我是預言家</span>
+              ) : (
+                <button className="btn btn-ghost" onClick={() => act({ type: 'claim', claim: { kind: 'role', role: 'seer' } })}>
+                  ◆ 宣告：我是預言家
+                </button>
+              )
+            ) : null}
           </div>
+          {pr.on ? <p className="muted small">電腦玩家只會投畀有宣告身分的候選人。</p> : null}
         </>
       );
       break;
@@ -188,8 +232,7 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
             <h3>輪到你{SPEECH_LABEL[pr.speechKind]}</h3>
             {setSpeechMin ? <button type="button" className="panel-min" onClick={() => setSpeechMin(true)} aria-label="縮小到右邊" title="縮小到右邊">»</button> : null}
           </div>
-          <p>{pr.speechKind === 'lastWords' ? '按住畫面下方的麥克風留下你的遺言，也可以輸入文字。' : '按住畫面下方的麥克風說出你的想法，也可以輸入文字。'}</p>
-          <SpeechBox />
+          <p>{pr.speechKind === 'lastWords' ? '按住畫面下方的麥克風留下你的遺言。' : '按住畫面下方的麥克風說出你的想法。'}</p>
         </>
       );
       break;
