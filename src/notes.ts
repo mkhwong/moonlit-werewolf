@@ -15,6 +15,8 @@ export function tagsFor(composition = {}) {
   const roleTags = ROLE_ORDER
     .filter(r => composition[r] && r !== 'werewolf')
     .map(r => ({ id: 'r:' + r, label: ROLES[r].name, color: ROLES[r].color }));
+  // 奇蹟商人 in the game: anyone may be holding his gift, so offer 幸運兒 as a marker too.
+  if (composition['miracleMerchant']) roleTags.push({ id: 'lucky', label: '幸運兒', color: '#f2c86b' });
   return [...BASE_TAGS, ...roleTags];
 }
 
