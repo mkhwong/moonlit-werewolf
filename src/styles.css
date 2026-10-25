@@ -973,3 +973,56 @@ html .wwt > .wwt-hint { display: none !important; }
 .seats-tight .seat-host { width: 16px; height: 16px; top: -4px; }
 .seats-tight .seat-host svg { width: 10px; height: 10px; }
 .seats-tight .seat-plus { font-size: 15px; }
+
+/* Skill buttons (騎士決鬥 / 退水) share one row with ＋30 秒 */
+.skill-row { display: flex; gap: 8px; justify-content: flex-end; align-items: stretch; }
+.skill-row > .btn { flex: 0 1 50%; min-width: 0; min-height: 50px; padding: 6px 10px; font-size: 15px; white-space: nowrap; }
+.skill-row > .extend-speech { width: auto; align-self: stretch; }
+.skill-btn { background: rgba(18, 12, 24, .72); box-shadow: inset 0 0 0 1px var(--gold), 0 8px 22px rgba(0, 0, 0, .45); color: var(--moon); }
+.skill-btn.btn-shu { background: linear-gradient(rgba(181, 42, 51, .9), rgba(125, 22, 29, .9)); color: #f3e6d0; }
+.skill-btn.btn-shu:disabled { opacity: .75; }
+.skill-row > .skill-cancel { flex: 0 0 auto; }
+
+/* Every action / skill window is see-through and lets taps reach the seats and log behind it;
+   only its own controls take taps. */
+.bottom-row .action {
+  background: rgba(16, 10, 22, .42); backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: inset 0 0 0 1px rgba(201, 164, 92, .35); pointer-events: none;
+}
+.bottom-row .action::before { background: rgba(18, 12, 24, .6); }
+.bottom-row .action :is(h3, p, b, small, span, .result-line) { text-shadow: 0 1px 3px #000, 0 0 8px rgba(0, 0, 0, .8); }
+.bottom-row .action :is(button, input, select, textarea, label, a, form) { pointer-events: auto; }
+.extend-speech { background: rgba(18, 12, 24, .72); }
+.sheet.sheet-fixed { height: 86dvh; }
+.setup-sticky { position: sticky; top: -4px; z-index: 2; display: flex; flex-direction: column; gap: 10px; margin: -4px -16px 0; padding: 4px 16px 10px; background: #120c18; box-shadow: 0 8px 12px -8px rgba(0, 0, 0, .8); }
+
+/* 女巫用藥 — antidote / poison reaching a seat */
+.potion-layer { position: fixed; inset: 0; z-index: 88; pointer-events: none; }
+.potion-vial { position: fixed; left: 0; top: 0; }
+.potion-save .potion-vial { filter: drop-shadow(0 0 10px #62ff7a); }
+.potion-poison .potion-vial { filter: drop-shadow(0 0 10px #a24bff); }
+.potion-ring { position: fixed; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; animation: potion-ring 1s ease-out forwards; }
+.potion-save .potion-ring { box-shadow: 0 0 0 3px #62ff7a, 0 0 24px #62ff7a; }
+.potion-poison .potion-ring { box-shadow: 0 0 0 3px #a24bff, 0 0 24px #a24bff; }
+@keyframes potion-ring { from { transform: scale(.4); opacity: 1; } to { transform: scale(4.2); opacity: 0; } }
+.potion-cross { position: fixed; width: 34px; height: 34px; margin: -17px 0 0 -17px; animation: potion-cross 1.9s ease-out forwards;
+  background: linear-gradient(#eaffea, #eaffea) center / 10px 34px no-repeat, linear-gradient(#eaffea, #eaffea) center / 34px 10px no-repeat;
+  filter: drop-shadow(0 0 8px #62ff7a) drop-shadow(0 0 16px #62ff7a); border-radius: 3px; }
+@keyframes potion-cross { 0% { transform: translateY(0) scale(.4); opacity: 0; } 20% { opacity: 1; transform: translateY(-14px) scale(1.1); } 100% { transform: translateY(-70px) scale(1); opacity: 0; } }
+.potion-spark { position: fixed; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #c8ffd0; box-shadow: 0 0 8px #62ff7a; opacity: 0; animation: potion-spark 1.4s ease-out forwards; }
+@keyframes potion-spark { 0% { opacity: 0; transform: translateY(0) scale(.5); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-60px) scale(1.2); } }
+.potion-shard { position: fixed; width: 6px; height: 9px; margin: -4px -3px; background: #d8b0ff; clip-path: polygon(50% 0, 100% 60%, 30% 100%, 0 40%); animation: potion-shard .8s ease-out forwards; }
+@keyframes potion-shard { from { transform: translate(0, 0) rotate(0); opacity: 1; } to { transform: translate(var(--dx), calc(var(--dy) + 30px)) rotate(400deg); opacity: 0; } }
+.potion-smoke { position: fixed; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: radial-gradient(circle, rgba(150, 70, 220, .75), rgba(90, 30, 150, 0) 70%); opacity: 0; animation: potion-smoke 1.8s ease-out forwards; }
+@keyframes potion-smoke { 0% { opacity: 0; transform: scale(.4); } 20% { opacity: .9; } 100% { opacity: 0; transform: translateY(-40px) scale(2.2); } }
+.potion-skull { position: fixed; width: 22px; height: 22px; margin: -11px; opacity: 0; filter: drop-shadow(0 0 6px #a24bff); animation: potion-skull 1.6s ease-out forwards; }
+@keyframes potion-skull { 0% { opacity: 0; transform: translateY(0) scale(.4); } 25% { opacity: 1; transform: translateY(-14px) scale(1); } 100% { opacity: 0; transform: translateY(-64px) scale(1.1); } }
+.seat.is-saved .seat-medal { animation: seat-saved 2.4s ease-out; }
+@keyframes seat-saved { 0% { box-shadow: 0 0 0 0 rgba(98, 255, 122, .9); } 30% { box-shadow: 0 0 0 4px #62ff7a, 0 0 26px #62ff7a; } 100% { box-shadow: 0 3px 8px rgba(0, 0, 0, .7); } }
+.seat.is-poisoned .seat-medal { animation: seat-poisoned 2.4s ease-out; }
+@keyframes seat-poisoned { 0% { filter: none; } 25% { filter: hue-rotate(80deg) saturate(.6) brightness(.8); box-shadow: 0 0 0 4px #a24bff, 0 0 26px #a24bff; } 100% { filter: none; } }
+@media (prefers-reduced-motion: reduce) { .potion-layer { display: none; } }
+.skill-row { flex-wrap: wrap; }
+.skill-row > .btn { flex: 1 1 40%; max-width: 50%; }
+.skill-row > .skill-cancel { flex: 0 0 auto; max-width: none; }
+.skill-row > .extend-speech { margin-left: auto; }

@@ -114,7 +114,9 @@ function SetupSheet({ room, you, counts, onClose }: any) {
   const seated = room.players.filter(p => p.seat != null).length;
   const bots = room.players.filter(p => p.bot).length;
   return (
-    <Sheet title="人數與角色" onClose={onClose}>
+    <Sheet title="人數與角色" onClose={onClose} className="sheet-fixed">
+      {/* The window keeps one height; the count and tabs stay put and the list scrolls underneath. */}
+      <div className="setup-sticky">
       <div className="setup-size">
         <div><b>玩家人數</b><small>座位數會跟著改變（{MIN_PLAYERS}–{MAX_PLAYERS} 人）</small></div>
         <Stepper label="人數" value={N} min={MIN_PLAYERS} max={MAX_PLAYERS} onChange={v => setCfg({ size: v })} />
@@ -124,6 +126,7 @@ function SetupSheet({ room, you, counts, onClose }: any) {
           <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''}
             onClick={() => { setTab(id); if (id === 'custom' && cfg.mode !== 'custom') setCfg({ mode: 'custom', packId: cfg.packId, copyToCustom: true }); if (id === 'preset' && cfg.mode !== 'preset' && packs.length) setCfg({ mode: 'preset', packId: packs.some(p => p.id === cfg.packId) ? cfg.packId : packs[0].id }); }}>{label}</button>
         ))}
+      </div>
       </div>
 
       {tab === 'preset' ? (

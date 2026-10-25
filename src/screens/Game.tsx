@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Scene from '../components/Scene';
 import Seats from '../components/Seats';
 import JudgeFeed from '../components/JudgeFeed';
-import ActionPanel, { SPEECH_LABEL } from '../components/ActionPanel';
+import ActionPanel, { SPEECH_LABEL, SkillButtons, hasSkillButtons } from '../components/ActionPanel';
 import CinematicLayer, { FULL_CINE, VoteRecord } from '../components/Cinematic';
 import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
@@ -383,10 +383,16 @@ export default function Game({ state }: any) {
           {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} onClick={() => setSheet('role')} /> : null}
           <div className="bottom-right">
             <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} speechMin={speechMin} setSpeechMin={setSpeechMin} />
-            {canExtend ? (
-              <button type="button" className="btn btn-ghost extend-speech" onClick={() => emit('extendSpeech')}>
-                {ph.data.pid === me?.id ? '我的發言' : `${P[ph.data.pid]?.seat}號 發言`} ＋30 秒<small>剩 {3 - (ph.data.ext || 0)} 次</small>
-              </button>
+            {/* One row: special skills (騎士決鬥 / 退水) on the left, ＋30 秒 on the right. */}
+            {canExtend || (introDone && !cine && me?.alive && hasSkillButtons(pr, mode)) ? (
+              <div className="skill-row">
+                {introDone && !cine && me?.alive ? <SkillButtons pr={pr} mode={mode} setMode={setMode} sel={sel} P={P} /> : null}
+                {canExtend ? (
+                  <button type="button" className="btn btn-ghost extend-speech" onClick={() => emit('extendSpeech')}>
+                    {ph.data.pid === me?.id ? '我的發言' : `${P[ph.data.pid]?.seat}號 發言`} ＋30 秒<small>剩 {3 - (ph.data.ext || 0)} 次</small>
+                  </button>
+                ) : null}
+              </div>
             ) : null}
             {/* 結束發言 stays here on its own, whether or not the text panel is minimised. */}
             {pr.kind === 'speaking' && introDone && !cine ? (

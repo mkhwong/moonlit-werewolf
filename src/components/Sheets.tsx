@@ -5,7 +5,7 @@ import { characterURL, ROLES, ROLE_ORDER, TEAM_NAME, MECH_SKILL, LONE_WOLVES, LU
 import { tagsFor } from '../notes';
 import { call } from '../socket';
 
-export function Sheet({ title, onClose, children, wide }: any) {
+export function Sheet({ title, onClose, children, wide, className = '' }: any) {
   useEffect(() => {
     const k = e => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', k);
@@ -13,7 +13,7 @@ export function Sheet({ title, onClose, children, wide }: any) {
   }, [onClose]);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className={`sheet ${wide ? 'sheet-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()}>
+      <div className={`sheet ${wide ? 'sheet-wide' : ''} ${className}`} role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()}>
         <header className="sheet-head">
           <h2>{title}</h2>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>關閉</button>

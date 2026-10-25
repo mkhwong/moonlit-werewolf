@@ -121,6 +121,8 @@ const SFX: Record<string, (t: number) => void> = {
   boing: t => tone(180, t, 0.6, { vol: 0.25, to: 520, vib: 30 }),
   ding: t => { bell(1319, t, 1.2, 0.2); bell(1760, t + 0.12, 1.2, 0.15); },
   tick: t => burst(t, 0.03, { type: 'highpass', freq: 4000, vol: 0.3 }),
+  heal: t => { [784, 988, 1175, 1568].forEach((f, i) => bell(f, t + i * 0.09, 1.4, 0.13)); tone(392, t, 1.2, { type: 'triangle', vol: 0.08, attack: 0.2 }); },
+  poison: t => { burst(t, 0.18, { type: 'highpass', freq: 3500, vol: 0.5 }); burst(t + 0.08, 1.4, { type: 'bandpass', freq: 900, to: 300, q: 0.8, vol: 0.55 }); tone(110, t + 0.1, 1.2, { type: 'sawtooth', vol: 0.12, to: 70, vib: 6 }); },
   tap: t => { tone(620, t, 0.07, { type: 'triangle', vol: 0.16, attack: 0.002, to: 420 }); burst(t, 0.02, { type: 'highpass', freq: 2500, vol: 0.18 }); },
   yourturn: t => { bell(988, t, 1.0, 0.16); bell(1319, t + 0.14, 1.3, 0.16); },
   result: t => [1568, 1976, 2349, 2637].forEach((f, i) => bell(f, t + i * 0.07, 1.4, 0.07)),

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Emblem from './Emblem';
 import { act } from '../socket';
 import { ItemImg, LuckyGift, flyItemToSeat } from './LuckyItems';
+import { playPotion } from './PotionFx';
 import { ROLES, MECH_SKILL } from '../../shared/roles';
 
 export const SPEECH_LABEL = { sheriff: '競選發言', sheriffPk: '競選 PK 發言', day: '發言', pk: 'PK 發言', lastWords: '遺言' };
@@ -23,28 +24,27 @@ function SpeechBox() {
   );
 }
 
-function Extras({ pr, mode, setMode, sel, P }: any) {
+/** Knight's 騎士決鬥 and a candidate's 退水: plain buttons in the row beside ＋30 秒 (no panel of their own). */
+export function SkillButtons({ pr, mode, setMode, sel, P }: any) {
   if (mode === 'duel') {
     return (
-      <div className="extras extras-active">
-        <p>選擇決鬥對象：對方是狼人則其出局；否則你出局。</p>
-        <div className="row">
-          <button className="btn btn-shu" disabled={!sel} onClick={() => { act({ type: 'duel', target: sel }); setMode(null); }}>
-            {sel ? `與 ${P[sel]?.seat}號 決鬥` : '請點選玩家'}
-          </button>
-          <button className="btn btn-ghost" onClick={() => setMode(null)}>取消</button>
-        </div>
-      </div>
+      <>
+        <button className="btn btn-shu skill-btn" disabled={!sel} onClick={() => { act({ type: 'duel', target: sel }); setMode(null); }}>
+          <Emblem id="knight" size={18} />{sel ? `與 ${P[sel]?.seat}號 決鬥` : '點選決鬥對象'}
+        </button>
+        <button className="btn btn-ghost skill-btn skill-cancel" onClick={() => setMode(null)}>取消</button>
+      </>
     );
   }
-  if (!pr.canWithdraw && !pr.canDuel) return null;
   return (
-    <div className="extras">
-      {pr.canWithdraw ? <button className="btn btn-ghost btn-sm" onClick={() => act({ type: 'withdraw' })}>退水（退出競選）</button> : null}
-      {pr.canDuel ? <button className="btn btn-ghost btn-sm" onClick={() => setMode('duel')}><Emblem id="knight" size={18} />騎士決鬥</button> : null}
-    </div>
+    <>
+      {pr.canWithdraw ? <button className="btn btn-ghost skill-btn" onClick={() => act({ type: 'withdraw' })}>退水</button> : null}
+      {pr.canDuel ? <button className="btn btn-ghost skill-btn" onClick={() => setMode('duel')}><Emblem id="knight" size={18} />騎士決鬥</button> : null}
+    </>
   );
 }
+
+export const hasSkillButtons = (pr, mode) => mode === 'duel' || !!pr?.canDuel || !!pr?.canWithdraw;
 
 function MerchantPanel({ pr, sel, P }: any) {
   const [skill, setSkill] = useState(null);
@@ -95,7 +95,7 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
             </>
           )}
           <div className="row">
-            <button className={`btn ${pr.danger ? 'btn-shu' : 'btn-moon'}`} disabled={!sel} onClick={() => act({ type: 'pick', target: sel })}>
+            <button className={`btn ${pr.danger ? 'btn-shu' : 'btn-moon'}`} disabled={!sel} onClick={() => { if (pr.skill === 'poison') playPotion('poison', sel); act({ type: 'pick', target: sel }); }}>
               {sel ? `${pr.confirmLabel} ${seat(sel)}` : '請點選上方玩家'}
             </button>
             {pr.skipLabel ? <button className="btn btn-ghost" onClick={() => act({ type: 'skip' })}>{pr.skipLabel}</button> : null}
@@ -115,7 +115,7 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
           <h3>使用毒藥</h3>
           <p>選擇要毒殺的玩家。被毒殺的獵人不能開槍。</p>
           <div className="row">
-            <button className="btn btn-shu" disabled={!sel} onClick={() => act({ type: 'poison', target: sel })}>{sel ? `毒殺 ${seat(sel)}` : '請點選玩家'}</button>
+            <button className="btn btn-shu" disabled={!sel} onClick={() => { playPotion('poison', sel); act({ type: 'poison', target: sel }); }}>{sel ? `毒殺 ${seat(sel)}` : '請點選玩家'}</button>
             <button className="btn btn-ghost" onClick={() => { setMode(null); setSel(null); }}>返回</button>
           </div>
         </>
@@ -133,7 +133,7 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
           </div>
           {pr.selfBlocked ? <p className="hint">依本局規則，你不能使用解藥救自己。</p> : null}
           <div className="row">
-            {pr.canSave ? <button className="btn btn-gold" onClick={() => act({ type: 'save' })}>使用解藥救 {seat(pr.victim)}</button> : null}
+            {pr.canSave ? <button className="btn btn-gold" onClick={() => { playPotion('save', pr.victim); act({ type: 'save' }); }}>使用解藥救 {seat(pr.victim)}</button> : null}
             {pr.poison ? <button className="btn btn-shu" onClick={() => setMode('poison')}>使用毒藥</button> : null}
             <button className="btn btn-ghost" onClick={() => act({ type: 'skip' })}>不使用</button>
           </div>
@@ -194,13 +194,8 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
       );
       break;
     case 'listen':
-      body = (
-        <>
-          <h3>{seat(pr.speaker)} {P[pr.speaker]?.name} 正在{SPEECH_LABEL[pr.speechKind]}</h3>
-          <p>點選座位可以隨時記下筆記。</p>
-        </>
-      );
-      break;
+      // The 法官 line already says who is speaking; any skill (騎士決鬥, 退水) is a button beside ＋30 秒.
+      return null;
     case 'vote':
       body = (
         <>
@@ -262,7 +257,6 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
   return (
     <section className={`panel action action-${pr.kind}`} aria-live="polite">
       {body}
-      <Extras pr={pr} mode={mode} setMode={setMode} sel={sel} P={P} />
     </section>
   );
 }
