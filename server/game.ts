@@ -905,9 +905,7 @@ export class Game { [key: string]: any;
     const ph = this.phase;
     if (!ph || ph.done || !c || typeof c !== 'object') return;
     const mySpeech = ph.type === 'speech' && ph.data.pid === me.id;
-    // During 上警報名 a candidate may announce an identity (one tap), nothing more.
-    const inSignup = ph.type === 'sheriffSignup' && me.alive && this.election?.signed.has(me.id) && c.kind === 'role';
-    if (!mySpeech && !inSignup) return;
+    if (!mySpeech) return;
     const t = this.get(c.target);
     const seatOf = id => `${this.seat(id)}號`;
     const put = (entry, replace) => {
@@ -1480,6 +1478,7 @@ export class Game { [key: string]: any;
       badgeLost: this.badgeLost,
       publicLog: this.publicLog,
       claims: this.claims,
+      hasBots: this.players.some(p => p.bot),
       privateLog: me ? (this.privateLog[me.id] || []) : [],
       speechLog: this.speechLog.slice(-150),
       wolfChat: meWolf || wolfStepActor || all ? this.wolfChat : [],

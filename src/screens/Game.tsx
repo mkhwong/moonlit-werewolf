@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Scene from '../components/Scene';
 import Seats from '../components/Seats';
 import JudgeFeed from '../components/JudgeFeed';
-import ActionPanel, { SPEECH_LABEL, SkillButtons, hasSkillButtons, ClaimPanel } from '../components/ActionPanel';
+import ActionPanel, { SPEECH_LABEL, SkillButtons, hasSkillButtons, ClaimPanel, ChatBox } from '../components/ActionPanel';
 import CinematicLayer, { FULL_CINE, VoteRecord } from '../components/Cinematic';
 import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
@@ -227,6 +227,7 @@ export default function Game({ state }: any) {
   const [mode, setMode] = useState(null);
   const [sheet, setSheet] = useState(null);
   const [claimOpen, setClaimOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [notes, updateNote] = useNotes(game.id, you.id);
   useRoleTransitions(game, pr, mode);
   // Private night results land on the seat (好人 / 狼人 / the role), and the wolves see their kill's claw marks.
@@ -415,10 +416,16 @@ export default function Game({ state }: any) {
                     <small>發言</small><span aria-hidden>«</span>
                   </button>
                 ) : null}
+                {game.hasBots ? <>
+                <button type="button" className={`strip-tab strip-chat ${chatOpen ? 'is-on' : ''}`} aria-expanded={chatOpen}
+                  onClick={() => setChatOpen(o => !o)} aria-label="文字訊息">
+                  <small>文字</small><span aria-hidden>«</span>
+                </button>
                 <button type="button" className={`strip-tab strip-claim ${claimOpen || mode?.claim ? 'is-on' : ''}`} aria-expanded={claimOpen}
                   onClick={() => { if (mode?.claim) setMode(null); setClaimOpen(o => !o); }} aria-label="宣告：跳身分、報查殺金水">
                   <small>宣告</small><span aria-hidden>«</span>
                 </button>
+                </> : null}
               </div>
             ) : null}
           </div>
@@ -448,7 +455,8 @@ export default function Game({ state }: any) {
         </div>
       </div>
 
-      {(claimOpen || mode?.claim) && pr.kind === 'speaking' && introDone && !cine
+      {game.hasBots && chatOpen && pr.kind === 'speaking' && introDone && !cine ? <ChatBox onClose={() => setChatOpen(false)} /> : null}
+      {game.hasBots && (claimOpen || mode?.claim) && pr.kind === 'speaking' && introDone && !cine
         ? <ClaimPanel game={game} mode={mode} setMode={setMode} onClose={() => setClaimOpen(false)} /> : null}
       {ph?.type !== 'reveal' ? <PttDock /> : null}
       {ph?.type === 'reveal' && me ? <RoleReveal game={game} pr={pr} /> : null}

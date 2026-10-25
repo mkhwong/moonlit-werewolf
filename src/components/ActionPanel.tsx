@@ -211,17 +211,8 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
             <button className={`btn ${pr.on ? 'btn-gold' : 'btn-moon'}`} onClick={() => act({ type: 'signup', on: !pr.on })} aria-pressed={pr.on}>
               <Emblem id="badge" size={22} />{pr.on ? '已上警（點擊取消）' : '上警'}
             </button>
-            {pr.on && game.composition.seer ? (
-              (game.claims || []).some(c => c.pid === me?.id && c.kind === 'role' && c.role === 'seer') ? (
-                <span className="signup-claimed">◆ 已宣告：我是預言家</span>
-              ) : (
-                <button className="btn btn-ghost" onClick={() => act({ type: 'claim', claim: { kind: 'role', role: 'seer' } })}>
-                  ◆ 宣告：我是預言家
-                </button>
-              )
-            ) : null}
           </div>
-          {pr.on ? <p className="muted small">電腦玩家只會投畀有宣告身分的候選人。</p> : null}
+          {pr.on ? <p className="muted small">輪到你發言時，可用「宣告」跳預言家；電腦玩家只會投畀有宣告身分的候選人。</p> : null}
         </>
       );
       break;
@@ -301,5 +292,18 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
     <section className={`panel action action-${pr.kind}`} aria-live="polite">
       {body}
     </section>
+  );
+}
+
+export function ChatBox({ onClose }: any) {
+  const [t, setT] = React.useState('');
+  const send = () => { const x = t.trim(); if (!x) return; act({ type: 'say', text: x }); setT(''); };
+  return (
+    <div className="chat-fly" role="dialog" aria-label="文字訊息">
+      <button type="button" className="panel-min" onClick={onClose} aria-label="縮小" title="縮小">»</button>
+      <input value={t} maxLength={200} placeholder="輸入文字訊息…" onChange={e => setT(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') send(); }} />
+      <button type="button" className="btn btn-moon btn-sm" onClick={send}>送出</button>
+    </div>
   );
 }

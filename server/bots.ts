@@ -98,13 +98,7 @@ export function botThink(game: any, pid: string, memo: Map<string, string>, time
     case 'signup': {
       const boom = boomChoice(game, pid, pr);
       if (boom) { if (chance(0.5)) later(() => act(boom), 2000, 5000); break; }
-      if (!pr.on && wantsSheriff(game, pid)) later(() => {
-        act({ type: 'signup', on: true });
-        // 預言家 (real or the pack's jumper) announces at signup so voters can find the claimants.
-        const me = game.players.find((p: any) => p.id === pid);
-        const jumper = game.isPackWolf(me) && game.wolfPlan.jumper === pid && game.wolfPlan.stance === 'charge';
-        if (me?.role === 'seer' || jumper) setTimeout(() => { if (!game.terminated) act({ type: 'claim', claim: { kind: 'role', role: 'seer' } }); }, 300 * SCALE);
-      }, 800, 3000);
+      if (!pr.on && wantsSheriff(game, pid)) later(() => act({ type: 'signup', on: true }), 800, 3000);
       break;
     }
     case 'speaking': {
