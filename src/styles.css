@@ -1026,3 +1026,48 @@ html .wwt > .wwt-hint { display: none !important; }
 .skill-row > .btn { flex: 1 1 40%; max-width: 50%; }
 .skill-row > .skill-cancel { flex: 0 0 auto; max-width: none; }
 .skill-row > .extend-speech { margin-left: auto; }
+
+/* 技能動畫 (SkillFx): projectiles, beams and impacts on a seat; colour comes from --c */
+.sfx-layer { position: fixed; inset: 0; z-index: 88; pointer-events: none; }
+.sfx-proj { position: fixed; left: 0; top: 0; filter: drop-shadow(0 0 10px var(--c)); }
+.sfx-beam { position: fixed; left: 0; top: 0; overflow: visible; filter: drop-shadow(0 0 8px var(--c)); }
+.sfx-ring { position: fixed; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; box-shadow: 0 0 0 3px var(--c), 0 0 24px var(--c); animation: potion-ring 1s ease-out forwards; }
+.sfx-pop { position: fixed; width: var(--s); height: var(--s); margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2); filter: drop-shadow(0 0 10px var(--c)); animation: sfx-pop 1.9s ease-out forwards; }
+.sfx-pop > svg { display: block; }
+@keyframes sfx-pop { 0% { transform: scale(.2); opacity: 0; } 18% { transform: scale(1.15); opacity: 1; } 30% { transform: scale(1); } 75% { opacity: 1; transform: translateY(-6px); } 100% { opacity: 0; transform: translateY(-14px); } }
+.sfx-blink > svg { animation: sfx-blink 1.9s steps(1) forwards; transform-origin: 50% 50%; }
+@keyframes sfx-blink { 0%, 40%, 52%, 100% { transform: none; } 46% { transform: scaleY(.1); } }
+.sfx-shield { animation: sfx-shield 2s ease-out forwards; }
+@keyframes sfx-shield { 0% { transform: scale(.3); opacity: 0; } 20% { transform: scale(1.1); opacity: .95; } 35% { transform: scale(1); } 80% { opacity: .85; } 100% { opacity: 0; transform: scale(1.05); } }
+.sfx-dome { position: fixed; width: 76px; height: 76px; margin: -38px; border-radius: 50%; background: radial-gradient(circle, transparent 55%, rgba(255, 216, 119, .35) 70%, transparent 72%); box-shadow: 0 0 0 2px rgba(255, 216, 119, .7), 0 0 24px rgba(255, 216, 119, .6); animation: sfx-dome 1.9s ease-out forwards; }
+@keyframes sfx-dome { 0% { transform: scale(.6); opacity: 0; } 25% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.1); } }
+.sfx-spark { position: fixed; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px var(--c), 0 0 3px var(--c); opacity: 0; animation: potion-spark 1.4s ease-out forwards; }
+.sfx-ember { position: fixed; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); opacity: 0; animation: potion-spark 1s ease-out forwards; }
+.sfx-heart { position: fixed; margin: -10px 0 0 -8px; font-size: 18px; line-height: 1; color: #ff6fa8; text-shadow: 0 0 8px #ff6fa8; opacity: 0; animation: sfx-rise 1.6s ease-out forwards; }
+.sfx-z { position: fixed; font-family: var(--serif); font-weight: 900; font-size: var(--fs); color: #dfe2ff; text-shadow: 0 0 8px #9fa8ff; opacity: 0; animation: sfx-z 1.5s ease-out forwards; }
+@keyframes sfx-rise { 0% { opacity: 0; transform: translateY(0) scale(.5); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-64px) scale(1.15); } }
+@keyframes sfx-z { 0% { opacity: 0; transform: translate(0, 0) rotate(-10deg); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(18px, -50px) rotate(10deg); } }
+.sfx-mist { position: fixed; width: 90px; height: 50px; margin: -25px -45px; border-radius: 50%; background: radial-gradient(ellipse, rgba(159, 168, 255, .55), transparent 70%); animation: sfx-mist 2.2s ease-out forwards; }
+@keyframes sfx-mist { 0% { opacity: 0; transform: scale(.5); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.6) translateY(-10px); } }
+.sfx-crosshair { position: fixed; width: 64px; height: 64px; margin: -32px; border-radius: 50%; box-shadow: inset 0 0 0 2.5px #ff8a3d, 0 0 14px #ff8a3d;
+  background: linear-gradient(#ff8a3d, #ff8a3d) center / 2.5px 100% no-repeat, linear-gradient(#ff8a3d, #ff8a3d) center / 100% 2.5px no-repeat; animation: sfx-crosshair 1.2s ease-out forwards; }
+@keyframes sfx-crosshair { 0% { transform: scale(1.8) rotate(-45deg); opacity: 0; } 30% { transform: scale(1) rotate(0); opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.sfx-flash { position: fixed; width: 80px; height: 80px; margin: -40px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, var(--c) 35%, transparent 70%); animation: sfx-flash .5s ease-out forwards; }
+@keyframes sfx-flash { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.sfx-wisp { position: fixed; width: 70px; height: 70px; margin: -35px; border-radius: 50%; background: radial-gradient(circle, rgba(111, 227, 200, .5), transparent 65%); animation: sfx-mist 2s ease-out forwards; }
+.sfx-gear { position: fixed; width: var(--s); height: var(--s); margin: calc(var(--s) / -2); filter: drop-shadow(0 0 8px var(--c)); opacity: 0; animation: sfx-gear 1.9s linear forwards; }
+.sfx-gear-rev { animation-name: sfx-gear-rev; }
+@keyframes sfx-gear { 0% { opacity: 0; transform: rotate(0) scale(.4); } 15% { opacity: 1; transform: rotate(60deg) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: rotate(360deg); } }
+@keyframes sfx-gear-rev { 0% { opacity: 0; transform: rotate(0) scale(.4); } 15% { opacity: 1; transform: rotate(-60deg) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: rotate(-360deg); } }
+.sfx-scan { position: fixed; width: 64px; height: 4px; margin: -2px -32px; background: var(--c); box-shadow: 0 0 12px var(--c); border-radius: 2px; animation: sfx-scan 1.2s ease-in-out 2 alternate; opacity: .9; }
+@keyframes sfx-scan { from { transform: translateY(-26px); } to { transform: translateY(26px); } }
+.sfx-claw { position: fixed; width: 6px; height: 70px; margin: -35px -3px; border-radius: 3px; background: linear-gradient(transparent, #ff3b47 20%, #fff 50%, #ff3b47 80%, transparent); box-shadow: 0 0 12px #ff3b47; transform: rotate(28deg) scaleY(0); opacity: 0; animation: sfx-claw 1.4s ease-out forwards; }
+@keyframes sfx-claw { 0% { transform: rotate(28deg) scaleY(0); opacity: 1; } 18% { transform: rotate(28deg) scaleY(1); opacity: 1; } 70% { opacity: 1; } 100% { transform: rotate(28deg) scaleY(1); opacity: 0; } }
+.sfx-candle > svg { animation: sfx-flicker .25s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+@keyframes sfx-flicker { to { transform: scaleY(1.04) skewX(2deg); } }
+.sfx-label { position: fixed; transform: translate(-50%, -50%); padding: 3px 10px; border-radius: 4px; font-family: var(--serif); font-weight: 900; font-size: 17px; letter-spacing: .1em; white-space: nowrap;
+  color: var(--c); background: rgba(10, 6, 14, .85); box-shadow: inset 0 0 0 1px var(--c), 0 0 16px var(--c); animation: sfx-label 2.4s ease-out forwards; }
+@keyframes sfx-label { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.7); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } 25% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -80%); } }
+.seat.is-fx .seat-medal { animation: seat-fx 2.4s ease-out; }
+@keyframes seat-fx { 0% { box-shadow: 0 0 0 0 var(--fx); } 30% { box-shadow: 0 0 0 4px var(--fx), 0 0 26px var(--fx); } 100% { box-shadow: 0 3px 8px rgba(0, 0, 0, .7); } }
+@media (prefers-reduced-motion: reduce) { .sfx-layer { display: none; } }

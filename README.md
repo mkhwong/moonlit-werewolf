@@ -159,6 +159,11 @@ Tap an empty chair to sit. The host taps someone's seat to remove them.
 
 **Spectators (觀眾):** anyone who arrives when every chair is taken — or while a game is running — watches instead; seated players can also 站起來觀戰. An eye button with the count next to 「等候室」 opens the list (the host can remove people there). Spectators don't block the start; when a chair frees up in the waiting room the next spectator who didn't choose to stand takes it. During a game spectators see the public table and log and hear the day's speeches, but can't talk, never hear the wolves and see no roles until the game ends. The host can turn spectators off (觀眾 → 不允許), which brings back the old rule that everyone must be seated.
 
+## Skill animations (技能動畫)
+
+When a player uses a night skill, the effect travels from their character (bottom-left) to the chosen seat and lands there — only that player sees it, so nothing leaks (`src/components/SkillFx.tsx`):
+女巫 antidote (green potion, rising cross) and poison (purple bottle shatters, smoke, skulls) · 預言家 (beam of light, an eye opens over the seat) · 守衛 (a golden shield and dome) · 狼美人 (a heart, hearts rising) · 攝夢人 (a crescent moon, dream mist, Zzz) · 獵魔人 (a crossbow bolt, crosshair, flash) · 通靈師 (beam, crystal ball) · 石像鬼 (beam, stone eye) · 機械狼 learning (beam, spinning gears, scan line) · 狼人 (the wolf team sees claw marks on the night's victim) · 守墓人 (a candle over yesterday's exiled player). 幸運兒 and 機械狼 using a borrowed skill get that skill's effect. Private results then show on the seat: 好人 / 狼人 in gold or red, or the role's name. Each has its own sound. Turned off by 簡易 mode and reduced-motion.
+
 ## 動畫 / 簡易 switch
 
 The round button at the bottom-left (next to the talk bar) switches animations off: no character transitions, turn animations or full-screen cinematics — each one becomes a short plain notice (e.g. 「預言家請睜眼」, 「3號 被放逐」). It is remembered on that device and can be switched back any time.

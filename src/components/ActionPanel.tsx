@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Emblem from './Emblem';
 import { act } from '../socket';
 import { ItemImg, LuckyGift, flyItemToSeat } from './LuckyItems';
-import { playPotion } from './PotionFx';
+import { playPotion, playSkillFx, fxForStep } from './SkillFx';
 import { ROLES, MECH_SKILL } from '../../shared/roles';
 
 export const SPEECH_LABEL = { sheriff: '競選發言', sheriffPk: '競選 PK 發言', day: '發言', pk: 'PK 發言', lastWords: '遺言' };
@@ -95,7 +95,7 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
             </>
           )}
           <div className="row">
-            <button className={`btn ${pr.danger ? 'btn-shu' : 'btn-moon'}`} disabled={!sel} onClick={() => { if (pr.skill === 'poison') playPotion('poison', sel); act({ type: 'pick', target: sel }); }}>
+            <button className={`btn ${pr.danger ? 'btn-shu' : 'btn-moon'}`} disabled={!sel} onClick={() => { if (ph.type === 'night') playSkillFx(fxForStep(ph.data.step, pr, game), sel); act({ type: 'pick', target: sel }); }}>
               {sel ? `${pr.confirmLabel} ${seat(sel)}` : '請點選上方玩家'}
             </button>
             {pr.skipLabel ? <button className="btn btn-ghost" onClick={() => act({ type: 'skip' })}>{pr.skipLabel}</button> : null}

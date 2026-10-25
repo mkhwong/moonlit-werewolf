@@ -10,6 +10,7 @@ import { act, call, call as emit, useNow, now } from '../socket';
 import { useNotes } from '../notes';
 import { useAudioCues } from '../cues';
 import { sfx } from '../audio';
+import { playSkillFx, playVerdict } from '../components/SkillFx';
 import { preloadItems } from '../components/LuckyItems';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt, throwBlocked } from '../components/Throw';
 import { PttDock, RoleFigure, VoiceCtx } from '../components/VoiceControls';
@@ -227,6 +228,23 @@ export default function Game({ state }: any) {
   const [sheet, setSheet] = useState(null);
   const [notes, updateNote] = useNotes(game.id, you.id);
   useRoleTransitions(game, pr, mode);
+  // Private night results land on the seat (好人 / 狼人 / the role), and the wolves see their kill's claw marks.
+  const fxDone = useRef('');
+  useEffect(() => {
+    if (!ph) return undefined;
+    let key = '', run = null;
+    if (pr.kind === 'result' && pr.target) {
+      if (!introDone) return undefined;
+      key = `${ph.id}:r:${pr.target}`;
+      run = () => playVerdict(pr.target, pr.value, pr.mode);
+    } else if (pr.kind === 'sleep' && pr.wolfNotice?.kill) {
+      key = `${game.id}:${game.day}:k:${pr.wolfNotice.kill}`;
+      run = () => playSkillFx('claw', pr.wolfNotice.kill);
+    }
+    if (!run || fxDone.current === key) return undefined;
+    const t = setTimeout(() => { fxDone.current = key; run(); }, pr.kind === 'result' ? 700 : 200);
+    return () => clearTimeout(t);
+  }, [ph?.id, pr.kind, pr.target, pr.wolfNotice?.kill, introDone]);
   // 自爆 lives top-left for any wolf who is allowed to self-destruct.
   const canEverBoom = !!game.me && game.me.alive && ROLES[game.me.role].team === 'wolf' && !NO_BOOM.includes(game.me.role) && game.time === 'day';
   const [boomArmed, setBoomArmed] = useState(false);
