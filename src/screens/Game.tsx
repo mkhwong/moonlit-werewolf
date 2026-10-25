@@ -305,7 +305,7 @@ export default function Game({ state }: any) {
   const showTabs = !game.finished && ph?.type !== 'reveal';
   const speechTimer = ph?.type === 'speech' && ph.endsAt ? { pid: ph.data.pid, start: ph.startedAt + ph.introMs, end: ph.endsAt } : null;
   const seatProps = { me, game, targets, selected: sel, onSeat, notes, wolfPicks, speaking, online, compact, talking, speechTimer };
-  const call = ph ? judgeCall(ph, P) : '';
+  const call = ph ? (ph.type === 'reveal' && !me ? '玩家正在確認身分' : judgeCall(ph, P)) : '';
 
   return (
     <div className={`app game time-${game.time} has-dock`}>
@@ -342,6 +342,7 @@ export default function Game({ state }: any) {
           <button className="tool" onClick={() => setSheet('notes')}>筆記</button>
           <button className="tool" onClick={() => setSheet('log')}>紀錄</button>
           {you.isHost ? <button className="tool" onClick={() => setSheet('host')}>房主</button> : null}
+          {!me ? <span className="pill spectate-pill">觀戰中</span> : null}
           {room.config.testMode ? <span className="pill pill-bot">測試模式</span> : null}
           <span className="tool-room">房間 {room.code}</span>
         </nav>
@@ -355,11 +356,11 @@ export default function Game({ state }: any) {
                 <button type="button" className="strip-tab" onClick={() => setSheet('guide')} aria-label="打開提示：我的身分與本局角色">
                   <span aria-hidden>»</span><small>提示</small>
                 </button>
-                <button type="button" className={`strip-tab strip-throw ${throwItem ? 'is-armed' : ''}`} aria-expanded={sheet === 'throw'}
+                {me ? <button type="button" className={`strip-tab strip-throw ${throwItem ? 'is-armed' : ''}`} aria-expanded={sheet === 'throw'}
                   onClick={() => { if (throwItem) setThrowItem(null); else setSheet(sheet === 'throw' ? null : 'throw'); }}
                   aria-label={throwItem ? '取消擲物' : '擲物：雞蛋、發霉番茄、便便'}>
                   {throwItem ? <><ItemArt id={throwItem} size={18} /><small>取消</small></> : <><span aria-hidden>»</span><small>擲物</small></>}
-                </button>
+                </button> : null}
               </div>
             ) : null}
           </div>

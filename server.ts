@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Game, shuffle } from './server/game';
 import { botThink, botName } from './server/bots';
 import {
-  ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles,
+  ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS,
 } from './shared/roles';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -48,6 +48,7 @@ function newCode() {
   }
 }
 const newId = () => crypto.randomBytes(6).toString('hex');
+const MAX_SPECTATORS = 12;
 const newToken = () => crypto.randomBytes(16).toString('hex');
 
 class Room { [key: string]: any;
@@ -62,7 +63,9 @@ class Room { [key: string]: any;
       custom: { ...packById('p12a').roles },
       settings: structuredClone(DEFAULT_SETTINGS),
       testMode: false,
+      spectators: true,   // 觀眾: people who arrive when every seat is taken (or mid-game) watch instead
     };
+    this.log = [];        // short lobby notices for the 法官 board
     this.game = null;
     this.botMemo = new Map();
     this.botTimers = new Set();
@@ -73,6 +76,16 @@ class Room { [key: string]: any;
   }
 
   get(id) { return this.players.find(p => p.id === id); }
+
+  note(text, kind = null) {
+    // Repeated setup changes (stepping the player count) replace the previous notice instead of piling up.
+    const last = this.log[this.log.length - 1];
+    if (kind && last && last.kind === kind) this.log.pop();
+    this.log.push({ t: Date.now(), text, kind });
+    if (this.log.length > 30) this.log.splice(0, this.log.length - 30);
+  }
+
+  seated() { return this.players.filter(p => p.seat != null); }
 
   // ── Lobby seating plan: one chair per role in the chosen setup; players can stand up and pick a chair ──
   seatCount() {
@@ -116,7 +129,9 @@ class Room { [key: string]: any;
   }
 
   addPlayer() {
-    const p = { id: newId(), token: newToken(), name: null, seat: this.freeSeat(), online: true, socketId: null };
+    // Mid-game joiners watch; in the lobby you get the lowest free chair, or watch until one frees up.
+    const seat = this.status === 'lobby' ? this.freeSeat() : null;
+    const p = { id: newId(), token: newToken(), name: null, seat, online: true, socketId: null };
     this.players.push(p);
     if (!this.hostId) this.hostId = p.id;
     return p;
@@ -149,13 +164,14 @@ class Room { [key: string]: any;
 
   startProblem() {
     if (this.status !== 'lobby') return '遊戲已開始';
-    const named = this.players.filter(p => p.name);
-    if (named.length !== this.players.length) return '還有玩家未輸入暱稱';
-    if (this.players.length < MIN_PLAYERS) return `至少需要 ${MIN_PLAYERS} 名玩家`;
-    if (this.players.some(p => p.seat == null)) return '還有玩家站著，請先入座';
+    const seated = this.seated();
+    if (seated.some(p => !p.name)) return '還有玩家未輸入暱稱';
+    if (!this.config.spectators && seated.length !== this.players.length) return '還有玩家站著，請先入座';
     const counts = this.roleCounts();
     const total = countRoles(counts);
-    if (total !== this.players.length) return `角色共 ${total} 個，但目前有 ${this.players.length} 名玩家`;
+    if (seated.length < total) return `還差 ${total - seated.length} 人入座`;
+    if (seated.length < MIN_PLAYERS) return `至少需要 ${MIN_PLAYERS} 名玩家`;
+    if (total !== seated.length) return `角色共 ${total} 個，但目前有 ${seated.length} 名玩家入座`;
     const wolves = ROLE_ORDER.filter(r => ROLES[r].team === 'wolf').reduce((a, r) => a + (counts[r] || 0), 0);
     if (!wolves) return '至少需要一名狼人陣營角色';
     if (wolves >= total) return '至少需要一名好人陣營角色';
@@ -166,11 +182,12 @@ class Room { [key: string]: any;
   start() {
     const problem = this.startProblem();
     if (problem) return problem;
-    const ordered = [...this.players].sort((a, b) => a.seat - b.seat);
+    // Only seated players play; everyone standing watches.
+    const ordered = this.seated().sort((a, b) => a.seat - b.seat);
     const seats = ordered.map((_, i) => i + 1);
     if (this.config.settings.randomSeats) shuffle(seats);
     ordered.forEach((p, i) => { p.seat = seats[i]; });
-    const roster = this.players.map(p => ({ id: p.id, name: p.name, seat: p.seat }));
+    const roster = ordered.map(p => ({ id: p.id, name: p.name, seat: p.seat }));
     this.game = new Game({
       roster,
       roleCounts: this.roleCounts(),
@@ -181,6 +198,7 @@ class Room { [key: string]: any;
     if (this.config.testMode) {
       const fixed = new Set();
       for (const h of this.humans()) {
+        if (h.seat == null) continue;
         if (!h.pref || !this.game.composition[h.pref]) continue;
         const me = this.game.get(h.id);
         const other = this.game.players.find(x => x.role === h.pref && !fixed.has(x.id));
@@ -279,6 +297,7 @@ class Room { [key: string]: any;
         status: this.status,
         hostId: this.hostId,
         seatCount: this.seatCount(),
+        log: this.log.slice(-8),
         players: [...this.players].sort((a, b) => (a.seat ?? 99) - (b.seat ?? 99))
           .map(x => ({ id: x.id, name: x.name, seat: x.seat, online: x.online, bot: !!x.bot, pref: x.pref || null })),
         config: this.config,
@@ -304,17 +323,52 @@ class Room { [key: string]: any;
       }
       // Computer players react to the same state a human would see.
       if (this.game && this.status === 'playing') {
-        for (const p of this.players) if (p.bot) botThink(this.game, p.id, this.botMemo, this.botTimers, true);
+        for (const p of this.players) if (p.bot && this.game.get(p.id)) botThink(this.game, p.id, this.botMemo, this.botTimers, true);
       }
     });
   }
 }
 
 // ───────────────────────── validation ─────────────────────────
+/** 玩家人數: pick a preset of that size, or (custom / no preset) add or remove villagers, then wolves or gods. */
+function resizeSetup(room, size) {
+  const c = room.config;
+  const n = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, size));
+  const cur = room.roleCounts();
+  if (countRoles(cur) === n) return;
+  // Stay on presets while one exists for this size (also when we only fell back to 自訂 for a size without one).
+  if (c.mode === 'preset' || c.autoCustom) {
+    const pk = PACKS.find(p => p.size === n);
+    if (pk) { c.mode = 'preset'; c.autoCustom = false; c.packId = pk.id; room.note(`房主選擇了「${pk.name}」（${n}人）`, 'setup'); return; }
+    if (c.mode === 'preset') { c.mode = 'custom'; c.autoCustom = true; }
+  }
+  const next = { ...cur };
+  let d = n - countRoles(next);
+  while (d > 0) {
+    if ((next.villager || 0) < 8) next.villager = (next.villager || 0) + 1;
+    else if ((next.werewolf || 0) < 8) next.werewolf = (next.werewolf || 0) + 1;
+    else break;
+    d--;
+  }
+  const gods = ROLE_ORDER.filter(r => ROLES[r].team === 'good' && r !== 'villager').reverse();
+  while (d < 0) {
+    if ((next.villager || 0) > 0) next.villager--;
+    else {
+      const g = gods.find(r => next[r]);
+      if (g) next[g]--; else if ((next.werewolf || 0) > 1) next.werewolf--; else break;
+    }
+    d++;
+  }
+  for (const k of Object.keys(next)) if (!next[k]) delete next[k];
+  c.custom = next;
+  room.note(`房主把人數改為 ${n} 人（自訂配置）`, 'setup');
+}
+
 function sanitizeConfig(room, patch) {
   const c = room.config;
-  if (patch.mode === 'preset' || patch.mode === 'custom') c.mode = patch.mode;
+  if (patch.mode === 'preset' || patch.mode === 'custom') { c.mode = patch.mode; c.autoCustom = false; }
   if (typeof patch.packId === 'string' && packById(patch.packId)) {
+    if (c.packId !== patch.packId && !patch.copyToCustom) room.note(`房主選擇了「${packById(patch.packId).name}」`, 'setup');
     c.packId = patch.packId;
     if (patch.copyToCustom) c.custom = { ...packById(patch.packId).roles };
   }
@@ -326,6 +380,8 @@ function sanitizeConfig(room, patch) {
     }
     c.custom = next;
   }
+  if (Number.isInteger(patch.size)) resizeSetup(room, patch.size);
+  if (typeof patch.spectators === 'boolean') c.spectators = patch.spectators;
   if (typeof patch.testMode === 'boolean') {
     c.testMode = patch.testMode;
     if (!c.testMode) {
@@ -386,8 +442,11 @@ io.on('connection', socket => {
     const code = String(p?.code || '').trim().toUpperCase();
     const room = rooms.get(code);
     if (!room) return ack(cb)({ ok: false, error: '找不到這個房間代碼' });
-    if (room.status !== 'lobby') return ack(cb)({ ok: false, error: '遊戲已開始，無法加入' });
-    if (room.players.length >= MAX_PLAYERS) return ack(cb)({ ok: false, error: '房間已滿' });
+    const watchOnly = room.status !== 'lobby' || room.freeSeat() == null;
+    if (watchOnly && !room.config.spectators) {
+      return ack(cb)({ ok: false, error: room.status !== 'lobby' ? '遊戲已開始，無法加入' : '座位已滿' });
+    }
+    if (room.players.length >= MAX_PLAYERS + MAX_SPECTATORS) return ack(cb)({ ok: false, error: '房間已滿' });
     const player = room.addPlayer();
     bind(socket, room, player);
     ack(cb)({ ok: true, code: room.code, token: player.token });
@@ -408,6 +467,7 @@ io.on('connection', socket => {
     if (!name) return ack(cb)({ ok: false, error: '請輸入暱稱' });
     if (c.room.status !== 'lobby' && c.player.name) return ack(cb)({ ok: false, error: '遊戲中不能更改暱稱' });
     if (c.room.players.some(x => x.id !== c.player.id && x.name === name)) return ack(cb)({ ok: false, error: '這個暱稱已被使用' });
+    if (!c.player.name) c.room.note(c.player.seat != null ? `${name} 加入了房間` : `${name} 進房觀戰`);
     c.player.name = name;
     c.room.broadcast();
     ack(cb)({ ok: true });
@@ -427,6 +487,7 @@ io.on('connection', socket => {
     const target = c.room.get(p?.id);
     if (!target || target.id === c.player.id) return ack(cb)({ ok: false });
     if (target.socketId) io.to(target.socketId).emit('kicked');
+    if (target.name) c.room.note(`${target.name} 被移出房間`);
     c.room.removePlayer(target.id);
     c.room.broadcast();
     ack(cb)({ ok: true });
@@ -436,7 +497,9 @@ io.on('connection', socket => {
   socket.on('addBots', (p, cb) => {
     const c = ctx(socket);
     if (!c || c.room.hostId !== c.player.id || c.room.status !== 'lobby' || !c.room.config.testMode) return ack(cb)({ ok: false });
-    const n = Math.max(1, Math.min(MAX_PLAYERS - c.room.players.length, Math.floor(Number(p?.count) || 1)));
+    const free = c.room.seatCount() - c.room.seated().length;
+    if (free <= 0) return ack(cb)({ ok: false, error: '座位已滿' });
+    const n = Math.max(1, Math.min(free, Math.floor(Number(p?.count) || 1)));
     for (let i = 0; i < n; i++) c.room.addBot();
     c.room.broadcast();
     ack(cb)({ ok: true, added: n });
@@ -462,7 +525,9 @@ io.on('connection', socket => {
   socket.on('sit', (p, cb) => {
     const c = ctx(socket);
     if (!c) return ack(cb)({ ok: false });
+    const was = c.player.seat;
     const err = c.room.sit(c.player, p?.seat);
+    if (!err && was == null && c.player.name) c.room.note(`${c.player.name} 坐到 ${c.player.seat}號`);
     if (!err) c.room.broadcast();
     ack(cb)(err ? { ok: false, error: err } : { ok: true });
   });
@@ -471,6 +536,7 @@ io.on('connection', socket => {
     const c = ctx(socket);
     if (!c) return ack(cb)({ ok: false });
     const err = c.room.stand(c.player);
+    if (!err && c.player.name) c.room.note(`${c.player.name} 起身觀戰`);
     if (!err) c.room.broadcast();
     ack(cb)(err ? { ok: false, error: err } : { ok: true });
   });
@@ -478,9 +544,11 @@ io.on('connection', socket => {
   socket.on('shuffleSeats', (_p, cb) => {
     const c = ctx(socket);
     if (!c || c.room.hostId !== c.player.id || c.room.status !== 'lobby') return ack(cb)({ ok: false });
+    // Shuffle the people who are sitting (or waiting for a chair); spectators who stood up stay standing.
     const N = c.room.seatCount();
     const seats = shuffle(Array.from({ length: N }, (_, i) => i + 1));
-    shuffle([...c.room.players]).forEach((pl, i) => { pl.seat = seats[i] ?? null; pl.stood = pl.seat == null; });
+    const pool = c.room.players.filter(pl => pl.seat != null || !pl.stood);
+    shuffle(pool).forEach((pl, i) => { pl.seat = seats[i] ?? null; });
     c.room.broadcast();
     ack(cb)({ ok: true });
   });
@@ -510,14 +578,18 @@ io.on('connection', socket => {
   socket.on('throw', (p, cb) => {
     const c = ctx(socket);
     const reply = ack(cb);
-    if (!c || !c.room.game || c.room.status !== 'playing') return reply({ ok: false });
-    const g = c.room.game;
+    if (!c) return reply({ ok: false });
     const item = p?.item;
     if (!['egg', 'tomato', 'poop'].includes(item)) return reply({ ok: false });
-    const me = g.get(c.player.id);
-    const target = g.get(p?.target);
+    // In the waiting room anyone sitting can throw at anyone sitting.
+    const lobby = c.room.status === 'lobby';
+    const g = c.room.game;
+    if (!lobby && (!g || c.room.status !== 'playing')) return reply({ ok: false });
+    const me = lobby ? (c.player.seat != null ? c.player : null) : g.get(c.player.id);
+    const target = lobby ? c.room.seated().find(x => x.id === p?.target) : g.get(p?.target);
     if (!target || target.id === c.player.id) return reply({ ok: false, error: '請選擇其他玩家' });
-    if (!g.finished) {
+    if (lobby && !me) return reply({ ok: false, error: '入座後才能擲物' });
+    if (!lobby && !g.finished) {
       if (!me || !me.alive) return reply({ ok: false, error: '出局的玩家不能擲物' });
       if (g.time !== 'day') return reply({ ok: false, error: '晚上不能擲物' });
     }
@@ -594,7 +666,7 @@ io.on('connection', socket => {
       c.room.voice.delete(c.player.id);
       c.room.talking.delete(c.player.id);
       socket.leave(c.room.code);
-      if (c.room.status === 'lobby') c.room.removePlayer(c.player.id);
+      if (c.room.status === 'lobby') { if (c.player.name) c.room.note(`${c.player.name} 離開了房間`); c.room.removePlayer(c.player.id); }
       else { c.player.online = false; c.player.socketId = null; }
       if (!c.room.humans().length) { c.room.stopBots(); c.room.game?.terminate(); rooms.delete(c.room.code); }
       else c.room.broadcast();

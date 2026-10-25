@@ -147,9 +147,17 @@ Wolves get no panel and no text chat (they talk with the mic). They tap a player
 
 The red 「» 擲物」 tab (under the left seat column, below 「» 提示」) opens a small fly-out over the left seat column with just an egg, a mouldy tomato and a poop. Tap one and every other player's seat starts blinking; tap a seat to throw (tap the tab again to cancel). Everyone sees it arc from your seat and splat on theirs. Living players can throw by day (not at night, and not once out, so nobody can pass hidden information); there is a short cooldown between throws.
 
-## Seating plan (lobby)
+## 等候室 (waiting room) and spectators
 
-Before the game starts the lobby shows the table as chairs in two rows facing each other — one chair per role in the chosen setup (e.g. 2 × 6 for 12 players). New players take the first free chair; anyone can press **站起來** and tap an empty chair to move. The host can still **打亂座位** or remove players with ×. The game can't start while anyone is standing. (If 隨機座位 is on in the settings, seats are shuffled again at the start.)
+The waiting room uses the game room's layout: chairs down both sides (one per role in the setup; portraits shrink for 13+ and again for 15+ players), the 法官 board in the middle (chosen setup, team split, main timers and rules, recent arrivals), the 說明 / 擲物 tabs under the left seats, a ready panel at the bottom (已入座 N / M, 站起來觀戰, and for the host 開始遊戲) and the talk bar.
+
+Everyone sees the same screen; the host gets two extra toolbar buttons:
+- **人數角色** — player count (changing it adds or removes chairs and picks a preset of that size, or adjusts a custom setup), then 預設配置 / 自訂 / 規則 (警長競選, 勝利條件, 女巫自救, 同守同救, 夜晚死亡遺言, 開局隨機座位, 觀眾, 測試模式 and its computer players, 打亂座位).
+- **時間** — 快速 / 標準 / 從容 presets, each phase's seconds, and 延長發言.
+
+Tap an empty chair to sit. The host taps someone's seat to remove them.
+
+**Spectators (觀眾):** anyone who arrives when every chair is taken — or while a game is running — watches instead; seated players can also 站起來觀戰. An eye button with the count next to 「等候室」 opens the list (the host can remove people there). Spectators don't block the start; when a chair frees up in the waiting room the next spectator who didn't choose to stand takes it. During a game spectators see the public table and log and hear the day's speeches, but can't talk, never hear the wolves and see no roles until the game ends. The host can turn spectators off (觀眾 → 不允許), which brings back the old rule that everyone must be seated.
 
 ## 動畫 / 簡易 switch
 
