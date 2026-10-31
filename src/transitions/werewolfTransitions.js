@@ -540,21 +540,40 @@ const FX = {
   },
 
   idiot(c) {
-    const { S, CW } = c;
-    const flip = c.el('div', { inset: '0', transformStyle: 'preserve-3d' }, c.stage);
-    c.el('div', { left: '10%', right: '10%', top: '0', bottom: '0', borderRadius: '7%', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', border: `${CW * 0.03}px solid #fff`,
-      background: 'repeating-linear-gradient(45deg,#d83a3a 0 18px,#f2c230 18px 36px)', boxShadow: '0 2vmin 5vmin rgba(0,0,0,.5), inset 0 0 0 5px rgba(43,24,48,.6)' }, flip,
+    const { cx, cy, S, W, H } = c;
+    // Circus tent: candy stripes fanning down from the top, a warm spotlight, footlights below.
+    const tent = c.el('div', { inset: '0', background: `repeating-conic-gradient(from 180deg at 50% -12%, #b8242c 0deg 7deg, #f4e3c0 7deg 14deg)` }, c.bgFx);
+    const dim = c.el('div', { inset: '0', background: 'radial-gradient(70% 55% at 50% 45%, rgba(40,10,20,.15) 0%, rgba(30,6,14,.82) 70%, #12040a 100%)' }, c.bgFx);
+    c.A(tent, [{ opacity: 0, transform: 'scale(1.15)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 700, easing: 'ease-out' });
+    c.A(dim, [{ opacity: 0 }, { opacity: 1 }], { duration: 500 });
+    const spot = (from) => {
+      const el = c.el('div', { left: `${cx - S}px`, top: `${-H * 0.1}px`, width: `${S * 2}px`, height: `${H * 1.1}px`, transformOrigin: '50% 0',
+        background: 'linear-gradient(180deg, rgba(255,240,190,.55), rgba(255,226,140,.12) 70%, transparent)', clipPath: 'polygon(46% 0, 54% 0, 100% 100%, 0 100%)', mixBlendMode: 'screen', opacity: 0 }, c.bgFx);
+      c.A(el, [{ transform: `rotate(${from}deg)`, opacity: 0 }, { transform: `rotate(${from * 0.4}deg)`, opacity: 1, offset: 0.4 }, { transform: 'rotate(0deg)', opacity: 0.9 }], { duration: 1300, delay: 150, easing: 'ease-in-out' });
+    };
+    spot(-28); spot(28);
+    c.rays(900, '255,214,90', 0.3);
+    // Footlights twinkling along the bottom.
+    for (let i = 0; i < 9; i++) {
+      const bulb = c.el('div', { left: `${(W * (i + 0.5)) / 9 - 6}px`, top: `${H * 0.93}px`, width: '12px', height: '12px', borderRadius: '50%', background: '#ffe9a0', boxShadow: '0 0 14px 5px rgba(255,210,90,.7)', opacity: 0 }, c.bgFx);
+      c.A(bulb, [{ opacity: 0 }, { opacity: 1 }, { opacity: 0.35 }, { opacity: 1 }], { duration: 900, delay: 300 + i * 60, iterations: 4, easing: 'steps(1)' });
+    }
+    // The face-down joker card tumbles in, spins (a flat scaleX flip that works on every browser) and turns face up.
+    const back = c.el('div', { left: `${cx - S * 0.36}px`, top: `${cy - S * 0.5}px`, width: `${S * 0.72}px`, height: `${S}px`, borderRadius: `${S * 0.05}px`, border: `${S * 0.022}px solid #fff`,
+      background: 'repeating-linear-gradient(45deg,#d83a3a 0 18px,#f2c230 18px 36px)', boxShadow: '0 2vmin 5vmin rgba(0,0,0,.5), inset 0 0 0 5px rgba(43,24,48,.6)' }, c.fx,
       `<div style="position:absolute;left:16%;right:16%;top:50%;aspect-ratio:1;transform:translateY(-50%);border-radius:50%;background:#fff;display:grid;place-items:center;font:900 ${S * 0.3}px Georgia,serif;color:#d83a3a;box-shadow:inset 0 0 0 5px #2b1830">?</div>`);
-    const front = c.el('div', { inset: '0', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }, flip);
-    front.appendChild(c.card);
-    c.card.style.opacity = '1';
-    c.stage.style.perspective = `${S * 4}px`;
-    c.A(flip, [{ transform: 'translateY(70vh) rotateZ(-30deg) rotateY(0)' }, { transform: 'translateY(0) rotateZ(0) rotateY(0)' }], { duration: 380, easing: 'cubic-bezier(.2,1.2,.4,1)' });
-    c.A(flip, [{ transform: 'rotateY(0) scale(1)' }, { transform: 'rotateY(300deg) scale(1.08)', offset: 0.55 }, { transform: 'rotateY(560deg) scale(1.12)', offset: 0.85 }, { transform: 'rotateY(540deg) scale(1)' }], { duration: 820, delay: 420, easing: 'cubic-bezier(.45,0,.3,1)' });
-    c.flash(1180, '#fff3c0', 240, 0.4);
-    c.burstAt(1200, 90, () => { const a = rand(-Math.PI, 0), sp = rand(6, 16); return { kind: 'confetti', vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: 0.28, drag: 0.03, size: rand(4, 8), vr: rand(-0.3, 0.3), rot: rand(0, TAU), life: rand(1600, 2400), color: pick(['#d83a3a', '#f2c230', '#3a7fd0', '#3f9a4a', '#ff9ec7', '#ffffff']) }; });
-    c.ring(1200, { color: '#f2c230', to: 2.2, width: 6 });
-    return { reveal: 1250, titleStyle: 'wobble' };
+    c.A(back, [{ transform: `translateY(${H * 0.7}px) rotate(-30deg) scaleX(1)` }, { transform: 'translateY(0) rotate(0) scaleX(1)', offset: 0.45 },
+      { transform: 'translateY(0) rotate(0) scaleX(-1)', offset: 0.62 }, { transform: 'translateY(0) rotate(0) scaleX(1)', offset: 0.8 }, { transform: 'translateY(0) rotate(0) scaleX(0)' }], { duration: 1000, easing: 'ease-in-out' });
+    c.A(back, [{ opacity: 1 }, { opacity: 0 }], { duration: 1, delay: 1000, fill: 'forwards' });
+    c.A(c.card, [{ opacity: 0, transform: 'scaleX(0)' }, { opacity: 1, transform: 'scaleX(0)', offset: 0.01 }, { opacity: 1, transform: 'scaleX(1.12) rotate(-3deg)', offset: 0.6 }, { opacity: 1, transform: 'scaleX(1) rotate(0)' }],
+      { duration: 420, delay: 1000, easing: 'cubic-bezier(.2,1.3,.4,1)' });
+    c.A(c.card, [{ transform: 'rotate(0)' }, { transform: 'rotate(-4deg)' }, { transform: 'rotate(4deg)' }, { transform: 'rotate(0)' }], { duration: 600, delay: 1500, easing: 'ease-in-out', composite: 'add' });
+    c.flash(1000, '#fff3c0', 260, 0.45);
+    c.burstAt(1020, 110, () => { const a = rand(-Math.PI, 0), sp = rand(6, 17); return { kind: 'confetti', x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: 0.28, drag: 0.03, size: rand(4, 8), vr: rand(-0.3, 0.3), rot: rand(0, TAU), life: rand(1800, 2600), color: pick(['#d83a3a', '#f2c230', '#3a7fd0', '#3f9a4a', '#ff9ec7', '#ffffff']) }; });
+    c.burstAt(1700, 50, () => ({ kind: 'confetti', x: rand(0, W), y: -20, vx: rand(-1, 1), vy: rand(1, 3), ay: 0.06, drag: 0.01, size: rand(4, 7), vr: rand(-0.2, 0.2), rot: rand(0, TAU), life: rand(2200, 3000), color: pick(['#d83a3a', '#f2c230', '#3a7fd0', '#ffffff']) }));
+    c.ring(1020, { color: '#f2c230', to: 2.2, width: 6 });
+    c.shake(1020, 0.5, 300);
+    return { reveal: 1080, titleStyle: 'wobble' };
   },
 
   knight(c) {
