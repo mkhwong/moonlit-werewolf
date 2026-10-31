@@ -387,11 +387,12 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
 // N: 面殺主持 — reveal waits for everyone (no timer), speeches never auto-cut, host skip / endSpeech moves on.
 {
   const { game, on } = setup(['werewolf', 'werewolf', 'seer', 'witch', 'villager', 'villager'], { sheriff: false, faceToFace: true });
-  let revealOk = false, softOk = false;
+  let revealOk = false, softOk = false, gapOk = false;
   on(g => {
     const ph = g.phase;
     if (!ph) return;
     const act = (n, a) => g.handle(id(n), a);
+    if (ph.type === 'nightGap') once(ph, 'gap', () => { assert.equal(g.viewFor(id(3)).phase.prompt.kind, 'sleep'); gapOk = true; });
     if (ph.type === 'reveal') once(ph, 'r', () => {
       assert.equal(ph.endsAt, null);
       act(1, { type: 'ready' });
@@ -410,8 +411,8 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
     if (ph.type === 'speech' && ph.data.kind !== 'day') once(ph, 'lw', () => act(g.seat(ph.data.pid), { type: 'endSpeech' }));
   });
   await game.run().catch(() => {});
-  assert.ok(revealOk && softOk, 'face-to-face reveal + soft speech');
-  console.log('N ok: 面殺主持 reveal waits for all, speech timer is advisory');
+  assert.ok(revealOk && softOk && gapOk, 'face-to-face reveal + night gap + soft speech');
+  console.log('N ok: 面殺主持 reveal waits for all, 5 s eyes-closed gap between night roles, speech timer is advisory');
 }
 
 console.log('all scenarios passed');

@@ -56,6 +56,7 @@ function judgeCall(ph, P) {
   switch (ph.type) {
     case 'reveal': return '請確認你的身分';
     case 'night': return `${NIGHT_STEPS[d.step].title}請睜眼`;
+    case 'nightGap': return `${NIGHT_STEPS[d.step]?.title || ''}請閉眼`;
     case 'dawn': return '天亮了，請睜眼';
     case 'sheriffSignup': return '警長競選開始，請決定是否上警';
     case 'speech': return `請 ${P[d.pid]?.seat}號 ${P[d.pid]?.name} ${SPEECH_LABEL[d.kind]}`;

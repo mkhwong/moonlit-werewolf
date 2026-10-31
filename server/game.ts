@@ -303,6 +303,8 @@ export class Game { [key: string]: any;
       priv: { actors, picks: {}, locked: {}, done: false, result: null },
     });
     this.finishStep(step, ph);
+    // 面殺主持: a 5-second eyes-closed gap so this group shuts their eyes before the next one opens.
+    if (this.settings.faceToFace) await this.runPhase('nightGap', { step }, { duration: this.scaled(5000) });
   }
 
   finishStep(step, ph) {
@@ -1272,6 +1274,7 @@ export class Game { [key: string]: any;
     switch (ph.type) {
       case 'reveal': return { kind: 'ready', done: !!ph.priv.ready[me.id], readyN: Object.keys(ph.priv.ready).length, total: this.players.length };
       case 'night': return this.nightPrompt(ph, me, alive, others);
+      case 'nightGap': return { kind: 'sleep', text: `${NIGHT_STEPS[ph.data.step]?.title || ''}請閉眼・下一位角色即將睜眼…` };
       case 'sheriffSignup':
         if (!me.alive) return deadInfo;
         return { kind: 'signup', on: this.election.signed.has(me.id), canSelfDestruct: this.canBoom(me) };
