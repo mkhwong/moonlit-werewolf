@@ -1129,3 +1129,32 @@ html .wwt > .wwt-hint { display: none !important; }
 .bottom-row .action:has(.panel-head) { padding: 8px 12px; }
 .bottom-row .action .panel-head h3 { margin: 0; }
 .end-row > .end-speech, .end-row > .extend-speech { width: auto; align-self: stretch; margin: 0; }
+
+/* 面殺主持 */
+.reveal-count { margin: 4px 0 0; color: var(--moon-2, #cdbf9c); font-size: 14px; }
+.reveal-count b { color: #e9c96a; font-size: 18px; }
+.face-timer { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(ellipse at 50% 40%, #1d1630 0%, #0b0812 75%); color: #f3e9cf; text-align: center; }
+.face-timer.is-over { background: radial-gradient(ellipse at 50% 40%, #3a1218 0%, #120608 75%); }
+.ft-hide { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 12px; background: rgba(255,255,255,.08); color: inherit; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.ft-who { font-size: 22px; font-weight: 700; }
+.ft-who b { color: #e9c96a; font-size: 30px; margin-right: 4px; }
+.ft-who span { display: block; font-size: 14px; font-weight: 400; opacity: .7; margin-top: 2px; }
+.ft-dial { position: relative; width: min(78vw, 46vh, 380px); aspect-ratio: 1; }
+.ft-dial svg { width: 100%; height: 100%; }
+.ft-track { fill: none; stroke: rgba(255,255,255,.1); stroke-width: 6; }
+.ft-bar { fill: none; stroke: #e9c96a; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset .25s linear; }
+.face-timer.is-low .ft-bar { stroke: #ff9a4a; }
+.face-timer.is-over .ft-bar { stroke: #e0525a; }
+.ft-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: min(20vw, 12vh, 110px); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.face-timer.is-over .ft-num { font-size: min(13vw, 8vh, 72px); color: #ff8a92; animation: ft-pulse 1s ease-in-out infinite; }
+@keyframes ft-pulse { 50% { opacity: .55; } }
+.ft-msg { margin: 0; font-size: 16px; opacity: .85; }
+.face-timer.is-over .ft-msg { font-size: 22px; font-weight: 700; opacity: 1; color: #ffd27a; }
+.ft-actions { display: flex; gap: 10px; width: min(420px, 100%); }
+.ft-actions .btn { flex: 1; min-height: 56px; }
+.ft-chip { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 60; padding: 8px 16px; border-radius: 999px;
+  background: #1d1630; color: #e9c96a; border: 1px solid #e9c96a; font-weight: 800; font-size: 16px; box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+.ft-chip.is-over { background: #3a1218; color: #ff8a92; border-color: #e0525a; }
+.ft-actions .btn { white-space: nowrap; }
+.ft-actions .btn-ghost { flex: 0 0 34%; }

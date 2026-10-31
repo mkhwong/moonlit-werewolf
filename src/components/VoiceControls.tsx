@@ -52,8 +52,8 @@ const CHANNEL_LABEL = { speech: '按住說話', wolves: '按住和狼隊友說�
  * Slim hold-to-talk bar pinned to the bottom of the screen (about 6% of its height),
  * so it is always within thumb reach without covering the table.
  */
-export function PttDock() {
-  return <div className="ptt-dock"><FxToggle />{AUDIO_ENABLED ? <SoundToggle /> : null}<PushToTalk dock /></div>;
+export function PttDock({ noTalk = false }: { noTalk?: boolean }) {
+  return <div className={`ptt-dock ${noTalk ? 'ptt-dock-notalk' : ''}`}><FxToggle />{AUDIO_ENABLED ? <SoundToggle /> : null}{noTalk ? null : <PushToTalk dock />}</div>;
 }
 
 const SOUND_NEXT = { all: 'sfx', sfx: 'off', off: 'all' } as const;

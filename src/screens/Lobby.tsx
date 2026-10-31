@@ -180,6 +180,8 @@ function SetupSheet({ room, you, counts, onClose }: any) {
             <Seg label="夜晚死亡遺言" value={S.lastWordsNight} onChange={v => setS({ lastWordsNight: v })} options={[['first', '僅首夜'], ['all', '每晚'], ['none', '無']]} /></div>
           <div className="rule"><span>開局隨機座位<small>開始時打亂所有人的座位</small></span>
             <Seg label="開局隨機座位" value={S.randomSeats} onChange={v => setS({ randomSeats: v })} options={[[false, '關'], [true, '開']]} /></div>
+          <div className="rule"><span>面殺主持<small>大家面對面玩：撳牌先睇身分、全員確認先開局；發言時全螢幕計時，時間到提示下一位（不會自動切換）；不設語音及文字訊息</small></span>
+            <Seg label="面殺主持" value={!!S.faceToFace} onChange={v => setS({ faceToFace: v })} options={[[false, '關'], [true, '開']]} /></div>
           <div className="rule"><span>觀眾<small>坐滿後或遊戲中進房的人自動觀戰，只能收聽，看不到身分</small></span>
             <Seg label="觀眾" value={cfg.spectators !== false} onChange={v => setCfg({ spectators: v })} options={[[true, '允許'], [false, '不允許']]} /></div>
           <div className="rule"><span>測試模式<small>加入電腦玩家試玩，並可指定自己的身分</small></span>
@@ -382,7 +384,7 @@ export default function Lobby({ state, onLeave, notify }: any) {
                   <span>夜晚<b>{S.timers.night}秒</b></span><span>發言<b>{S.timers.speech}秒</b></span>
                   <span>投票<b>{S.timers.vote}秒</b></span><span>遺言<b>{S.timers.lastWords}秒</b></span>
                 </div>
-                <span className="lb-dim">{S.sheriff ? '有警長' : '無警長'}・{S.winMode === 'side' ? '屠邊' : '屠城'}・{S.allowExtend !== false ? '可延長發言' : '不可延長'}{cfg.testMode ? '・測試模式' : ''}</span>
+                <span className="lb-dim">{S.sheriff ? '有警長' : '無警長'}・{S.winMode === 'side' ? '屠邊' : '屠城'}・{S.allowExtend !== false ? '可延長發言' : '不可延長'}{S.faceToFace ? '・面殺主持' : ''}{cfg.testMode ? '・測試模式' : ''}</span>
               </div>
               {log.length ? (
                 <div className="lb-sec lb-log">

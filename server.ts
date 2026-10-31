@@ -429,6 +429,7 @@ function sanitizeConfig(room, patch) {
     if (['first', 'all', 'none'].includes(s.lastWordsNight)) t.lastWordsNight = s.lastWordsNight;
     if (typeof s.randomSeats === 'boolean') t.randomSeats = s.randomSeats;
     if (typeof s.allowExtend === 'boolean') t.allowExtend = s.allowExtend;
+    if (typeof s.faceToFace === 'boolean') t.faceToFace = s.faceToFace;
     if (['easy', 'normal', 'hard'].includes(s.botLevel)) t.botLevel = s.botLevel;
     if (s.timers && typeof s.timers === 'object') {
       for (const f of TIMER_FIELDS) {

@@ -214,7 +214,8 @@ export const DEFAULT_SETTINGS = {
   lastWordsNight: 'first',   // first | all | none  (夜晚死亡是否有遺言)
   randomSeats: false,
   botLevel: 'normal',       // 電腦玩家水平: easy 新手 | normal 普通 | hard 高手
-  allowExtend: true,         // 房主／警長可延長發言 30 秒
+  allowExtend: true,
+  faceToFace: false,         // 面殺主持: 面對面遊戲，手機只負責抽牌、夜晚行動與輔助計時         // 房主／警長可延長發言 30 秒
   timers: { night: 30, signup: 15, sheriffSpeech: 60, speech: 90, vote: 20, lastWords: 60, skill: 15, reveal: 15 },
 };
 

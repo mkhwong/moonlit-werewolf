@@ -139,6 +139,7 @@ export class Game { [key: string]: any;
       endsAt: duration != null ? now + intro + duration : null,
       interruptible: !!opts.interruptible, done: false,
     };
+    if (opts.soft) data.soft = true;
     this.phase = ph;
     return new Promise<any>((resolve, reject) => {
       ph.finish = (reason = 'done') => {
@@ -155,7 +156,7 @@ export class Game { [key: string]: any;
         }
         resolve(ph);
       };
-      if (ph.endsAt != null) ph.timer = setTimeout(() => ph.finish('timeout'), ph.endsAt - now);
+      if (ph.endsAt != null && !opts.soft) ph.timer = setTimeout(() => ph.finish('timeout'), ph.endsAt - now);
       this.notify();
     });
   }
@@ -220,7 +221,8 @@ export class Game { [key: string]: any;
     }
     this.secret(`身分分配：${this.players.map(p => `${p.seat}號${ROLES[p.role].name}`).join('、')}`);
     await this.runPhase('reveal', {}, {
-      duration: this.ms(this.settings.timers.reveal ?? 15), priv: { ready: {} },
+      // 面殺主持: everyone must tap to see their card and confirm before the game starts — no time limit.
+      duration: this.settings.faceToFace ? null : this.ms(this.settings.timers.reveal ?? 15), priv: { ready: {} },
     });
   }
 
@@ -592,7 +594,7 @@ export class Game { [key: string]: any;
   }
 
   async lastWords(pid) {
-    await this.runPhase('speech', { pid, kind: 'lastWords' }, { duration: this.ms(this.settings.timers.lastWords) });
+    await this.runPhase('speech', { pid, kind: 'lastWords' }, { duration: this.ms(this.settings.timers.lastWords), soft: !!this.settings.faceToFace });
   }
 
   // 延長發言: the room host or the sheriff can add 30 s to the current speech (up to 3 times per speech).
@@ -607,7 +609,7 @@ export class Game { [key: string]: any;
     ph.data.ext = (ph.data.ext || 0) + 1;
     ph.endsAt += this.ms(30);
     clearTimeout(ph.timer);
-    ph.timer = setTimeout(() => ph.finish('timeout'), Math.max(0, ph.endsAt - Date.now()));
+    if (!ph.data.soft) ph.timer = setTimeout(() => ph.finish('timeout'), Math.max(0, ph.endsAt - Date.now()));
     const who = isSheriff ? `警長 ${by.seat}號` : '房主';
     const self = byPid === ph.data.pid;
     this.log(self ? `${who} 延長了自己的發言 30 秒` : `${who} 為 ${this.seat(ph.data.pid)}號 延長發言 30 秒`, 'info');
@@ -618,7 +620,7 @@ export class Game { [key: string]: any;
   async speechTurn(pid, kind, sec) {
     let remaining = this.ms(sec);
     for (;;) {
-      const ph = await this.runPhase('speech', { pid, kind }, { duration: remaining, interruptible: true });
+      const ph = await this.runPhase('speech', { pid, kind }, { duration: remaining, interruptible: true, soft: !!this.settings.faceToFace });
       const it = this.interrupt;
       if (!it) return;
       this.interrupt = null;
@@ -1268,7 +1270,7 @@ export class Game { [key: string]: any;
     const others = alive.filter(id => id !== me.id);
     const deadInfo = { kind: 'info', text: '你已出局，請安靜觀戰' };
     switch (ph.type) {
-      case 'reveal': return { kind: 'ready', done: !!ph.priv.ready[me.id] };
+      case 'reveal': return { kind: 'ready', done: !!ph.priv.ready[me.id], readyN: Object.keys(ph.priv.ready).length, total: this.players.length };
       case 'night': return this.nightPrompt(ph, me, alive, others);
       case 'sheriffSignup':
         if (!me.alive) return deadInfo;

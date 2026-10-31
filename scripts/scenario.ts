@@ -384,5 +384,35 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
   console.log('M ok: 延長發言 by host/sheriff, +30 s, max 3, can be switched off');
 }
 
+// N: 面殺主持 — reveal waits for everyone (no timer), speeches never auto-cut, host skip / endSpeech moves on.
+{
+  const { game, on } = setup(['werewolf', 'werewolf', 'seer', 'witch', 'villager', 'villager'], { sheriff: false, faceToFace: true });
+  let revealOk = false, softOk = false;
+  on(g => {
+    const ph = g.phase;
+    if (!ph) return;
+    const act = (n, a) => g.handle(id(n), a);
+    if (ph.type === 'reveal') once(ph, 'r', () => {
+      assert.equal(ph.endsAt, null);
+      act(1, { type: 'ready' });
+      assert.equal(g.viewFor(id(2)).phase.prompt.readyN, 1);
+      setTimeout(() => { assert.equal(g.phase.type, 'reveal'); revealOk = true; g.players.forEach(p => act(p.seat, { type: 'ready' })); }, 60);
+    });
+    if (ph.type === 'night') once(ph, 'n', () => { if (ph.data.step === 'wolf') [1, 2].forEach(n => { act(n, { type: 'pick', target: id(5) }); act(n, { type: 'lock' }); }); });
+    if (ph.type === 'speech' && ph.data.kind === 'day') once(ph, 'sp', () => {
+      assert.ok(ph.data.soft && ph.endsAt);
+      setTimeout(() => {
+        assert.equal(g.phase, ph, 'speech stays after its timer ran out');
+        softOk = true;
+        g.terminate();
+      }, Math.max(0, ph.endsAt - Date.now()) + 80);
+    });
+    if (ph.type === 'speech' && ph.data.kind !== 'day') once(ph, 'lw', () => act(g.seat(ph.data.pid), { type: 'endSpeech' }));
+  });
+  await game.run().catch(() => {});
+  assert.ok(revealOk && softOk, 'face-to-face reveal + soft speech');
+  console.log('N ok: 面殺主持 reveal waits for all, speech timer is advisory');
+}
+
 console.log('all scenarios passed');
 process.exit(0);

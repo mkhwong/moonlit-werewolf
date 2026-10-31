@@ -112,7 +112,7 @@ function useRoleTransitions(game, pr, mode) {
           duration: left - 150, label: nightNumberLabel(game.day), subtitle: `請睜眼・${step.sub}`, skippable: false,
         });
       }
-    } else if (ph.type === 'reveal' && me && revealed.current !== game.id && hasTransition(me.role)) {
+    } else if (ph.type === 'reveal' && me && !game.settings?.faceToFace && revealed.current !== game.id && hasTransition(me.role)) {
       revealed.current = game.id;
       stop = playTransition(me.role, { label: TEAM_NAME[ROLES[me.role].team], subtitle: '這是你的身分' });
     } else if (ph.type === 'skill' && me && ph.data.pid === me.id && pr.kind === 'pick' && TURN_FOR_SHOOTER[me.role]) {
@@ -164,21 +164,71 @@ function Timer({ ph }: any) {
 }
 
 function RoleReveal({ game, pr }: any) {
+  const face = !!game.settings?.faceToFace;
   const [flipped, setFlipped] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setFlipped(true), 900); return () => clearTimeout(t); }, []);
+  const [seen, setSeen] = useState(false);
+  // 面殺主持: the card stays face down until you tap it, and taps back over so the table can't peek.
+  useEffect(() => { if (face) return undefined; const t = setTimeout(() => { setFlipped(true); setSeen(true); }, 900); return () => clearTimeout(t); }, [face]);
+  const tap = () => { if (face) { setFlipped(f => !f); setSeen(true); sfx('tap'); } else { setFlipped(true); setSeen(true); } };
   return (
     <div className="reveal">
-      <p className="reveal-lead">你的身分是</p>
-      <button type="button" className={`flipcard ${flipped ? 'flipped' : ''}`} onClick={() => setFlipped(true)} aria-label="翻開身分牌">
+      <p className="reveal-lead">{face ? (flipped ? '再撳一下蓋返張牌' : '撳一下張牌睇你的身分') : '你的身分是'}</p>
+      <button type="button" className={`flipcard ${flipped ? 'flipped' : ''}`} onClick={tap} aria-label={flipped ? '蓋上身分牌' : '翻開身分牌'}>
         <div className="flip-inner">
           <div className="flip-back"><Emblem id="moon" size={92} /><span>月夜狼人殺</span></div>
           <div className="flip-front"><RoleCardFace role={game.me.role} mates={matesText(game)} /></div>
         </div>
       </button>
-      <button className="btn btn-moon btn-lg" disabled={pr.done || !flipped} onClick={() => act({ type: 'ready' })}>
+      <button className="btn btn-moon btn-lg" disabled={pr.done || !seen} onClick={() => { if (face) setFlipped(false); act({ type: 'ready' }); }}>
         {pr.done ? '等待其他玩家確認…' : '我已確認身分'}
       </button>
+      {face && pr.total ? <p className="reveal-count">已確認 <b>{pr.readyN || 0}</b> / {pr.total}・全員確認後遊戲開始</p> : null}
       <p className="muted small">請勿讓其他人看到你的螢幕</p>
+    </div>
+  );
+}
+
+/** 面殺主持: during a speech the whole screen becomes a big assistive timer. It never cuts the
+ *  speaker off — when it runs out it just tells the table to move on to the next player. */
+function FaceTimer({ game, ph, P, me, isHost, canExtend }: any) {
+  const t = useNow(250);
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => setHidden(false), [ph.id]);
+  const start = ph.startedAt + ph.introMs;
+  const total = Math.max(1, ph.endsAt - start);
+  const left = Math.max(0, ph.endsAt - t);
+  const over = left <= 0;
+  const sec = Math.ceil(left / 1000);
+  const mmss = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  const sp = P[ph.data.pid];
+  const mine = ph.data.pid === me?.id;
+  const warned = useRef(0);
+  useEffect(() => { if (over && warned.current !== ph.id) { warned.current = ph.id; sfx('ding'); } }, [over, ph.id]);
+  const next = () => (mine ? act({ type: 'endSpeech' }) : call('host', { cmd: 'skip' }));
+  if (hidden) {
+    return (
+      <button type="button" className={`ft-chip ${over ? 'is-over' : ''}`} onClick={() => setHidden(false)} aria-label="展開計時器">
+        {sp?.seat}號 {over ? '時間到' : mmss}
+      </button>
+    );
+  }
+  const r = 46, C = 2 * Math.PI * r, frac = left / total;
+  return (
+    <div className={`face-timer ${over ? 'is-over' : left < 10000 ? 'is-low' : ''}`} role="timer" aria-live="polite">
+      <button type="button" className="ft-hide" onClick={() => setHidden(true)}>顯示座位 »</button>
+      <div className="ft-who"><b>{sp?.seat}號</b> {mine ? '你' : sp?.name}<span>{SPEECH_LABEL[ph.data.kind]}</span></div>
+      <div className="ft-dial">
+        <svg viewBox="0 0 100 100" aria-hidden>
+          <circle cx="50" cy="50" r={r} className="ft-track" />
+          <circle cx="50" cy="50" r={r} className="ft-bar" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} transform="rotate(-90 50 50)" />
+        </svg>
+        <div className="ft-num">{over ? '時間到' : mmss}</div>
+      </div>
+      <p className="ft-msg">{over ? '請下一位玩家發言' : '計時只作提示，時間到唔會自動截斷'}</p>
+      <div className="ft-actions">
+        {canExtend ? <button type="button" className="btn btn-ghost" onClick={() => emit('extendSpeech')}>＋30 秒</button> : null}
+        {mine || isHost ? <button type="button" className={`btn btn-lg ${over ? 'btn-gold' : 'btn-moon'}`} onClick={next}>{mine ? '講完・下一位' : '下一位'}</button> : null}
+      </div>
     </div>
   );
 }
@@ -228,6 +278,8 @@ export default function Game({ state }: any) {
   const [sheet, setSheet] = useState(null);
   const [claimOpen, setClaimOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const face = !!game.settings?.faceToFace;
+  const assist = game.hasBots && !face;   // 宣告／文字 only with computer players, never at a 面殺 table
   const [notes, updateNote] = useNotes(game.id, you.id);
   useRoleTransitions(game, pr, mode);
   // Private night results land on the seat (好人 / 狼人 / the role), and the wolves see their kill's claw marks.
@@ -343,7 +395,7 @@ export default function Game({ state }: any) {
       <div className="app has-dock">
         <Scene mode={sceneMode(game)} />
         <div className="shell"><GameOver state={state} P={P} /></div>
-        <PttDock />
+        <PttDock noTalk={!!game.settings?.faceToFace} />
       </div>
     );
   }
@@ -417,7 +469,7 @@ export default function Game({ state }: any) {
                     <small>發言</small><span aria-hidden>«</span>
                   </button>
                 ) : null}
-                {game.hasBots ? <>
+                {assist ? <>
                 <button type="button" className={`strip-tab strip-chat ${chatOpen ? 'is-on' : ''}`} aria-expanded={chatOpen}
                   onClick={() => setChatOpen(o => !o)} aria-label="文字訊息">
                   <small>文字</small><span aria-hidden>«</span>
@@ -457,11 +509,13 @@ export default function Game({ state }: any) {
         </div>
       </div>
 
-      {game.hasBots && chatOpen && pr.kind === 'speaking' && introDone && !cine ? <ChatBox onClose={() => setChatOpen(false)} /> : null}
-      {game.hasBots && (claimOpen || mode?.claim) && pr.kind === 'speaking' && introDone && !cine
+      {assist && chatOpen && pr.kind === 'speaking' && introDone && !cine ? <ChatBox onClose={() => setChatOpen(false)} /> : null}
+      {assist && (claimOpen || mode?.claim) && pr.kind === 'speaking' && introDone && !cine
         ? <ClaimPanel game={game} mode={mode} setMode={setMode} onClose={() => setClaimOpen(false)} /> : null}
-      {ph?.type !== 'reveal' ? <PttDock /> : null}
+      {ph?.type !== 'reveal' ? <PttDock noTalk={face} /> : null}
       {ph?.type === 'reveal' && me ? <RoleReveal game={game} pr={pr} /> : null}
+      {face && ph?.type === 'speech' && ph.endsAt && introDone && !cine
+        ? <FaceTimer game={game} ph={ph} P={P} me={me} isHost={you.isHost} canExtend={canExtend} /> : null}
       <CinematicLayer game={game} playersById={P} />
 
       {sheet === 'role' && me ? <RoleSheet game={game} onClose={() => setSheet(null)} /> : null}
