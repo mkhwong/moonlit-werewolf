@@ -167,6 +167,7 @@ export class Game { [key: string]: any;
   // so quick decisions don't reveal who acted.
   completeSoon(ph, { min = 4000, delay = 0 } = {}) {
     if (ph.done) return;
+    if (ph.type === 'night') return; // night steps never end early (see nightStep)
     const actStart = ph.startedAt + ph.introMs;
     const at = Math.max(Date.now() + this.scaled(delay), actStart + this.scaled(min));
     clearTimeout(ph.soon);
@@ -292,9 +293,9 @@ export class Game { [key: string]: any;
   async nightStep(step) {
     if (step === 'beauty') this.charm = null;
     const actors = this.stepActors(step).map(p => p.id);
-    const real = actors.length > 0;
-    // Steps for dead/absent roles still run (for a random time) so nobody can tell.
-    const duration = real ? this.ms(this.settings.timers.night) : this.scaled(rnd(5500, 10000));
+    // Every night step runs for the full timer — whether the role acted fast, slowly, or is dead or
+    // absent — so nobody can read anything from how long a step took.
+    const duration = this.ms(this.settings.timers.night);
     // Night role call: the character transition when there is art for the role, else the tarot cut-in.
     const art = CHARACTER_ART[NIGHT_STEPS[step].role];
     const ph = await this.runPhase('night', { step }, {
@@ -1066,6 +1067,7 @@ export class Game { [key: string]: any;
     const step = ph.data.step;
     const n = this.night;
     if (!pv.actors.includes(me.id)) return;
+    if (a.type === 'ack') pv.acked = true; // result read: close eyes and wait out the step
     const ok = id => this.isAlive(id);
     const check = (mode) => {
       if (pv.result) { if (a.type === 'ack') this.completeSoon(ph); return; }
@@ -1339,6 +1341,7 @@ export class Game { [key: string]: any;
         ? { kill: wr.kill, note: wr.note } : null;
       return { kind: 'sleep', text: info.ambient, dead: !me.alive, wolfNotice: notice };
     }
+    if (pv.acked) return { kind: 'sleep', text: '你已完成行動，請閉眼，等待本回合時間結束…' };
     const n = this.night;
     const result = mode => ({ kind: 'result', target: pv.result.target, value: pv.result.value, mode });
     switch (step) {
