@@ -13,7 +13,7 @@ import { sfx } from '../audio';
 import { playSkillFx, playVerdict } from '../components/SkillFx';
 import { preloadItems } from '../components/LuckyItems';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt, throwBlocked } from '../components/Throw';
-import { PttDock, RoleFigure, VoiceCtx, SoundButton } from '../components/VoiceControls';
+import { PttDock, RoleFigure, VoiceCtx, SoundButton, useVoice } from '../components/VoiceControls';
 import { hasTransition, playTransition, preloadTransitions, playTurn, preloadTurns, TURN_FOR_STEP, TURN_FOR_SHOOTER } from '../transitions';
 import { ROLES, TEAM_NAME, NIGHT_STEPS, NO_BOOM, nightNumberLabel, dayNumberLabel } from '../../shared/roles';
 
@@ -279,6 +279,12 @@ export default function Game({ state }: any) {
   const [sheet, setSheet] = useState(null);
   const [claimOpen, setClaimOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  // 結束發言 unlocks only after you've pressed 按住說話 at least once this turn (if you have a working mic).
+  const vs = useVoice();
+  const [spokeIn, setSpokeIn] = useState(null);
+  useEffect(() => { if (vs.talking && ph?.type === 'speech') setSpokeIn(ph.id); }, [vs.talking, ph?.id]);
+  const mustSpeak = vs.on && vs.mic && !game.settings?.faceToFace;
+  const canEnd = !mustSpeak || spokeIn === ph?.id;
   const face = !!game.settings?.faceToFace;
   const assist = game.hasBots && !face;   // 宣告／文字 only with computer players, never at a 面殺 table
   const [notes, updateNote] = useNotes(game.id, you.id);
@@ -502,7 +508,10 @@ export default function Game({ state }: any) {
                   </button>
                 ) : null}
                 {pr.kind === 'speaking' && introDone && !cine ? (
-                  <button type="button" className="btn btn-moon btn-lg end-speech" onClick={() => act({ type: 'endSpeech' })}>結束{SPEECH_LABEL[pr.speechKind]}</button>
+                  <button type="button" className={`btn btn-moon btn-lg end-speech ${canEnd ? '' : 'is-locked'}`} disabled={!canEnd}
+                    title={canEnd ? '' : '請先按住說話'} onClick={() => act({ type: 'endSpeech' })}>
+                    結束{SPEECH_LABEL[pr.speechKind]}{canEnd ? null : <small>請先按住說話</small>}
+                  </button>
                 ) : null}
               </div>
             ) : null}

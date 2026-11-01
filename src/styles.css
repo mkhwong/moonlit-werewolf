@@ -1190,3 +1190,10 @@ html .wwt > .wwt-hint { display: none !important; }
 .snd-vol em { font-style: normal; width: 26px; text-align: right; font-variant-numeric: tabular-nums; opacity: .8; }
 .snd-item:not(.on) .snd-vol { opacity: .5; }
 .snd-item .snd-row { width: 100%; }
+/* 結束發言: half its old width, right-aligned above the mic, with breathing room from the mic bar */
+.end-row { justify-content: flex-end; margin-bottom: 12px; }
+.end-row > .btn { flex: 0 0 auto; min-height: 50px; }
+.end-row > .extend-speech { min-width: 118px; }
+.end-row > .end-speech { min-width: 25%; padding: 0 16px; font-size: 17px; }
+.end-speech.is-locked { opacity: .55; filter: grayscale(.6); display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.end-speech.is-locked small { font-size: 11px; font-weight: 400; }
