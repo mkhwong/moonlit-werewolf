@@ -49,7 +49,7 @@ async function worker() {
   while (idx < jobs.length) {
     const pack = jobs[idx++];
     try {
-      const r = await runOne(pack, structuredClone({ ...DEFAULT_SETTINGS, botLevel: LEVEL }));
+      const r = await runOne(pack, structuredClone({ ...DEFAULT_SETTINGS, botLevel: LEVEL, ...(pack.winMode ? { winMode: pack.winMode } : {}) }));
       stats[r.winner]++;
       stats.days += r.days; stats.booms += r.booms; stats.claims += r.claims;
     } catch (e) { failures++; console.error('FAIL', pack.name, e.message); }

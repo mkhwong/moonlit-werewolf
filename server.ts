@@ -191,7 +191,7 @@ class Room { [key: string]: any;
     this.game = new Game({
       roster,
       roleCounts: this.roleCounts(),
-      settings: structuredClone(this.config.settings),
+      settings: { ...structuredClone(this.config.settings), ...(this.config.mode === 'preset' && packById(this.config.packId)?.winMode ? { winMode: packById(this.config.packId).winMode } : {}) },
       notify: () => this.broadcast(),
     });
     // With computer players at the table, deal so the real players split evenly between
@@ -400,6 +400,7 @@ function sanitizeConfig(room, patch) {
   if (typeof patch.packId === 'string' && packById(patch.packId)) {
     if (c.packId !== patch.packId && !patch.copyToCustom) room.note(`房主選擇了「${packById(patch.packId).name}」`, 'setup');
     c.packId = patch.packId;
+    if (packById(patch.packId).winMode && !patch.copyToCustom) c.settings.winMode = packById(patch.packId).winMode; // e.g. 諸神黃昏 is always 屠城
     if (patch.copyToCustom) c.custom = { ...packById(patch.packId).roles };
   }
   if (patch.custom && typeof patch.custom === 'object') {
