@@ -7,23 +7,32 @@ import { useEffect, useState } from 'react';
 export const AUDIO_ENABLED = true;
 
 export type SoundMode = 'all' | 'sfx' | 'off';
-const KEY = 'ww-sound';
-let mode: SoundMode = 'all';
-try { const v = localStorage.getItem(KEY); if (v === 'all' || v === 'sfx' || v === 'off') mode = v; } catch { /* storage unavailable */ }
-const subs = new Set<(m: SoundMode) => void>();
+/** Three independent switches: 主持旁白 (narrator), 玩家語音 (other players' voices), 音效 (effects). */
+export type Channels = { host: boolean; player: boolean; sfx: boolean };
+const KEY = 'ww-sound', CKEY = 'ww-channels';
+let chan: Channels = { host: true, player: true, sfx: true };
+try {
+  const raw = localStorage.getItem(CKEY);
+  if (raw) chan = { ...chan, ...JSON.parse(raw) };
+  else { const v = localStorage.getItem(KEY); if (v === 'sfx') chan.host = false; if (v === 'off') { chan.host = false; chan.sfx = false; } }
+} catch { /* storage unavailable */ }
+const subs = new Set<(c: Channels) => void>();
 
-export const soundMode = () => mode;
-export function setSoundMode(m: SoundMode) {
-  mode = m;
-  try { localStorage.setItem(KEY, m); } catch { /* storage unavailable */ }
-  if (m !== 'all') { stopSpeech(); stopClips(); }
-  subs.forEach(f => f(m));
+export const channels = () => chan;
+export function onChannels(f: (c: Channels) => void) { subs.add(f); return () => { subs.delete(f); }; }
+export function setChannel(k: keyof Channels, on: boolean) {
+  chan = { ...chan, [k]: on };
+  try { localStorage.setItem(CKEY, JSON.stringify(chan)); } catch { /* storage unavailable */ }
+  if (!chan.host) { stopSpeech(); stopClips(); }
+  subs.forEach(f => f(chan));
 }
-export function useSoundMode(): SoundMode {
-  const [v, setV] = useState(mode);
+export function useChannels(): Channels {
+  const [v, setV] = useState(chan);
   useEffect(() => { subs.add(setV); return () => { subs.delete(setV); }; }, []);
   return v;
 }
+/** Old single-switch API, kept for callers that only care about narrator/effects. */
+export const soundMode = (): SoundMode => (chan.host ? 'all' : chan.sfx ? 'sfx' : 'off');
 
 // ───────────────────────── Web Audio ─────────────────────────
 let ctx: AudioContext | null = null;
@@ -140,7 +149,7 @@ const SFX: Record<string, (t: number) => void> = {
 
 /** Play a sound effect (if sound is on). */
 export function sfx(name: string, delay = 0) {
-  if (!AUDIO_ENABLED || mode === 'off') return;
+  if (!AUDIO_ENABLED || !chan.sfx) return;
   (window as any).__sfxLog?.push(name); // test hook
   const c = ac();
   if (!c || !SFX[name]) return;
@@ -216,7 +225,7 @@ function loadClip(key: string): Promise<AudioBuffer | null> {
   return p;
 }
 
-export function preloadClips(keys: string[]) { if (AUDIO_ENABLED && mode === 'all') keys.forEach(k => { loadClip(k); }); }
+export function preloadClips(keys: string[]) { if (AUDIO_ENABLED && chan.host) keys.forEach(k => { loadClip(k); }); }
 
 function stopClips() {
   for (const s of playing) { try { s.stop(); } catch { /* already stopped */ } }
@@ -225,13 +234,13 @@ function stopClips() {
 
 /** Narrate with the recorded clips, stitched in order. */
 export async function sayClips(keys: string[], text: string) {
-  if (!AUDIO_ENABLED || mode !== 'all' || !keys.length) return;
+  if (!AUDIO_ENABLED || !chan.host || !keys.length) return;
   (window as any).__sayLog?.push(text); // test hook
   const my = ++seq;
   stopClips(); stopSpeech();
   const c = ac();
   const bufs = c ? await Promise.all(keys.map(loadClip)) : [];
-  if (my !== seq || mode !== 'all') return;
+  if (my !== seq || !chan.host) return;
   // Play the pieces that exist (a missing joining word just leaves a short gap); if the main line itself
   // is missing, stay silent rather than switching to a different-sounding device voice.
   if (!c || !keys.some((k, i) => bufs[i] && !k.startsWith('seat.') && k !== 'f.and')) return;
@@ -252,7 +261,7 @@ export function unlockAudio() {
   if (!AUDIO_ENABLED) return;
   ac();
   try {
-    if (typeof speechSynthesis !== 'undefined' && mode === 'all') {
+    if (typeof speechSynthesis !== 'undefined' && chan.host) {
       const u = new SpeechSynthesisUtterance(' ');
       u.volume = 0;
       speechSynthesis.speak(u);

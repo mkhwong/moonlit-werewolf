@@ -13,7 +13,7 @@ import { sfx } from '../audio';
 import { playSkillFx, playVerdict } from '../components/SkillFx';
 import { preloadItems } from '../components/LuckyItems';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt, throwBlocked } from '../components/Throw';
-import { PttDock, RoleFigure, VoiceCtx } from '../components/VoiceControls';
+import { PttDock, RoleFigure, VoiceCtx, SoundButton } from '../components/VoiceControls';
 import { hasTransition, playTransition, preloadTransitions, playTurn, preloadTurns, TURN_FOR_STEP, TURN_FOR_SHOOTER } from '../transitions';
 import { ROLES, TEAM_NAME, NIGHT_STEPS, NO_BOOM, nightNumberLabel, dayNumberLabel } from '../../shared/roles';
 
@@ -396,7 +396,7 @@ export default function Game({ state }: any) {
       <div className="app has-dock">
         <Scene mode={sceneMode(game)} />
         <div className="shell"><GameOver state={state} P={P} /></div>
-        <PttDock noTalk={!!game.settings?.faceToFace} />
+        <PttDock sound noTalk={!!game.settings?.faceToFace} />
       </div>
     );
   }
@@ -425,7 +425,7 @@ export default function Game({ state }: any) {
             <div className="tb-day">{dayLabel}</div>
             <div className="tb-phase">{ph ? phaseLabel(ph, P) : ''}</div>
           </div>
-          <Timer ph={ph} />
+          <div className="tb-right"><SoundButton /><Timer ph={ph} /></div>
         </header>
 
         <nav className="toolbar" aria-label="遊戲選單">

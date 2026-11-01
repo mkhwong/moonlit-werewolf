@@ -425,7 +425,7 @@ export default function Lobby({ state, onLeave, notify }: any) {
         </div>
       </div>
 
-      <PttDock />
+      <PttDock sound />
 
       {specOpen && watchers.length ? (
         <section className="spec-pop" aria-label="觀眾">

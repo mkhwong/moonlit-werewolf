@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { voice, VoiceStatus } from '../voice';
 import Emblem from './Emblem';
 import { useSimpleFx, setSimpleFx } from '../prefs';
-import { useSoundMode, setSoundMode, unlockAudio, sfx, sayClips, AUDIO_ENABLED } from '../audio';
+import { useChannels, setChannel, unlockAudio, sfx, sayClips, AUDIO_ENABLED } from '../audio';
 import { ROLES, characterURL } from '../../shared/roles';
 
 // state.voice from the server: { members, talking: [{pid, channel}], canTalk, channel }
@@ -52,29 +52,54 @@ const CHANNEL_LABEL = { speech: '按住說話', wolves: '按住和狼隊友說�
  * Slim hold-to-talk bar pinned to the bottom of the screen (about 6% of its height),
  * so it is always within thumb reach without covering the table.
  */
-export function PttDock({ noTalk = false }: { noTalk?: boolean }) {
-  return <div className={`ptt-dock ${noTalk ? 'ptt-dock-notalk' : ''}`}><FxToggle />{AUDIO_ENABLED ? <SoundToggle /> : null}{noTalk ? null : <PushToTalk dock />}</div>;
+export function PttDock({ noTalk = false, sound = false }: { noTalk?: boolean; sound?: boolean }) {
+  return <div className={`ptt-dock ${noTalk ? 'ptt-dock-notalk' : ''}`}><FxToggle />{AUDIO_ENABLED && sound ? <SoundButton up /> : null}{noTalk ? null : <PushToTalk dock />}</div>;
 }
 
-const SOUND_NEXT = { all: 'sfx', sfx: 'off', off: 'all' } as const;
-const SOUND_LABEL = { all: '旁白', sfx: '音效', off: '靜音' };
+const CHANNEL_ROWS: [('host' | 'player' | 'sfx'), string, string][] = [
+  ['host', '主持旁白', '粵語法官報幕'],
+  ['player', '玩家語音', '其他玩家說話'],
+  ['sfx', '音效', '按鍵、提示、動畫音效'],
+];
 
-/** Bottom-left: 旁白 (sound effects + 粵語 narrator) → 音效 (effects only) → 靜音. */
-export function SoundToggle() {
-  const m = useSoundMode();
-  const next = () => { const n = SOUND_NEXT[m]; setSoundMode(n); unlockAudio(); if (n !== 'off') sfx('ding'); if (n === 'all') sayClips(['on'], '旁白已開啟。'); };
-  const title = m === 'all'
-    ? '音效＋粵語旁白；點一下只留音效'
-    : m === 'sfx' ? '只有音效；點一下靜音' : '靜音；點一下開啟音效與旁白';
+/** A round speaker button (beside the timer): opens three on/off switches — 主持旁白, 玩家語音, 音效. */
+export function SoundButton({ up = false }: { up?: boolean }) {
+  const c = useChannels();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (e: PointerEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
+  const on = [c.host, c.player, c.sfx].filter(Boolean).length;
+  const flip = (k: 'host' | 'player' | 'sfx') => {
+    const v = !c[k];
+    setChannel(k, v); unlockAudio();
+    if (v && k === 'sfx') sfx('ding');
+    if (v && k === 'host') sayClips(['on'], '旁白已開啟。');
+  };
   return (
-    <button type="button" className={`fx-toggle sound-toggle is-${m}`} onClick={next} title={title} aria-label={`聲音：${SOUND_LABEL[m]}`}>
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" />
-        {m === 'off' ? <path d="M17 9l5 6M22 9l-5 6" /> : <path d="M16.5 8.5a5 5 0 0 1 0 7" />}
-        {m === 'all' ? <path d="M19 6a8.5 8.5 0 0 1 0 12" /> : null}
-      </svg>
-      <span>{SOUND_LABEL[m]}</span>
-    </button>
+    <div className={`snd ${up ? 'snd-up' : ''}`} ref={ref}>
+      <button type="button" className={`snd-btn ${on === 0 ? 'is-off' : on < 3 ? 'is-part' : ''}`} onClick={() => setOpen(o => !o)}
+        aria-expanded={open} aria-label="聲音設定" title="聲音設定">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" />
+          {on === 0 ? <path d="M17 9l5 6M22 9l-5 6" /> : <><path d="M16.5 8.5a5 5 0 0 1 0 7" />{on === 3 ? <path d="M19 6a8.5 8.5 0 0 1 0 12" /> : null}</>}
+        </svg>
+      </button>
+      {open ? (
+        <div className="snd-pop" role="dialog" aria-label="聲音設定">
+          {CHANNEL_ROWS.map(([k, label, hint]) => (
+            <button key={k} type="button" className={`snd-row ${c[k] ? 'on' : ''}`} role="switch" aria-checked={c[k]} onClick={() => flip(k)}>
+              <span><b>{label}</b><small>{hint}</small></span>
+              <i className="snd-sw" aria-hidden />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

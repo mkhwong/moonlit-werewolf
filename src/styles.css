@@ -1158,3 +1158,24 @@ html .wwt > .wwt-hint { display: none !important; }
 .ft-chip.is-over { background: #3a1218; color: #ff8a92; border-color: #e0525a; }
 .ft-actions .btn { white-space: nowrap; }
 .ft-actions .btn-ghost { flex: 0 0 34%; }
+
+/* 聲音設定: round speaker button beside the timer */
+.tb-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.snd { position: relative; }
+.snd-btn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #e9c96a; background: rgba(18, 12, 24, .7);
+  border: 1.5px solid rgba(233, 201, 106, .7); box-shadow: 0 3px 10px rgba(0,0,0,.4); padding: 0; cursor: pointer; }
+.snd-btn.is-part { color: #e9c96a; border-style: dashed; }
+.snd-btn.is-off { color: #8d8296; border-color: #5b5166; }
+.snd-pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 70; width: 220px; padding: 6px; border-radius: 12px;
+  background: rgba(20, 14, 28, .97); border: 1px solid rgba(233, 201, 106, .45); box-shadow: 0 10px 30px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 2px; }
+.snd-up .snd-pop { top: auto; bottom: calc(100% + 8px); left: 0; right: auto; }
+.snd-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 8px; background: none; border: 0; color: #f3e9cf; text-align: left; cursor: pointer; }
+.snd-row:hover { background: rgba(255,255,255,.06); }
+.snd-row span { display: flex; flex-direction: column; }
+.snd-row b { font-size: 15px; }
+.snd-row small { font-size: 11px; opacity: .65; }
+.snd-sw { position: relative; width: 38px; height: 22px; border-radius: 11px; background: #3a3244; flex: none; transition: background .15s; }
+.snd-sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #cfc6d8; transition: transform .15s; }
+.snd-row.on .snd-sw { background: #c9a548; }
+.snd-row.on .snd-sw::after { transform: translateX(16px); background: #fff; }
+.tb-right .snd-pop { right: -60px; }

@@ -4,6 +4,7 @@
 // wolves at night are heard by wolves only. If a direct connection fails (strict NAT, some
 // mobile networks), audio for that pair falls back to 16 kHz μ-law through the game server.
 import { socket, call } from './socket';
+import { channels, onChannels } from './audio';
 
 type Peer = {
   pc: RTCPeerConnection;
@@ -73,6 +74,8 @@ class Voice {
     socket.on('vc:revoke', () => this.stopTalking(false));
     socket.on('vc:listeners', (ids: string[]) => { if (this.status.talking) this.route(ids); });
     socket.on('vc:pcm', ({ from, data }) => this.playRelay(from, data));
+    // 玩家語音 switch: mute/unmute everyone else's voice.
+    onChannels(c => { for (const p of this.peers.values()) p.audio.muted = !c.player; });
     socket.on('connect', () => { if (this.status.on) call('vc:join', { mic: this.status.mic }); });
     // Mobile browsers only allow audio after a tap: retry blocked players on the next one.
     if (typeof window !== 'undefined') {
@@ -157,6 +160,7 @@ class Voice {
     const pc = new RTCPeerConnection({ iceServers: this.ice });
     const audio = document.createElement('audio');
     audio.autoplay = true;
+    audio.muted = !channels().player;
     audio.setAttribute('playsinline', '');
     this.container().appendChild(audio);
     const peer: Peer = { pc, sender: null, audio, relay: FORCE_RELAY, connected: false, pending: [], timer: setTimeout(() => {
@@ -291,7 +295,7 @@ class Voice {
 
   playRelay(from: string, data: ArrayBuffer) {
     const ctx = this.ctx;
-    if (!ctx || !data) return;
+    if (!ctx || !data || !channels().player) return;
     this.relayIn++;
     const bytes = new Uint8Array(data);
     const buf = ctx.createBuffer(1, bytes.length, RELAY_RATE);
