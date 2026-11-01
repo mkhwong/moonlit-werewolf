@@ -1179,3 +1179,14 @@ html .wwt > .wwt-hint { display: none !important; }
 .snd-row.on .snd-sw { background: #c9a548; }
 .snd-row.on .snd-sw::after { transform: translateX(16px); background: #fff; }
 .tb-right .snd-pop { right: -60px; }
+
+.topbar .tb-right { margin-left: auto; }
+.snd-pop { width: 250px; }
+.snd-item { border-radius: 8px; padding-bottom: 6px; }
+.snd-item + .snd-item { border-top: 1px solid rgba(255,255,255,.08); }
+.snd-vol { display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 12px; color: #cdbf9c; }
+.snd-vol input { flex: 1; min-width: 0; accent-color: #c9a548; height: 22px; }
+.snd-vol input:disabled { opacity: .35; }
+.snd-vol em { font-style: normal; width: 26px; text-align: right; font-variant-numeric: tabular-nums; opacity: .8; }
+.snd-item:not(.on) .snd-vol { opacity: .5; }
+.snd-item .snd-row { width: 100%; }

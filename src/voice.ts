@@ -60,6 +60,7 @@ class Voice {
   stream: MediaStream | null = null;
   track: MediaStreamTrack | null = null;
   ctx: AudioContext | null = null;
+  relayGain: GainNode | null = null;
   capture: AudioWorkletNode | null = null;
   capBuf: number[] = [];
   playAt = new Map<string, number>();
@@ -75,7 +76,10 @@ class Voice {
     socket.on('vc:listeners', (ids: string[]) => { if (this.status.talking) this.route(ids); });
     socket.on('vc:pcm', ({ from, data }) => this.playRelay(from, data));
     // 玩家語音 switch: mute/unmute everyone else's voice.
-    onChannels(c => { for (const p of this.peers.values()) p.audio.muted = !c.player; });
+    onChannels(c => {
+      for (const p of this.peers.values()) { p.audio.muted = !c.player; p.audio.volume = c.vol.player; }
+      if (this.relayGain) this.relayGain.gain.value = c.vol.player;
+    });
     socket.on('connect', () => { if (this.status.on) call('vc:join', { mic: this.status.mic }); });
     // Mobile browsers only allow audio after a tap: retry blocked players on the next one.
     if (typeof window !== 'undefined') {
@@ -161,6 +165,7 @@ class Voice {
     const audio = document.createElement('audio');
     audio.autoplay = true;
     audio.muted = !channels().player;
+    audio.volume = channels().vol.player;
     audio.setAttribute('playsinline', '');
     this.container().appendChild(audio);
     const peer: Peer = { pc, sender: null, audio, relay: FORCE_RELAY, connected: false, pending: [], timer: setTimeout(() => {
@@ -303,7 +308,9 @@ class Voice {
     for (let k = 0; k < bytes.length; k++) ch[k] = muDecode(bytes[k]);
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    if (!this.relayGain || this.relayGain.context !== ctx) { this.relayGain = ctx.createGain(); this.relayGain.connect(ctx.destination); }
+    this.relayGain.gain.value = channels().vol.player;
+    src.connect(this.relayGain);
     const t = Math.max(ctx.currentTime + 0.12, this.playAt.get(from) || 0);
     src.start(t);
     this.playAt.set(from, t + buf.duration);

@@ -8,12 +8,12 @@ export const AUDIO_ENABLED = true;
 
 export type SoundMode = 'all' | 'sfx' | 'off';
 /** Three independent switches: 主持旁白 (narrator), 玩家語音 (other players' voices), 音效 (effects). */
-export type Channels = { host: boolean; player: boolean; sfx: boolean };
+export type Channels = { host: boolean; player: boolean; sfx: boolean; vol: { host: number; player: number; sfx: number } };
 const KEY = 'ww-sound', CKEY = 'ww-channels';
-let chan: Channels = { host: true, player: true, sfx: true };
+let chan: Channels = { host: true, player: true, sfx: true, vol: { host: 1, player: 1, sfx: 1 } };
 try {
   const raw = localStorage.getItem(CKEY);
-  if (raw) chan = { ...chan, ...JSON.parse(raw) };
+  if (raw) { const j = JSON.parse(raw); chan = { ...chan, ...j, vol: { ...chan.vol, ...(j.vol || {}) } }; }
   else { const v = localStorage.getItem(KEY); if (v === 'sfx') chan.host = false; if (v === 'off') { chan.host = false; chan.sfx = false; } }
 } catch { /* storage unavailable */ }
 const subs = new Set<(c: Channels) => void>();
@@ -25,6 +25,17 @@ export function setChannel(k: keyof Channels, on: boolean) {
   try { localStorage.setItem(CKEY, JSON.stringify(chan)); } catch { /* storage unavailable */ }
   if (!chan.host) { stopSpeech(); stopClips(); }
   subs.forEach(f => f(chan));
+}
+/** Volume 0–1 for one channel (the slider in the sound pop-up). */
+export function setVolume(k: 'host' | 'player' | 'sfx', v: number) {
+  chan = { ...chan, vol: { ...chan.vol, [k]: Math.max(0, Math.min(1, v)) } };
+  try { localStorage.setItem(CKEY, JSON.stringify(chan)); } catch { /* storage unavailable */ }
+  applyGains();
+  subs.forEach(f => f(chan));
+}
+function applyGains() {
+  if (master) master.gain.value = 0.55 * chan.vol.sfx;
+  if (voiceOut) voiceOut.gain.value = chan.vol.host;
 }
 export function useChannels(): Channels {
   const [v, setV] = useState(chan);
@@ -46,7 +57,7 @@ function ac(): AudioContext | null {
     if (!C) return null;
     ctx = new C();
     master = ctx.createGain();
-    master.gain.value = 0.55;
+    master.gain.value = 0.55 * chan.vol.sfx;
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -191,7 +202,7 @@ function speakDevice(text: string) {
     if (voice) u.voice = voice;
     u.rate = 1;
     u.pitch = 0.9;
-    u.volume = 1;
+    u.volume = chan.vol.host;
     speechSynthesis.speak(u);
   } catch { /* ignore */ }
 }
@@ -244,7 +255,7 @@ export async function sayClips(keys: string[], text: string) {
   // Play the pieces that exist (a missing joining word just leaves a short gap); if the main line itself
   // is missing, stay silent rather than switching to a different-sounding device voice.
   if (!c || !keys.some((k, i) => bufs[i] && !k.startsWith('seat.') && k !== 'f.and')) return;
-  if (!voiceOut) { voiceOut = c.createGain(); voiceOut.gain.value = 1; voiceOut.connect(c.destination); }
+  if (!voiceOut) { voiceOut = c.createGain(); voiceOut.gain.value = chan.vol.host; voiceOut.connect(c.destination); }
   let t = c.currentTime + 0.04;
   for (const b of bufs.filter(Boolean) as AudioBuffer[]) {
     const src = c.createBufferSource();

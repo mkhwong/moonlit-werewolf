@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { voice, VoiceStatus } from '../voice';
 import Emblem from './Emblem';
 import { useSimpleFx, setSimpleFx } from '../prefs';
-import { useChannels, setChannel, unlockAudio, sfx, sayClips, AUDIO_ENABLED } from '../audio';
+import { useChannels, setChannel, setVolume, unlockAudio, sfx, sayClips, AUDIO_ENABLED } from '../audio';
 import { ROLES, characterURL } from '../../shared/roles';
 
 // state.voice from the server: { members, talking: [{pid, channel}], canTalk, channel }
@@ -92,10 +92,20 @@ export function SoundButton({ up = false }: { up?: boolean }) {
       {open ? (
         <div className="snd-pop" role="dialog" aria-label="聲音設定">
           {CHANNEL_ROWS.map(([k, label, hint]) => (
-            <button key={k} type="button" className={`snd-row ${c[k] ? 'on' : ''}`} role="switch" aria-checked={c[k]} onClick={() => flip(k)}>
-              <span><b>{label}</b><small>{hint}</small></span>
-              <i className="snd-sw" aria-hidden />
-            </button>
+            <div key={k} className={`snd-item ${c[k] ? 'on' : ''}`}>
+              <button type="button" className={`snd-row ${c[k] ? 'on' : ''}`} role="switch" aria-checked={c[k]} onClick={() => flip(k)}>
+                <span><b>{label}</b><small>{hint}</small></span>
+                <i className="snd-sw" aria-hidden />
+              </button>
+              <label className="snd-vol">
+                <span aria-hidden>－</span>
+                <input type="range" min={0} max={100} step={5} value={Math.round(c.vol[k] * 100)} disabled={!c[k]} aria-label={`${label}音量`}
+                  onChange={e => setVolume(k, Number(e.target.value) / 100)}
+                  onPointerUp={() => { if (k === 'sfx') sfx('tap'); }} />
+                <span aria-hidden>＋</span>
+                <em>{Math.round(c.vol[k] * 100)}</em>
+              </label>
+            </div>
           ))}
         </div>
       ) : null}
