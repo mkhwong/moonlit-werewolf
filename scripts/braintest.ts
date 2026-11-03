@@ -3,7 +3,7 @@
 process.env.WW_TIME_SCALE ||= '0.02';
 const { Game } = await import('../server/game');
 const { botThink } = await import('../server/bots');
-const { PACKS, DEFAULT_SETTINGS, ROLES } = await import('../shared/roles');
+const { PACKS, DEFAULT_SETTINGS, ROLES, sizeDefaults } = await import('../shared/roles');
 
 const N = Number(process.argv[2] || 60);
 const LEVEL = process.argv[3] || 'normal';
@@ -49,7 +49,7 @@ async function worker() {
   while (idx < jobs.length) {
     const pack = jobs[idx++];
     try {
-      const r = await runOne(pack, structuredClone({ ...DEFAULT_SETTINGS, botLevel: LEVEL, ...(pack.winMode ? { winMode: pack.winMode } : {}) }));
+      const r = await runOne(pack, structuredClone({ ...DEFAULT_SETTINGS, ...sizeDefaults(pack.size), botLevel: LEVEL, ...(pack.winMode ? { winMode: pack.winMode } : {}) }));
       stats[r.winner]++;
       stats.days += r.days; stats.booms += r.booms; stats.claims += r.claims;
     } catch (e) { failures++; console.error('FAIL', pack.name, e.message); }

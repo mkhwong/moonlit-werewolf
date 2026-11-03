@@ -429,7 +429,7 @@ function sanitizeConfig(room, patch) {
   if (patch.custom && typeof patch.custom === 'object') {
     const next = {};
     for (const r of ROLE_ORDER) {
-      const v = Math.max(0, Math.min(r === 'werewolf' || r === 'villager' ? 8 : 1, Math.floor(Number(patch.custom[r]) || 0)));
+      const v = Math.max(0, Math.min(r === 'werewolf' || r === 'villager' || r === 'hunter' ? 8 : 1, Math.floor(Number(patch.custom[r]) || 0)));
       if (v) next[r] = v;
     }
     c.custom = next;

@@ -144,6 +144,8 @@ export const PACKS = [
     roles: { werewolf: 2, seer: 1, witch: 1, hunter: 1, villager: 2 } },
   { id: 'p8', name: '八人預女獵', size: 8, blurb: '三狼對三神，村民只有兩位，每一票都關鍵。',
     roles: { werewolf: 3, seer: 1, witch: 1, hunter: 1, villager: 2 } },
+  { id: 'p8h', name: '狼與獵人', size: 8, tag: '娛樂', blurb: '三隻普通狼對五個獵人，冇村民；每個獵人出局都可以開槍帶人（被毒除外）。',
+    roles: { werewolf: 3, hunter: 5 } },
   { id: 'p8r', name: '諸神黃昏', size: 8, tag: '屠城', winMode: 'all', blurb: '白狼王、狼王、惡靈騎士對五神，冇村民；屠城局，狼人要殺光所有好人先贏。',
     roles: { whiteWolfKing: 1, wolfKing: 1, spiritKnight: 1, seer: 1, witch: 1, hunter: 1, idiot: 1, guard: 1 } },
   { id: 'p9', name: '標準局', size: 9, blurb: '三狼三神三民，節奏明快。',

@@ -154,7 +154,7 @@ function SetupSheet({ room, you, counts, onClose }: any) {
         <div className="custom">
           <p className={`custom-total ${total === N ? 'ok' : ''}`}>角色共 {total} 個・座位 {N} 個</p>
           {ROLE_ORDER.map(r => {
-            const max = r === 'werewolf' || r === 'villager' ? 8 : 1;
+            const max = r === 'werewolf' || r === 'villager' || r === 'hunter' ? 8 : 1;
             return (
               <div key={r} className="custom-row">
                 <Emblem id={r} size={30} />

@@ -40,6 +40,8 @@ export function remember(game: any, pid: string, r: { target: string; value: str
 }
 
 // ───────── 狼隊戰術: jumper / stance, decided once (or taken from the human wolf's answer) ─────────
+const hasRole = (game: any, r: string) => game.players.some((p: any) => p.role === r);
+
 export function ensureWolfPlan(game: any) {
   const wp = game.wolfPlan;
   const level = levelOf(game);
@@ -47,7 +49,8 @@ export function ensureWolfPlan(game: any) {
   if (!wp.stance) {
     // No human answered (or all-bot pack): the bots decide for themselves.
     const pCharge = level === 'hard' ? 0.7 : 0.25;
-    wp.stance = rand01(game.id, 'stance') < pCharge && game.settings.sheriff ? 'charge' : 'lurk';
+    // Only fake a 預言家 when the setup actually has one.
+    wp.stance = rand01(game.id, 'stance') < pCharge && game.settings.sheriff && hasRole(game, 'seer') ? 'charge' : 'lurk';
   }
   if (wp.stance === 'charge' && !wp.jumper && !wp.rolesSet) {
     const bots = pack.filter((p: any) => p.bot && p.alive);
@@ -407,7 +410,11 @@ export function shotChoice(game: any, pid: string, pr: any) {
     return t ? { type: 'pick', target: t } : { type: 'skip' };
   }
   const t = E.rank.find(x => E.sus[x] >= 30 && pr.targets?.includes(x));
-  return t ? { type: 'pick', target: t } : (levelOf(game) === 'hard' ? { type: 'skip' } : { type: 'pick', target: pr.targets?.[0] });
+  if (t) return { type: 'pick', target: t };
+  // In gun-heavy setups (e.g. 狼與獵人) a shot at the most suspicious player beats holding fire.
+  const best = E.rank.find(x => pr.targets?.includes(x));
+  if ((game.composition?.hunter || 0) >= 2 && best) return { type: 'pick', target: best };
+  return levelOf(game) === 'hard' ? { type: 'skip' } : { type: 'pick', target: pr.targets?.[0] };
 }
 
 // ───────── day speech: claims + a line of table talk ─────────
