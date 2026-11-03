@@ -376,7 +376,7 @@ function resizeSetup(room, size) {
   const n = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, size));
   const cur = room.roleCounts();
   if (countRoles(cur) === n) return;
-  Object.assign(c.settings, sizeDefaults(n)); // ≤10 人 default 無警長 / 單爆; 11+ 有警長 / 雙爆 — host can still change it
+  Object.assign(c.settings, sizeDefaults(n)); // ≤9 人 無警長; 10 人 有警長 + 單爆; 11+ 有警長 + 雙爆 — host can still change it
   // Stay on presets while one exists for this size (also when we only fell back to 自訂 for a size without one).
   if (c.mode === 'preset' || c.autoCustom) {
     const pk = PACKS.find(p => p.size === n);

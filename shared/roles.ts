@@ -222,8 +222,8 @@ export const DEFAULT_SETTINGS = {
   timers: { night: 25, signup: 15, sheriffSpeech: 60, speech: 90, vote: 20, lastWords: 60, skill: 15, reveal: 15 },
 };
 
-/** Defaults that follow the table size: ≤10 人 無警長 (單爆), 11+ 人 有警長 + 雙爆吞警徽. */
-export const sizeDefaults = (n: number) => ({ sheriff: n > 10, boomRule: n > 10 ? 'double' : 'single' });
+/** Defaults that follow the table size: ≤9 人 無警長; 10 人 有警長 + 單爆吞警徽; 11+ 人 有警長 + 雙爆吞警徽. */
+export const sizeDefaults = (n: number) => ({ sheriff: n >= 10, boomRule: n >= 11 ? 'double' : 'single' });
 
 export const TIMER_FIELDS = [
   { key: 'night', label: '夜晚行動', min: 10, max: 90, step: 5 },
