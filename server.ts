@@ -351,7 +351,9 @@ function balanceHumanTeams(game) {
   const wolfSeats = game.players.filter(isWolf).length;
   const goodSeats = game.players.length - wolfSeats;
   let want = Math.floor(humans.length / 2);
-  if (humans.length % 2 && Math.random() < 0.5) want++;
+  // The odd human out is a wolf only as often as a random deal would make them one (e.g. 4 狼 / 12 = 33%),
+  // not a coin flip — otherwise a lone host plays 狼人 half the time.
+  if (humans.length % 2 && Math.random() < wolfSeats / game.players.length) want++;
   want = Math.max(humans.length - goodSeats, Math.min(wolfSeats, want));
   const swap = (a, b) => { [a.role, b.role] = [b.role, a.role]; };
   let guard = 50;
