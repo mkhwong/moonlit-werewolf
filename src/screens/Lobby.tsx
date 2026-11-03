@@ -79,11 +79,12 @@ function LobbySeats({ side, chairs, you, hostId, compact, talking, onSeat }: any
           );
         }
         const mine = p.id === you.id;
-        const cls = ['seat', mine && 'is-me', talking.has(p.id) && 'is-talking', !p.online && 'is-offline'].filter(Boolean).join(' ');
+        const ready = p.id !== hostId && p.ready; // 準備: a green ring round the seat
+        const cls = ['seat', mine && 'is-me', talking.has(p.id) && 'is-talking', !p.online && 'is-offline', ready && 'is-ready'].filter(Boolean).join(' ');
         const name = p.name || '輸入暱稱中…';
         return (
           <button key={seat} type="button" role="listitem" data-pid={p.id} className={cls} onClick={() => onSeat(seat, p)}
-            aria-label={`${seat}號 ${name}${p.id === hostId ? '，房主' : ''}${p.bot ? '，電腦' : ''}${p.online ? '' : '，離線'}`}>
+            aria-label={`${seat}號 ${name}${p.id === hostId ? '，房主' : ready ? '，已準備' : '，未準備'}${p.bot ? '，電腦' : ''}${p.online ? '' : '，離線'}`}>
             <span className="seat-medal">
               <Avatar name={p.name || '?'} size={size} />
               <span className="seat-num">{seat}</span>
@@ -94,8 +95,6 @@ function LobbySeats({ side, chairs, you, hostId, compact, talking, onSeat }: any
               {talking.has(p.id) ? <span className="seat-mic" title="說話中"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" /></svg></span> : null}
             </span>
             <span className="seat-name">{mine ? '我' : name}</span>
-            {p.id === hostId ? <span className="seat-ready is-host">房主</span>
-              : p.ready ? <span className="seat-ready">✓ 準備</span> : <span className="seat-ready is-wait">未準備</span>}
           </button>
         );
       })}
