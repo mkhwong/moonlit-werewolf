@@ -312,6 +312,8 @@ export default function Lobby({ state, onLeave, notify }: any) {
       ? (full ? '座位已滿，你會以觀眾身分收看這一局' : '你正在觀戰・點一個空位就能入座')
       : (full ? '人齊了，等待房主開始遊戲…' : '等待其他玩家入座…');
   const pct = Math.min(1, seated / N);
+  // 已準備 x / N on the host's button: seated players who pressed 準備 (the host and bots count as ready).
+  const readyN = room.players.filter(p => p.seat != null && p.name && (p.ready || p.bot || p.id === room.hostId)).length;
   const C = 2 * Math.PI * 19;
   const log = room.log || [];
   const fakeGame = { composition: counts, me: null, finished: true };
@@ -415,7 +417,9 @@ export default function Lobby({ state, onLeave, notify }: any) {
                   : <button type="button" className="btn btn-ghost btn-sm" onClick={() => call('stand')}>站起來觀戰</button>}
               </div>
               {host ? (
-                <button className="btn btn-shu" disabled={!!room.startProblem} onClick={start}>{room.startProblem && full ? room.startProblem : '開始遊戲'}</button>
+                <button className="btn btn-shu" disabled={!!room.startProblem} onClick={start}>
+                  {readyN < N ? `已準備 ${readyN} / ${N}` : room.startProblem || '開始遊戲'}
+                </button>
               ) : !watching ? (
                 <div className="lr-guest">
                   <button className={`btn ${you.ready ? 'btn-gold' : 'btn-shu'}`} onClick={() => call('ready', { on: !you.ready })} aria-pressed={!!you.ready}>
