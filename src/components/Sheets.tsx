@@ -190,15 +190,18 @@ export function NotesSheet({ game, notes, update, onClose, focus }: any) {
   );
 }
 
-export function HostSheet({ onClose, finished }: any) {
+export function HostSheet({ onClose, finished, skipBlock }: any) {
   const [armed, setArmed] = useState(false);
   return (
     <Sheet title="房主控制" onClose={onClose}>
       <div className="host-actions">
         {!finished ? (
-          <button className="btn btn-moon" onClick={() => { call('host', { cmd: 'skip' }); onClose(); }}>
-            跳過目前階段
-          </button>
+          <>
+            <button className="btn btn-moon" disabled={!!skipBlock} onClick={() => { call('host', { cmd: 'skip' }); onClose(); }}>
+              跳過目前階段
+            </button>
+            {skipBlock ? <p className="muted small">{skipBlock}</p> : null}
+          </>
         ) : null}
         <p className="muted small">玩家斷線或卡住時使用。跳過的行動視為放棄。</p>
         <button className={`btn ${armed ? 'btn-shu' : 'btn-danger'}`} onClick={() => { if (armed) { call('host', { cmd: 'end' }); onClose(); } else setArmed(true); }}>

@@ -321,6 +321,12 @@ export default function Game({ state }: any) {
   const [speechMin, setSpeechMin] = useState(false);
   // 延長發言: host or sheriff, if the room allows it.
   const isSheriff = !!(game.me && game.me.alive && game.players.find(p => p.id === game.me.id)?.sheriff);
+  // 房主跳過 is off while a real (online, human) player is doing their after-death action.
+  const skipBlock = (() => {
+    const deathAct = ph && (['skill', 'badge', 'wwkTake'].includes(ph.type) || (ph.type === 'speech' && ph.data?.kind === 'lastWords'));
+    const rp = deathAct ? room.players.find(x => x.id === ph.data?.pid) : null;
+    return rp && !rp.bot && rp.online ? `${rp.seat}號 正在進行出局後的行動（遺言／開槍／移交警徽），不能跳過` : null;
+  })();
   const canExtend = !!(ph?.type === 'speech' && ph.endsAt && introDone && !cine && game.settings?.allowExtend !== false
     && (you.isHost || isSheriff || ph.data.pid === game.me?.id) && (ph.data.ext || 0) < 3);
   // 票型: every vote result pops up and stays until 確認; tapping a vote line in the feed reopens it.
@@ -520,7 +526,7 @@ export default function Game({ state }: any) {
       {ph?.type !== 'reveal' ? <PttDock noTalk={face} /> : null}
       {ph?.type === 'reveal' && me ? <RoleReveal game={game} pr={pr} /> : null}
       {face && ph?.type === 'speech' && ph.endsAt && introDone && !cine
-        ? <FaceTimer game={game} ph={ph} P={P} me={me} isHost={you.isHost} canExtend={canExtend} /> : null}
+        ? <FaceTimer game={game} ph={ph} P={P} me={me} isHost={you.isHost && !skipBlock} canExtend={canExtend} /> : null}
       <CinematicLayer game={game} playersById={P} />
 
       {sheet === 'role' && me ? <RoleSheet game={game} onClose={() => setSheet(null)} /> : null}
@@ -531,7 +537,7 @@ export default function Game({ state }: any) {
       {sheet === 'throw' ? <ThrowFlyout game={game} onPick={it => { setThrowItem(it); setSheet(null); }} onClose={() => setSheet(null)} /> : null}
       <ThrowLayer />
       {voteRec ? <VoteRecord data={voteRec} players={P} onClose={() => setVoteRec(null)} /> : null}
-      {sheet === 'host' ? <HostSheet finished={game.finished} onClose={() => setSheet(null)} /> : null}
+      {sheet === 'host' ? <HostSheet finished={game.finished} skipBlock={skipBlock} onClose={() => setSheet(null)} /> : null}
     </div>
   );
 }

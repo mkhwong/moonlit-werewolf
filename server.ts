@@ -405,6 +405,16 @@ function resizeSetup(room, size) {
   room.note(`房主把人數改為 ${n} 人（自訂配置）`, 'setup');
 }
 
+/** The phase is a living human's after-death action — the host may not skip it. */
+function deathActionBlocker(room) {
+  const ph = room.game?.phase;
+  if (!ph || ph.done) return null;
+  const deathAct = ['skill', 'badge', 'wwkTake'].includes(ph.type) || (ph.type === 'speech' && ph.data?.kind === 'lastWords');
+  const pl = deathAct && ph.data?.pid ? room.get(ph.data.pid) : null;
+  if (!pl || pl.bot || !pl.online) return null;
+  return `${pl.seat}號 正在進行出局後的行動，不能跳過`;
+}
+
 function sanitizeConfig(room, patch) {
   const c = room.config;
   if (patch.mode === 'preset' || patch.mode === 'custom') { c.mode = patch.mode; c.autoCustom = false; }
@@ -668,7 +678,12 @@ io.on('connection', socket => {
   socket.on('host', (p, cb) => {
     const c = ctx(socket);
     if (!c || c.room.hostId !== c.player.id) return ack(cb)({ ok: false });
-    if (p?.cmd === 'skip' && c.room.game && c.room.status === 'playing') c.room.game.skipPhase();
+    if (p?.cmd === 'skip' && c.room.game && c.room.status === 'playing') {
+      // Never skip a real player's after-death action (遺言、開槍、白狼王帶人、移交警徽) while they're here.
+      const blocker = deathActionBlocker(c.room);
+      if (blocker) return ack(cb)({ ok: false, error: blocker });
+      c.room.game.skipPhase();
+    }
     else if (p?.cmd === 'end' || p?.cmd === 'lobby') c.room.backToLobby();
     ack(cb)({ ok: true });
   });
