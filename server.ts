@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Game, shuffle } from './server/game';
 import { botThink, botName } from './server/bots';
 import {
-  ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS,
+  ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS, sizeDefaults,
 } from './shared/roles';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -125,6 +125,12 @@ class Room { [key: string]: any;
     if (this.status !== 'lobby') return '遊戲已開始';
     p.seat = null;
     p.stood = true;
+    p.ready = false;
+    // A host who stands up to watch hands the room to the next seated player.
+    if (this.hostId === p.id) {
+      const next = this.seated().filter(o => !o.bot && o.online).sort((a, b) => a.seat - b.seat)[0];
+      if (next) { this.hostId = next.id; this.note(`${p.name || '房主'} 起身觀戰，${next.name} 成為房主`); }
+    }
     return null;
   }
 
@@ -171,6 +177,9 @@ class Room { [key: string]: any;
     const total = countRoles(counts);
     if (seated.length < total) return `還差 ${total - seated.length} 人入座`;
     if (seated.length < MIN_PLAYERS) return `至少需要 ${MIN_PLAYERS} 名玩家`;
+    // Everyone seated (except the host, whose 開始遊戲 is their ready) must press 準備.
+    const notReady = seated.filter(p => !p.bot && p.id !== this.hostId && !p.ready).length;
+    if (notReady) return `還有 ${notReady} 位玩家未準備`;
     if (total !== seated.length) return `角色共 ${total} 個，但目前有 ${seated.length} 名玩家入座`;
     const wolves = ROLE_ORDER.filter(r => ROLES[r].team === 'wolf').reduce((a, r) => a + (counts[r] || 0), 0);
     if (!wolves) return '至少需要一名狼人陣營角色';
@@ -239,6 +248,7 @@ class Room { [key: string]: any;
     if (this.game) this.game.terminate();
     this.game = null;
     this.status = 'lobby';
+    for (const p of this.players) p.ready = false; // a new round: everyone presses 準備 again
     this.broadcast();
   }
 
@@ -302,11 +312,11 @@ class Room { [key: string]: any;
         seatCount: this.seatCount(),
         log: this.log.slice(-8),
         players: [...this.players].sort((a, b) => (a.seat ?? 99) - (b.seat ?? 99))
-          .map(x => ({ id: x.id, name: x.name, seat: x.seat, online: x.online, bot: !!x.bot, pref: x.pref || null })),
+          .map(x => ({ id: x.id, name: x.name, seat: x.seat, online: x.online, bot: !!x.bot, pref: x.pref || null, ready: !!x.ready || !!x.bot })),
         config: this.config,
         startProblem: this.status === 'lobby' ? this.startProblem() : null,
       },
-      you: { id: p.id, name: p.name, seat: p.seat, isHost: p.id === this.hostId, pref: p.pref || null },
+      you: { id: p.id, name: p.name, seat: p.seat, isHost: p.id === this.hostId, pref: p.pref || null, ready: !!p.ready },
       game: this.game ? this.game.viewFor(p.id) : null,
       voice: this.voiceView(p),
     };
@@ -366,6 +376,7 @@ function resizeSetup(room, size) {
   const n = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, size));
   const cur = room.roleCounts();
   if (countRoles(cur) === n) return;
+  Object.assign(c.settings, sizeDefaults(n)); // ≤10 人 default 無警長 / 單爆; 11+ 有警長 / 雙爆 — host can still change it
   // Stay on presets while one exists for this size (also when we only fell back to 自訂 for a size without one).
   if (c.mode === 'preset' || c.autoCustom) {
     const pk = PACKS.find(p => p.size === n);
@@ -431,6 +442,7 @@ function sanitizeConfig(room, patch) {
     if (typeof s.randomSeats === 'boolean') t.randomSeats = s.randomSeats;
     if (typeof s.allowExtend === 'boolean') t.allowExtend = s.allowExtend;
     if (typeof s.faceToFace === 'boolean') t.faceToFace = s.faceToFace;
+    if (['single', 'double'].includes(s.boomRule)) t.boomRule = s.boomRule;
     if (['easy', 'normal', 'hard'].includes(s.botLevel)) t.botLevel = s.botLevel;
     if (s.timers && typeof s.timers === 'object') {
       for (const f of TIMER_FIELDS) {
@@ -572,6 +584,26 @@ io.on('connection', socket => {
     if (!err && c.player.name) c.room.note(`${c.player.name} 起身觀戰`);
     if (!err) c.room.broadcast();
     ack(cb)(err ? { ok: false, error: err } : { ok: true });
+  });
+
+  socket.on('ready', (p, cb) => {
+    const c = ctx(socket);
+    if (!c || c.room.status !== 'lobby' || c.player.seat == null) return ack(cb)({ ok: false });
+    c.player.ready = !!p?.on;
+    c.room.broadcast();
+    ack(cb)({ ok: true });
+  });
+
+  // 交房主: the host hands the room to another (human) player.
+  socket.on('giveHost', (p, cb) => {
+    const c = ctx(socket);
+    if (!c || c.room.hostId !== c.player.id) return ack(cb)({ ok: false });
+    const target = c.room.get(p?.id);
+    if (!target || target.bot || target.id === c.player.id) return ack(cb)({ ok: false, error: '不能交給這位玩家' });
+    c.room.hostId = target.id;
+    c.room.note(`${c.player.name} 把房主交給 ${target.name}`);
+    c.room.broadcast();
+    ack(cb)({ ok: true });
   });
 
   socket.on('shuffleSeats', (_p, cb) => {

@@ -217,9 +217,13 @@ export const DEFAULT_SETTINGS = {
   randomSeats: false,
   botLevel: 'normal',       // 電腦玩家水平: easy 新手 | normal 普通 | hard 高手
   allowExtend: true,
-  faceToFace: false,         // 面殺主持: 面對面遊戲，手機只負責抽牌、夜晚行動與輔助計時         // 房主／警長可延長發言 30 秒
-  timers: { night: 30, signup: 15, sheriffSpeech: 60, speech: 90, vote: 20, lastWords: 60, skill: 15, reveal: 15 },
+  faceToFace: false,
+  boomRule: 'double',        // 上警自爆: single = 單爆吞警徽, double = 雙爆吞警徽（第一次自爆推遲競選）         // 面殺主持: 面對面遊戲，手機只負責抽牌、夜晚行動與輔助計時         // 房主／警長可延長發言 30 秒
+  timers: { night: 25, signup: 15, sheriffSpeech: 60, speech: 90, vote: 20, lastWords: 60, skill: 15, reveal: 15 },
 };
+
+/** Defaults that follow the table size: ≤10 人 無警長 (單爆), 11+ 人 有警長 + 雙爆吞警徽. */
+export const sizeDefaults = (n: number) => ({ sheriff: n > 10, boomRule: n > 10 ? 'double' : 'single' });
 
 export const TIMER_FIELDS = [
   { key: 'night', label: '夜晚行動', min: 10, max: 90, step: 5 },

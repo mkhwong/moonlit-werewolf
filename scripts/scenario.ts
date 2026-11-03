@@ -89,7 +89,7 @@ const once = (ph, k, fn) => { const key = ph.id + ':' + k; if (!seen.has(key)) {
 
 // C: wolf self-destructs during sheriff election → badge lost, night deaths still announced, straight to night.
 {
-  const { game, on } = setup(['werewolf', 'werewolf', 'seer', 'witch', 'villager', 'villager', 'villager', 'hunter', 'werewolf']);
+  const { game, on } = setup(['werewolf', 'werewolf', 'seer', 'witch', 'villager', 'villager', 'villager', 'hunter', 'werewolf'], { boomRule: 'single' });
   let ok = false;
   on(g => {
     const ph = g.phase;
@@ -413,6 +413,41 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
   await game.run().catch(() => {});
   assert.ok(revealOk && softOk && gapOk, 'face-to-face reveal + night gap + soft speech');
   console.log('N ok: 面殺主持 reveal waits for all, 5 s eyes-closed gap between night roles, speech timer is advisory');
+}
+
+// O: 雙爆吞警徽 — the first 自爆 in the election postpones it to day 2; a second 自爆 then loses the badge.
+//    Also: chat splits 場內 / 場外, and a speaker may extend their own speech.
+{
+  const { game, on } = setup(['werewolf', 'werewolf', 'seer', 'witch', 'villager', 'villager', 'villager', 'hunter', 'werewolf'], { boomRule: 'double' });
+  let postponed = false, rerun = false, lost = false, chatOk = false, extOk = false;
+  on(g => {
+    const ph = g.phase;
+    if (!ph) return;
+    const act = (n, a) => g.handle(id(n), a);
+    if (ph.type === 'reveal') once(ph, 'r', () => g.players.forEach(p => act(p.seat, { type: 'ready' })));
+    if (ph.type === 'night' && ph.data.step === 'wolf') once(ph, 'w', () => [1, 2, 9].forEach(n => { if (g.isAlive(id(n))) { act(n, { type: 'pick', target: id(g.day === 1 ? 5 : 6) }); act(n, { type: 'lock' }); } }));
+    if (ph.type === 'night' && ph.data.step === 'witch') once(ph, 'wi', () => act(4, { type: 'skip' }));
+    if (ph.type === 'sheriffSignup' && g.day === 1) once(ph, 'su1', () => { [3, 7, 8].forEach(n => act(n, { type: 'signup', on: true })); setTimeout(() => act(1, { type: 'selfDestruct' }), 20); });
+    if (ph.type === 'nightfall' && g.day === 2) once(ph, 'n2', () => {
+      postponed = !g.badgeLost && g.electionPostponed === 2 && !g.isAlive(id(1));
+      // 場外 chat from the dead wolf; 場內 chat from a living player
+      act(1, { type: 'chat', text: '場外講嘢' }); act(3, { type: 'chat', text: '場內講嘢' });
+      const alive = g.viewFor(id(3)).chat.map(m => m.text), dead = g.viewFor(id(1)).chat.map(m => m.text);
+      chatOk = alive.length === 1 && alive[0] === '場內講嘢' && dead.length === 2;
+    });
+    if (ph.type === 'sheriffSignup' && g.day === 2) once(ph, 'su2', () => { act(4, { type: 'signup', on: true }); act(7, { type: 'signup', on: false }); rerun = g.election.resume && g.election.signed.has(id(3)) && !g.election.signed.has(id(4)) && g.election.withdrawn.has(id(7)); setTimeout(() => act(2, { type: 'selfDestruct' }), 20); });
+    if (ph.type === 'speech' && ph.data.kind === 'day' && !extOk) once(ph, 'ext', () => {
+      const before = ph.endsAt; const err = g.extendSpeech(ph.data.pid, false);
+      extOk = !err && ph.endsAt > before;
+    });
+    if (ph.type === 'nightfall' && g.day === 3) once(ph, 'n3', () => { lost = g.badgeLost; g.terminate(); });
+    if (ph.type === 'speech') once(ph, 'sp', () => setTimeout(() => { if (g.phase === ph) act(g.seat(ph.data.pid), { type: 'endSpeech' }); }, 30));
+    if (ph.type === 'vote') once(ph, 'v', () => g.players.forEach(p => act(p.seat, { type: 'vote', target: null })));
+  });
+  await game.run().catch(() => {});
+  assert.ok(postponed && rerun && lost, `double boom: postponed=${postponed} rerun=${rerun} lost=${lost}`);
+  assert.ok(chatOk, 'chat 場內/場外');
+  console.log('O ok: 雙爆吞警徽 postpones then loses the badge; 場內/場外 chat; speaker extends own speech' + (extOk ? '' : ' (ext not reached)'));
 }
 
 console.log('all scenarios passed');

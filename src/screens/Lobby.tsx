@@ -58,7 +58,7 @@ function copyText(text) {
 
 const TIME_PRESETS = {
   fast: { label: '快速', t: { night: 20, signup: 10, sheriffSpeech: 45, speech: 60, vote: 15, lastWords: 30 } },
-  std: { label: '標準', t: { night: 30, signup: 15, sheriffSpeech: 60, speech: 90, vote: 20, lastWords: 60 } },
+  std: { label: '標準', t: { night: 25, signup: 15, sheriffSpeech: 60, speech: 90, vote: 20, lastWords: 60 } },
   slow: { label: '從容', t: { night: 45, signup: 20, sheriffSpeech: 90, speech: 150, vote: 30, lastWords: 90 } },
 };
 const TIMER_NOTE = { night: '每個角色睜眼行動', signup: '首日報名競選警長', sheriffSpeech: '每位警長候選人', speech: '白天輪流發言', vote: '放逐與警長投票', lastWords: '出局玩家的最後發言' };
@@ -94,6 +94,8 @@ function LobbySeats({ side, chairs, you, hostId, compact, talking, onSeat }: any
               {talking.has(p.id) ? <span className="seat-mic" title="說話中"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" /></svg></span> : null}
             </span>
             <span className="seat-name">{mine ? '我' : name}</span>
+            {p.id === hostId ? <span className="seat-ready is-host">房主</span>
+              : p.ready ? <span className="seat-ready">✓ 準備</span> : <span className="seat-ready is-wait">未準備</span>}
           </button>
         );
       })}
@@ -170,6 +172,10 @@ function SetupSheet({ room, you, counts, onClose }: any) {
         <div className="rules">
           <div className="rule"><span>警長競選<small>警長放逐投票 1.5 票，並決定發言順序</small></span>
             <Seg label="警長競選" value={S.sheriff} onChange={v => setS({ sheriff: v })} options={[[true, '開'], [false, '關']]} /></div>
+          {S.sheriff ? (
+            <div className="rule"><span>上警自爆<small>單爆：一爆即吞警徽；雙爆：第一次自爆推遲到第二日再選（原候選人可退水），再爆先吞警徽</small></span>
+              <Seg label="上警自爆" value={S.boomRule || 'double'} onChange={v => setS({ boomRule: v })} options={[['single', '單爆吞警徽'], ['double', '雙爆吞警徽']]} /></div>
+          ) : null}
           <div className="rule"><span>勝利條件<small>屠邊：殺光神職或村民即勝；屠城：需殺光所有好人</small></span>
             <Seg label="勝利條件" value={S.winMode} onChange={v => setS({ winMode: v })} options={[['side', '屠邊'], ['all', '屠城']]} /></div>
           <div className="rule"><span>女巫自救</span>
@@ -384,7 +390,7 @@ export default function Lobby({ state, onLeave, notify }: any) {
                   <span>夜晚<b>{S.timers.night}秒</b></span><span>發言<b>{S.timers.speech}秒</b></span>
                   <span>投票<b>{S.timers.vote}秒</b></span><span>遺言<b>{S.timers.lastWords}秒</b></span>
                 </div>
-                <span className="lb-dim">{S.sheriff ? '有警長' : '無警長'}・{S.winMode === 'side' ? '屠邊' : '屠城'}・{S.allowExtend !== false ? '可延長發言' : '不可延長'}{S.faceToFace ? '・面殺主持' : ''}{cfg.testMode ? '・測試模式' : ''}</span>
+                <span className="lb-dim">{S.sheriff ? `有警長（${S.boomRule === 'single' ? '單爆' : '雙爆'}吞警徽）` : '無警長'}・{S.winMode === 'side' ? '屠邊' : '屠城'}・{S.allowExtend !== false ? '可延長發言' : '不可延長'}{S.faceToFace ? '・面殺主持' : ''}{cfg.testMode ? '・測試模式' : ''}</span>
               </div>
               {log.length ? (
                 <div className="lb-sec lb-log">
@@ -411,6 +417,21 @@ export default function Lobby({ state, onLeave, notify }: any) {
               </div>
               {host ? (
                 <button className="btn btn-shu" disabled={!!room.startProblem} onClick={start}>{room.startProblem && full ? room.startProblem : '開始遊戲'}</button>
+              ) : !watching ? (
+                <div className="lr-guest">
+                  <button className={`btn ${you.ready ? 'btn-gold' : 'btn-shu'}`} onClick={() => call('ready', { on: !you.ready })} aria-pressed={!!you.ready}>
+                    {you.ready ? '✓ 已準備（點擊取消）' : '準備'}
+                  </button>
+                  {cfg.testMode ? (
+                    <label className="pref lr-pref">
+                      <span>測試：我想當</span>
+                      <select value={you.pref || ''} onChange={e => call('setPref', { role: e.target.value || null })}>
+                        <option value="">隨機分配</option>
+                        {ROLE_ORDER.filter(r => counts[r]).map(r => <option key={r} value={r}>{ROLES[r].name}{counts[r] > 1 ? `（${counts[r]}）` : ''}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                </div>
               ) : cfg.testMode && !watching ? (
                 <label className="pref lr-pref">
                   <span>測試：我想當</span>
@@ -453,6 +474,9 @@ export default function Lobby({ state, onLeave, notify }: any) {
       {sheet && sheet.player ? (
         <Sheet title={`${sheet.player.seat}號 ${sheet.player.name || ''}`} onClose={() => setSheet(null)}>
           <p className="muted small">{sheet.player.bot ? '電腦玩家' : sheet.player.online ? '在線' : '離線'}</p>
+          {!sheet.player.bot ? (
+            <button className="btn btn-gold" onClick={async () => { const r = await call('giveHost', { id: sheet.player.id }); if (!r.ok && r.error) notify(r.error); setSheet(null); }}>交房主給 {sheet.player.name || '這位玩家'}</button>
+          ) : null}
           <button className="btn btn-danger" onClick={() => { call('kick', { id: sheet.player.id }); setSheet(null); }}>移出房間</button>
         </Sheet>
       ) : null}

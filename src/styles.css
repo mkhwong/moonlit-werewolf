@@ -1197,3 +1197,25 @@ html .wwt > .wwt-hint { display: none !important; }
 .end-row > .end-speech { min-width: 25%; padding: 0 16px; font-size: 17px; }
 .end-speech.is-locked { opacity: .55; filter: grayscale(.6); display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
 .end-speech.is-locked small { font-size: 11px; font-weight: 400; }
+
+/* 文字聊天 inside the judge panel */
+.jf-chat { color: var(--moon); }
+.jf-chat b { color: #9fc6ff; margin-right: 6px; font-family: var(--serif); }
+.jf-chat.jf-mine b { color: #c8e6a0; }
+.jf-out { color: #b9b0c4; opacity: .9; }
+.jf-out i { font-style: normal; font-size: 10px; padding: 0 5px; margin-right: 5px; border-radius: 3px; background: #4a3f58; color: #ddd3ea; vertical-align: 1px; }
+.judge-chat { display: flex; gap: 6px; padding: 6px; border-top: 1px solid rgba(201, 164, 92, .22); }
+.judge-chat input { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid rgba(201,164,92,.35); background: rgba(0,0,0,.35); color: var(--moon); font-size: 14px; }
+.judge-chat button { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(201,164,92,.6); background: rgba(201,164,92,.18); color: var(--gold); font-size: 13px; font-weight: 700; }
+.judge-chat button:disabled { opacity: .4; }
+.judge-chat.is-out input { border-color: #6a5d7c; background: rgba(40,30,55,.6); }
+
+.seat-mate-special { background: #14060c; box-shadow: 0 0 0 2px var(--c, #e0525a), 0 0 8px var(--c, #e0525a); padding: 1px; }
+
+/* 準備 */
+.seat-ready { font-size: 10px; font-weight: 800; line-height: 1; padding: 2px 5px; border-radius: 3px; color: #10240f; background: #8fd18a; white-space: nowrap; }
+.seat-ready.is-wait { color: #cfc6d8; background: rgba(255,255,255,.12); font-weight: 600; }
+.seat-ready.is-host { color: #2b1d05; background: #e9c96a; }
+.lr-guest { display: flex; flex-direction: column; gap: 6px; }
+.lr-guest .btn { width: 100%; }
+.seats-tight .seat-ready { font-size: 8px; padding: 1px 3px; }

@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Scene from '../components/Scene';
 import Seats from '../components/Seats';
 import JudgeFeed from '../components/JudgeFeed';
-import ActionPanel, { SPEECH_LABEL, SkillButtons, hasSkillButtons, ClaimPanel, ChatBox } from '../components/ActionPanel';
+import ActionPanel, { SPEECH_LABEL, SkillButtons, hasSkillButtons, ClaimPanel } from '../components/ActionPanel';
 import CinematicLayer, { FULL_CINE, VoteRecord } from '../components/Cinematic';
 import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
@@ -58,7 +58,7 @@ function judgeCall(ph, P) {
     case 'night': return `${NIGHT_STEPS[d.step].title}請睜眼`;
     case 'nightGap': return `${NIGHT_STEPS[d.step]?.title || ''}請閉眼`;
     case 'dawn': return '天亮了，請睜眼';
-    case 'sheriffSignup': return '警長競選開始，請決定是否上警';
+    case 'sheriffSignup': return d.resume ? '警長競選繼續，候選人可選擇退水' : '警長競選開始，請決定是否上警';
     case 'speech': return `請 ${P[d.pid]?.seat}號 ${P[d.pid]?.name} ${SPEECH_LABEL[d.kind]}`;
     case 'vote': return `${VOTE_LABEL[d.kind]}開始`;
     case 'speechDir': return '請警長選擇發言順序';
@@ -322,7 +322,7 @@ export default function Game({ state }: any) {
   // 延長發言: host or sheriff, if the room allows it.
   const isSheriff = !!(game.me && game.me.alive && game.players.find(p => p.id === game.me.id)?.sheriff);
   const canExtend = !!(ph?.type === 'speech' && ph.endsAt && introDone && !cine && game.settings?.allowExtend !== false
-    && (you.isHost || isSheriff) && (ph.data.ext || 0) < 3);
+    && (you.isHost || isSheriff || ph.data.pid === game.me?.id) && (ph.data.ext || 0) < 3);
   // 票型: every vote result pops up and stays until 確認; tapping a vote line in the feed reopens it.
   const [voteRec, setVoteRec] = useState(null);
   useEffect(() => { if (ph?.type === 'voteResult') setVoteRec(ph.data); }, [ph?.id]);
@@ -477,11 +477,7 @@ export default function Game({ state }: any) {
                   </button>
                 ) : null}
                 {assist ? <>
-                <button type="button" className={`strip-tab strip-chat ${chatOpen ? 'is-on' : ''}`} aria-expanded={chatOpen}
-                  onClick={() => setChatOpen(o => !o)} aria-label="文字訊息">
-                  <small>文字</small><span aria-hidden>«</span>
-                </button>
-                <button type="button" className={`strip-tab strip-claim ${claimOpen || mode?.claim ? 'is-on' : ''}`} aria-expanded={claimOpen}
+<button type="button" className={`strip-tab strip-claim ${claimOpen || mode?.claim ? 'is-on' : ''}`} aria-expanded={claimOpen}
                   onClick={() => { if (mode?.claim) setMode(null); setClaimOpen(o => !o); }} aria-label="宣告：跳身分、報查殺金水">
                   <small>宣告</small><span aria-hidden>«</span>
                 </button>
@@ -519,7 +515,6 @@ export default function Game({ state }: any) {
         </div>
       </div>
 
-      {assist && chatOpen && pr.kind === 'speaking' && introDone && !cine ? <ChatBox onClose={() => setChatOpen(false)} /> : null}
       {assist && (claimOpen || mode?.claim) && pr.kind === 'speaking' && introDone && !cine
         ? <ClaimPanel game={game} mode={mode} setMode={setMode} onClose={() => setClaimOpen(false)} /> : null}
       {ph?.type !== 'reveal' ? <PttDock noTalk={face} /> : null}

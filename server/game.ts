@@ -79,6 +79,8 @@ export class Game { [key: string]: any;
     this.privateLog = {};
     this.checks = {};
     this.speechLog = [];
+    this.chat = [];          // 文字聊天: in = 場內 (alive players), out = 場外 (dead players)
+    this.chatAt = {};
     this.wolfChat = [];
     this.history = [];
     this.phase = null;
@@ -451,7 +453,7 @@ export class Game { [key: string]: any;
     this.lastExiled = null;
     await this.cinematic('dawn', { day: this.day }, CINE.dawn);
     try {
-      if (this.day === 1 && this.settings.sheriff && !this.sheriffId && !this.badgeLost
+      if ((this.day === 1 || this.electionPostponed === this.day) && this.settings.sheriff && !this.sheriffId && !this.badgeLost
         && !this.evaluate(new Set(this.pendingDeaths.map(d => d.pid)))) {
         await this.sheriffElection();
       }
@@ -607,13 +609,14 @@ export class Game { [key: string]: any;
     if (!ph || ph.done || ph.type !== 'speech' || ph.endsAt == null) return '現在不是發言時間';
     const by = this.get(byPid);
     const isSheriff = !!(by && by.alive && this.sheriffId === byPid);
-    if (!isHost && !isSheriff) return '只有房主或警長可以延長發言';
+    const isSpeaker = byPid === ph.data.pid; // the speaker may extend their own speech too
+    if (!isHost && !isSheriff && !isSpeaker) return '只有發言者、房主或警長可以延長發言';
     if ((ph.data.ext || 0) >= MAX_EXTENSIONS) return `每段發言最多延長 ${MAX_EXTENSIONS} 次`;
     ph.data.ext = (ph.data.ext || 0) + 1;
     ph.endsAt += this.ms(30);
     clearTimeout(ph.timer);
     if (!ph.data.soft) ph.timer = setTimeout(() => ph.finish('timeout'), Math.max(0, ph.endsAt - Date.now()));
-    const who = isSheriff ? `警長 ${by.seat}號` : '房主';
+    const who = isSpeaker ? `${by.seat}號` : isSheriff ? `警長 ${by.seat}號` : '房主';
     const self = byPid === ph.data.pid;
     this.log(self ? `${who} 延長了自己的發言 30 秒` : `${who} 為 ${this.seat(ph.data.pid)}號 延長發言 30 秒`, 'info');
     this.notify();
@@ -636,11 +639,17 @@ export class Game { [key: string]: any;
   // ───────────────────────── sheriff election ─────────────────────────
   async sheriffElection() {
     const T = this.settings.timers;
-    this.election = { active: true, signed: new Set(), withdrawn: new Set(), stage: 'signup' };
+    // 雙爆吞警徽: the day after the first 自爆 the election resumes with yesterday's candidates.
+    const resume = this.electionPostponed === this.day && Array.isArray(this.carryCandidates);
+    this.election = { active: true, signed: new Set(resume ? this.carryCandidates.filter(id => this.isAlive(id)) : []), withdrawn: new Set(), stage: 'signup', resume };
     const E = this.election;
     const active = () => this.players.filter(p => E.signed.has(p.id) && !E.withdrawn.has(p.id)).map(p => p.id);
     try {
-      await this.runPhase('sheriffSignup', {}, {
+      if (resume) {
+        this.log(E.signed.size ? `警長競選繼續（昨日有人自爆）：候選人 ${this.seats([...E.signed])}，可選擇退水` : '昨日的候選人都已出局', 'badge');
+        if (!E.signed.size) { await this.electionEnd(null, '沒有候選人，警徽流失'); return; }
+      }
+      await this.runPhase('sheriffSignup', { resume }, {
         intro: CINE.badgeIntro, duration: this.ms(T.signup), interruptible: true,
       });
       E.stage = 'speech';
@@ -849,9 +858,20 @@ export class Game { [key: string]: any;
       const wwk = p.role === 'whiteWolfKing';
       const inElection = !!it.inElection;
       p.revealed = wwk ? 'whiteWolfKing' : 'wolfTeam';
-      if (inElection) this.badgeLost = true;
-      this.log(`${p.seat}號 ${wwk ? '白狼王' : '狼人'}自爆${inElection ? '，警徽流失' : ''}，白天結束`, 'boom', { boom: p.id });
-      await this.cinematic('selfDestructFx', { pid: p.id, wwk, badgeLost: inElection }, CINE.selfDestruct);
+      // 上警自爆: 單爆吞警徽 loses the badge at once; 雙爆吞警徽 postpones the election to the next day
+      // the first time, and only a second 自爆 during the (re-run) election loses it.
+      const postpone = inElection && this.settings.boomRule === 'double' && !this.electionBoomed;
+      const lost = inElection && !postpone;
+      if (inElection) this.electionBoomed = true;
+      if (postpone) {
+        this.electionPostponed = this.day + 1;
+        // The candidates still standing carry over to tomorrow's election (no new sign-ups, 退水 allowed).
+        const E = this.election;
+        this.carryCandidates = E ? [...E.signed].filter(id => !E.withdrawn.has(id) && id !== p.id) : [];
+      }
+      if (lost) this.badgeLost = true;
+      this.log(`${p.seat}號 ${wwk ? '白狼王' : '狼人'}自爆${lost ? '，警徽流失' : postpone ? '，警長競選推遲到明天' : ''}，白天結束`, 'boom', { boom: p.id });
+      await this.cinematic('selfDestructFx', { pid: p.id, wwk, badgeLost: lost }, CINE.selfDestruct);
       const deaths = [{ pid: p.id, cause: 'selfDestruct' }];
       if (wwk) {
         const ph = await this.runPhase('wwkTake', { pid: p.id }, {
@@ -903,6 +923,18 @@ export class Game { [key: string]: any;
     if (!t) return;
     this.speechLog.push({ day: this.day, pid: me.id, seat: me.seat, text: t, kind: ph.data.kind, at: Date.now() });
     if (this.speechLog.length > 400) this.speechLog.splice(0, this.speechLog.length - 400);
+  }
+
+  /** 文字聊天 at any time. Living players talk 場內; the dead talk 場外 — the living never see 場外. */
+  tryChat(me, text) {
+    if (this.settings.faceToFace || this.finished) return;
+    const t = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    if (!t) return;
+    const now = Date.now();
+    if (now - (this.chatAt[me.id] || 0) < 1000) return; // 1 message a second
+    this.chatAt[me.id] = now;
+    this.chat.push({ pid: me.id, seat: me.seat, text: t, out: !me.alive, day: this.day, time: this.time, at: now });
+    if (this.chat.length > 300) this.chat.splice(0, this.chat.length - 300);
   }
 
   /** 宣告 buttons: structured claims made during your own speech (election, day, PK or last words).
@@ -992,6 +1024,7 @@ export class Game { [key: string]: any;
       case 'duel': this.tryDuel(me, a.target); return this.notify();
       case 'withdraw': this.tryWithdraw(me); return this.notify();
       case 'say': this.trySay(me, a.text); return this.notify();
+      case 'chat': this.tryChat(me, a.text); return this.notify();
       case 'claim': this.tryClaim(me, a.claim); return this.notify();
       case 'wolfPlan': this.tryWolfPlan(me, a.stance); return this.notify();
       case 'wolfChat': this.tryWolfChat(me, a.text); return this.notify();
@@ -1006,7 +1039,10 @@ export class Game { [key: string]: any;
         break;
       case 'night': this.handleNight(me, ph, a); break;
       case 'sheriffSignup':
-        if (a.type === 'signup' && me.alive) {
+        if (this.election.resume) {
+          // Resumed election: candidates may only 退水; nobody new can sign up.
+          if (a.type === 'signup' && !a.on && this.election.signed.has(pid)) this.election.withdrawn.add(pid);
+        } else if (a.type === 'signup' && me.alive) {
           if (a.on) this.election.signed.add(pid); else this.election.signed.delete(pid);
         }
         break;
@@ -1279,7 +1315,8 @@ export class Game { [key: string]: any;
       case 'nightGap': return { kind: 'sleep', text: `${NIGHT_STEPS[ph.data.step]?.title || ''}請閉眼・下一位角色即將睜眼…` };
       case 'sheriffSignup':
         if (!me.alive) return deadInfo;
-        return { kind: 'signup', on: this.election.signed.has(me.id), canSelfDestruct: this.canBoom(me) };
+        return { kind: 'signup', on: this.election.signed.has(me.id), canSelfDestruct: this.canBoom(me),
+          resume: !!this.election.resume, withdrawn: this.election.withdrawn.has(me.id), cands: [...this.election.signed] };
       case 'speech': {
         const k = ph.data.kind;
         const extras = {
@@ -1493,6 +1530,8 @@ export class Game { [key: string]: any;
       hasBots: this.players.some(p => p.bot),
       privateLog: me ? (this.privateLog[me.id] || []) : [],
       speechLog: this.speechLog.slice(-150),
+      // The living only see 場內 chat; the dead (and spectators) see both.
+      chat: (me && me.alive && !this.finished ? this.chat.filter(m => !m.out) : this.chat).slice(-150),
       wolfChat: meWolf || wolfStepActor || all ? this.wolfChat : [],
       history: all ? this.history : null,
     };

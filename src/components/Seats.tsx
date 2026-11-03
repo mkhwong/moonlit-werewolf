@@ -57,7 +57,19 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
               <span className="seat-num">{p.seat}</span>
               {game.checks?.[p.id] ? <span className={`seat-verdict v-${game.checks[p.id]}`}>{game.checks[p.id] === 'wolf' ? '狼' : '好人'}</span> : null}
               {p.sheriff ? <span className="seat-badge" title="警長"><Emblem id="badge" size={20} /></span> : null}
-              {p.mate ? <span className="seat-mate" title="狼隊友"><Emblem id="werewolf" size={16} /></span> : null}
+              {(() => {
+                // Wolf marker on your teammates — and on your own seat when you are a wolf. Special wolves
+                // (狼王、白狼王、惡靈騎士…) wear their own emblem so they stand out from the 小狼.
+                const wr = p.mate ? p.role : (p.id === me?.id && ROLES[me?.role]?.team === 'wolf' ? me.role : null);
+                if (!wr) return null;
+                const special = wr !== 'werewolf';
+                return (
+                  <span className={`seat-mate ${special ? 'seat-mate-special' : ''}`} style={special ? { '--c': ROLES[wr]?.color } as any : undefined}
+                    title={p.id === me?.id ? `你是${ROLES[wr]?.name}` : `狼隊友（${ROLES[wr]?.name}）`}>
+                    <Emblem id={special ? wr : 'werewolf'} size={special ? 18 : 16} />
+                  </span>
+                );
+              })()}
               {online && online[p.id] === false ? <span className="seat-offline" title="離線" /> : null}
               {talking?.has(p.id) ? <span className="seat-mic" title="說話中" aria-label="說話中"><svg viewBox="0 0 24 24" width="12" height="12"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" /></svg></span> : null}
               {wolfPicks && wolfPicks[p.id] ? (

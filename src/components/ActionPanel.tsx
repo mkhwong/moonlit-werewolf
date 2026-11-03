@@ -203,6 +203,24 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
       break;
     }
     case 'signup':
+      if (pr.resume) {
+        // 雙爆吞警徽: yesterday's election resumes — candidates can only 退水.
+        const isCand = pr.cands?.includes(me?.id);
+        body = (
+          <>
+            <h3>警長競選繼續</h3>
+            <p>候選人：{(pr.cands || []).map(id => `${seat(id)}`).join('、')}・{isCand ? '你可以選擇退水，退水後不能投票' : '等待候選人決定是否退水'}</p>
+            {isCand ? (
+              <div className="row">
+                {pr.withdrawn
+                  ? <span className="signup-claimed">你已退水</span>
+                  : <button className="btn btn-moon" onClick={() => act({ type: 'signup', on: false })}>退水</button>}
+              </div>
+            ) : null}
+          </>
+        );
+        break;
+      }
       body = (
         <>
           <h3>是否上警？</h3>
