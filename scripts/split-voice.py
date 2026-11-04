@@ -44,7 +44,6 @@ def main():
         print(f"{ln['key']:<22} {d:5.2f}s  {ln['text']}{flag}")
     print(f'{n} clips from batch {bid}')
     # The game reads this list to know which lines have a recording.
-    import json
     keys = sorted(f[:-4] for f in os.listdir(out) if f.endswith('.mp3'))
     with open(os.path.join(out, 'clips.json'), 'w') as fh: json.dump(keys, fh, ensure_ascii=False)
 
