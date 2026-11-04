@@ -1771,7 +1771,8 @@ export class Game { [key: string]: any;
       else if (me && p.id === me.id) o.role = p.role;
       else if ((meWolf || me?.role === 'hiddenWolf' || (me?.role === 'wolfYounger' && this.youngerKnows)) && this.isPackWolf(p)) { o.role = p.role; o.mate = true; }
       else if (me?.role === 'wolfBrother' && p.role === 'wolfYounger') { o.role = p.role; o.mate = true; }
-      if (me && this.lovers?.includes(me.id) && this.lovers.includes(p.id) && p.id !== me.id) o.lover = true;
+      // ❤ on both linked seats: the lovers see each other (and themselves), 愛神 sees the pair, everyone at game end.
+      if (this.lovers?.includes(p.id) && (all || (me && (this.lovers.includes(me.id) || me.role === 'cupid')))) o.lover = true;
       return o;
     });
     const E = this.election;

@@ -45,7 +45,7 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
         ].filter(Boolean).join(' ');
         const claimedRole = claimView?.roleOf?.[p.id];
         const marks = (claimView?.marks?.[p.id] || []).slice(-2);
-        const mateRole = p.mate ? `，狼隊友（${ROLES[p.role]?.name}）` : '';
+        const mateRole = (p.mate ? `，狼隊友（${ROLES[p.role]?.name}）` : '') + (p.lover ? '，情侶' : '');
         const claimText = `${claimedRole ? `，自稱${ROLES[claimedRole]?.name}` : ''}${marks.map(m => `，被${m.by}號宣告${MARK_NAME[m.value]}`).join('')}`;
         const label = `${p.seat}號 ${p.name}${mateRole}${claimText}${wolfPicks && wolfPicks[p.id] ? `，狼隊目標（${wolfPicks[p.id].join('、')}號選擇）` : ''}${p.alive ? '' : '，已出局'}${p.sheriff ? '，警長' : ''}${tag ? `，筆記：${tag.label}` : ''}`;
         return (
@@ -57,7 +57,7 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
               <span className="seat-num">{p.seat}</span>
               {game.checks?.[p.id] ? <span className={`seat-verdict v-${game.checks[p.id]}`}>{game.checks[p.id] === 'wolf' ? '狼' : '好人'}</span> : null}
               {p.sheriff ? <span className="seat-badge" title="警長"><Emblem id="badge" size={20} /></span> : null}
-              {p.lover ? <span className="seat-lover" title="你的情侶">❤</span> : null}
+              {p.lover ? <span className="seat-lover" title={p.id === me?.id ? '你是情侶之一' : me?.lover ? '你的情侶' : '情侶'}>❤</span> : null}
               {game.silenced === p.id ? <span className="seat-silenced" title="今天被禁言">禁言</span> : null}
               {(() => {
                 // Wolf marker on your teammates — and on your own seat when you are a wolf. Special wolves
