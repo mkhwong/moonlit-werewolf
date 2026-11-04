@@ -1233,3 +1233,4 @@ html .wwt > .wwt-hint { display: none !important; }
 .end-col > .extend-speech { min-height: 50px; }
 .end-row > .end-speech { min-height: 50px; }
 .end-row > .end-speech { align-self: flex-end; }
+.spec-count { cursor: default; height: 26px; padding: 0 9px 0 7px; font-size: 12px; }

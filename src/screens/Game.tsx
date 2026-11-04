@@ -382,6 +382,8 @@ export default function Game({ state }: any) {
   };
 
   const speaking = ph?.type === 'speech' ? ph.data.pid : null;
+  const inGame = new Set(game.players.map(p => p.id));
+  const watchers = room.players.filter(p => !inGame.has(p.id) && p.name && p.online);
   const dayLabel = game.time === 'night' ? nightNumberLabel(Math.max(1, game.day)) : dayNumberLabel(game.day);
   const half = Math.ceil(game.players.length / 2);
   const left = game.players.slice(0, half);
@@ -434,7 +436,14 @@ export default function Game({ state }: any) {
               title="空刀：今晚不殺人（再按一次取消）">空刀</button>
           ) : null}
           <div className="tb-left">
-            <div className="tb-day">{dayLabel}</div>
+            <div className="lobby-title">
+              <div className="tb-day">{dayLabel}</div>
+              {/* 觀眾: everyone in the room who isn't playing this game */}
+              <span className="spec-btn spec-count" title={`觀眾 ${watchers.length} 人${watchers.length ? `：${watchers.map(w => w.name).join('、')}` : ''}`} aria-label={`觀眾 ${watchers.length} 人`}>
+                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="2.8" /></svg>
+                {watchers.length}
+              </span>
+            </div>
             <div className="tb-phase">{ph ? phaseLabel(ph, P) : ''}</div>
           </div>
           <div className="tb-right"><SoundButton /><Timer ph={ph} /></div>
