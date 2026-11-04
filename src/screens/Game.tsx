@@ -18,8 +18,8 @@ import { hasTransition, playTransition, preloadTransitions, playTurn, preloadTur
 import { ROLES, TEAM_NAME, NIGHT_STEPS, NO_BOOM, nightNumberLabel, dayNumberLabel } from '../../shared/roles';
 
 const VOTE_LABEL = { sheriff: '警長投票', sheriffPk: '警長 PK 投票', exile: '放逐投票', exilePk: '放逐 PK 投票' };
-const CAUSE = { wolf: '夜晚死亡', poison: '夜晚死亡', vote: '被放逐', shot: '被槍殺', selfDestruct: '自爆', duel: '決鬥', wwk: '被白狼王帶走' };
-const CAUSE_FULL = { dream: '夢遊出局', hunt: '被獵魔', reflect: '被惡靈反傷', merchant: '交易失敗', charm: '被魅惑殉情', wolf: '狼人擊殺', poison: '女巫毒殺', vote: '被放逐', shot: '被開槍帶走', selfDestruct: '自爆', duel: '決鬥出局', wwk: '被白狼王帶走' };
+const CAUSE = { love: '殉情', bomb: '被炸死', purify: '夜晚死亡', curse: '夜晚死亡', revenge: '夜晚死亡', wolf: '夜晚死亡', poison: '夜晚死亡', vote: '被放逐', shot: '被槍殺', selfDestruct: '自爆', duel: '決鬥', wwk: '被白狼王帶走' };
+const CAUSE_FULL = { love: '殉情', bomb: '被炸彈炸死', purify: '被純白之女淨化', curse: '被狼巫查殺', revenge: '被狼弟復仇', dream: '夢遊出局', hunt: '被獵魔', reflect: '被惡靈反傷', merchant: '交易失敗', charm: '被魅惑殉情', wolf: '狼人擊殺', poison: '女巫毒殺', vote: '被放逐', shot: '被開槍帶走', selfDestruct: '自爆', duel: '決鬥出局', wwk: '被白狼王帶走' };
 
 function phaseLabel(ph, P) {
   const d = ph.data || {};
@@ -237,17 +237,18 @@ function FaceTimer({ game, ph, P, me, isHost, canExtend }: any) {
 function GameOver({ state, P }: any) {
   const g = state.game;
   const wolfWin = g.winner === 'wolf';
+  const loveWin = g.winner === 'lovers';
   const [showLog, setShowLog] = useState(false);
   return (
     <div className={`over ${wolfWin ? 'over-wolf' : 'over-good'}`}>
       <div className="over-title">
-        <Emblem id={wolfWin ? 'werewolf' : 'seer'} size={84} />
-        <h1>{wolfWin ? '狼人陣營' : '好人陣營'}<span>勝利</span></h1>
+        <Emblem id={wolfWin ? 'werewolf' : loveWin ? 'cupid' : 'seer'} size={84} />
+        <h1>{wolfWin ? '狼人陣營' : loveWin ? '情侶（第三方）' : '好人陣營'}<span>勝利</span></h1>
       </div>
       <ul className="over-list">
         {g.players.map(p => {
           const R = ROLES[p.role];
-          const won = R.team === g.winner;
+          const won = loveWin ? !!p.third : !p.third && (p.team || R.team) === g.winner;
           return (
             <li key={p.id} className={`${won ? 'won' : ''} ${p.alive ? '' : 'dead'}`}>
               <Avatar name={p.name} seat={p.seat} size={36} dim={!p.alive} />
@@ -317,6 +318,7 @@ export default function Game({ state }: any) {
   useEffect(() => { if (!pr.canSelfDestruct) setBoomArmed(false); }, [pr.canSelfDestruct]);
 
   useEffect(() => { setSel(null); setMode(null); setClaimOpen(false); }, [ph?.id, pr.kind]);
+  useEffect(() => { setSel(null); }, [pr.myPick]); // two-pick steps (愛神、魔術師): start the second choice fresh
   // The speaking panel (text box + 結束發言) can be minimised to a « tab on the right; the choice sticks for later turns.
   const [speechMin, setSpeechMin] = useState(false);
   // 延長發言: host or sheriff, if the room allows it.
@@ -504,7 +506,7 @@ export default function Game({ state }: any) {
 
         {/* Bottom row: your character on the left, the action panel on the right. */}
         <div className="bottom-row">
-          {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} onClick={() => setSheet('role')} /> : null}
+          {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} revenge={game.me?.revenge} onClick={() => setSheet('role')} /> : null}
           <div className="bottom-right">
             {/* With 退水 stacked over ＋30 秒 the 輪到你發言 banner is dropped (結束發言 already says it's your turn). */}
             <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} speechMin={speechMin || (me?.alive && hasSkillButtons(pr, mode) && canExtend)} setSpeechMin={setSpeechMin} />

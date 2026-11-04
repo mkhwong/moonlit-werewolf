@@ -131,12 +131,13 @@ export function FxToggle() {
 }
 
 /** Your role's character, bottom-left beside the action panel (tap for your skills). */
-export function RoleFigure({ role, dead, onClick }: any) {
+export function RoleFigure({ role, dead, onClick, revenge }: any) {
   const R = role ? ROLES[role] : null;
   if (!R) return null;
-  const art = characterURL(role);
+  // 狼弟 switches to his 復仇 art once 狼兄 is out.
+  const art = revenge && role === 'wolfYounger' ? '/characters/wolf-younger-revenge.webp' : characterURL(role);
   return (
-    <button type="button" className={`role-fig ${dead ? 'is-dead' : ''}`} onClick={onClick} style={{ '--c': R.color } as any}
+    <button type="button" className={`role-fig ${dead ? 'is-dead' : ''} ${revenge && role === 'wolfYounger' ? 'is-revenge' : ''}`} onClick={onClick} style={{ '--c': R.color } as any}
       aria-label={`我的身分：${R.name}，查看技能`}>
       {art ? <img src={art} alt="" draggable={false} /> : <span className="role-fig-emblem"><Emblem id={role} size={72} /></span>}
     </button>

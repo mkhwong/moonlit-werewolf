@@ -7,7 +7,7 @@ import { Sheet, GuidePopup } from '../components/Sheets';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt } from '../components/Throw';
 import { sfx } from '../audio';
 import {
-  PACKS, ROLES, ROLE_ORDER, TEAM_NAME, TIMER_FIELDS, MIN_PLAYERS, MAX_PLAYERS, packById, countRoles,
+  PACKS, ROLES, ROLE_ORDER, TEAM_NAME, TIMER_FIELDS, MIN_PLAYERS, MAX_PLAYERS, packById, countRoles, seatCount,
 } from '../../shared/roles';
 
 // 等候室: laid out like the game room — seats down both sides, the 法官 board in the middle, the talk bar
@@ -111,7 +111,7 @@ function SetupSheet({ room, you, counts, onClose }: any) {
   const setCfg = patch => call('config', patch);
   const setS = patch => setCfg({ settings: patch });
   const packs = PACKS.filter(pk => pk.size === N);
-  const total = countRoles(counts);
+  const total = seatCount(counts);
   const seated = room.players.filter(p => p.seat != null).length;
   const bots = room.players.filter(p => p.bot).length;
   return (
@@ -255,7 +255,7 @@ export default function Lobby({ state, onLeave, notify }: any) {
   const S = cfg.settings;
   const N = room.seatCount;
   const counts = cfg.mode === 'preset' ? packById(cfg.packId)?.roles || {} : cfg.custom;
-  const total = countRoles(counts);
+  const total = seatCount(counts);
   const [sheet, setSheet] = useState(null);
   const [specOpen, setSpecOpen] = useState(false);
   const [throwItem, setThrowItem] = useState(null);

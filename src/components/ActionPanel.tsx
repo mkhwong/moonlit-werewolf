@@ -3,7 +3,7 @@ import Emblem from './Emblem';
 import { act } from '../socket';
 import { ItemImg, LuckyGift, flyItemToSeat } from './LuckyItems';
 import { playPotion, playSkillFx, fxForStep } from './SkillFx';
-import { ROLES, ROLE_ORDER, MECH_SKILL } from '../../shared/roles';
+import { ROLES, ROLE_ORDER, MECH_SKILL, characterURL } from '../../shared/roles';
 
 export const SPEECH_LABEL = { sheriff: '競選發言', sheriffPk: '競選 PK 發言', day: '發言', pk: 'PK 發言', lastWords: '遺言' };
 const CLAIM_TARGETED = {
@@ -120,6 +120,7 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
             <button className={`btn ${pr.danger ? 'btn-shu' : 'btn-moon'}`} disabled={!sel} onClick={() => { if (ph.type === 'night') playSkillFx(fxForStep(ph.data.step, pr, game), sel); act({ type: 'pick', target: sel }); }}>
               {sel ? `${pr.confirmLabel} ${seat(sel)}` : '請點選上方玩家'}
             </button>
+            {pr.myPick ? <button className="btn btn-ghost" onClick={() => act({ type: 'unpick' })}>重選</button> : null}
             {pr.skipLabel ? <button className="btn btn-ghost" onClick={() => act({ type: 'skip' })}>{pr.skipLabel}</button> : null}
           </div>
         </>
@@ -137,6 +138,25 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
             <button className="btn btn-shu" onClick={() => act({ type: 'wolfPlan', stance: 'charge' })}>衝鋒</button>
             <button className="btn btn-moon" onClick={() => act({ type: 'wolfPlan', stance: 'lurk' })}>倒鉤</button>
           </div>
+        </>
+      );
+      break;
+    case 'thief':
+      // 盜賊: two face-up bottom cards — take one (forced to take a wolf if both are wolves).
+      body = (
+        <>
+          <h3>選擇一張底牌</h3>
+          <p>{pr.mustWolf ? '兩張都是狼人陣營，必須選一張' : '選一張成為你的身分，或者不換，當村民'}</p>
+          <div className="thief-cards">
+            {(pr.cards || []).map((r, i) => (
+              <button key={i} type="button" className="thief-card" style={{ '--c': ROLES[r]?.color } as any} onClick={() => act({ type: 'card', idx: i })}>
+                {characterURL(r) ? <img src={characterURL(r)} alt="" /> : <Emblem id={r} size={48} />}
+                <b>{ROLES[r]?.name}</b>
+                <small>{ROLES[r]?.team === 'wolf' ? '狼人陣營' : '好人陣營'}</small>
+              </button>
+            ))}
+          </div>
+          {!pr.mustWolf ? <div className="row"><button className="btn btn-ghost" onClick={() => act({ type: 'skip' })}>不換，當村民</button></div> : null}
         </>
       );
       break;

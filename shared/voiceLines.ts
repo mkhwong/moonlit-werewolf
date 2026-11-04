@@ -33,6 +33,8 @@ export const FIXED: Record<string, string> = {
   'badge.torn': '警徽被撕毀。',
   'win.good': '好人陣營勝利。',
   'win.wolf': '狼人陣營勝利。',
+  'win.lovers': '情侶陣營勝利。',
+  bloodMoon: '血月升起，今晚好人嘅技能全部失效。',
   on: '旁白已開啟。',
   // night role calls
   'night.merchant': '奇蹟商人請開眼，揀一個幸運兒，送佢一樣技能。',
@@ -49,6 +51,18 @@ export const FIXED: Record<string, string> = {
   'night.lucky': '幸運兒請開眼，用奇蹟商人送你嘅技能。',
   'night.grave': '守墓人請開眼，睇吓尋日被放逐嘅人係咩陣營。',
   'night.mechAct': '機械狼請開眼，用你學到嘅技能。',
+  // new roles (v2.0)
+  'night.thief': '盜賊請開眼，睇吓兩張底牌，揀一張做你嘅身分。',
+  'night.cupid': '愛神請開眼，揀兩個人做情侶。',
+  'night.lovers': '情侶請開眼，認識你嘅另一半。',
+  'night.brothers': '狼兄、狼弟請開眼，互相確認。',
+  'night.halfBlood': '混血兒請開眼，揀你嘅榜樣。',
+  'night.magic': '魔術師請開眼，揀兩個人交換號碼牌。',
+  'night.fear': '夢魘請開眼，揀今晚要恐懼嘅人。',
+  'night.wolfWitch': '狼巫請開眼，揀一個人，睇佢嘅身分。',
+  'night.purity': '純白之女請開眼，揀一個人查驗。',
+  'night.silence': '禁言長老請開眼，揀明日要禁言嘅人。',
+  'night.revenge': '狼弟請開眼，為狼兄復仇。',
   // fragments for lines with several seat numbers
   'f.deaths': '昨晚死咗嘅係',
   'f.and': '同埋',
@@ -60,6 +74,7 @@ export const FIXED: Record<string, string> = {
   'f.duel': '決鬥。',
   'f.duelWolf': '係狼人，出局。',
   'f.duelGood': '係好人，騎士出局。',
+  'f.bomb': '炸彈爆炸，一齊炸死咗',
 };
 
 /** Lines with exactly one seat number — recorded for every seat as `<key>.<n>`. */
@@ -78,6 +93,8 @@ export const PER_SEAT: Record<string, (s: string) => string> = {
   boom: s => `${s}自爆，白天結束。`,
   charm: s => `${s}跟狼美人殉情。`,
   badgeTo: s => `警徽交咗俾${s}。`,
+  silence: s => `${s}被禁言，今日唔可以發言。`,
+  bomber: s => `${s}係炸彈人！`,
 };
 
 /** Every clip: key → text. */
@@ -89,7 +106,7 @@ export function allClips(): Record<string, string> {
 
 const PER_SEAT_TITLE: Record<string, string> = {
   seat: '座位號碼', 'speech.day': '請 N號 發言', 'speech.lastWords': '留遺言', 'speech.sheriff': '競選發言', 'speech.pk': '對決發言',
-  order: '發言順序', top: '得票最多', sheriff: '當選警長', exile: '被放逐', idiot: '白痴翻牌', skill: '發動技能', boom: '自爆', charm: '殉情', badgeTo: '移交警徽',
+  order: '發言順序', top: '得票最多', sheriff: '當選警長', exile: '被放逐', idiot: '白痴翻牌', skill: '發動技能', boom: '自爆', charm: '殉情', badgeTo: '移交警徽', silence: '被禁言', bomber: '炸彈人',
 };
 
 /** Recording batches for a voice service (one generation each, lines separated by pauses). */

@@ -38,6 +38,19 @@ const ROLES = [
   { id: 'miracle-merchant', zh: '奇蹟商人', en: 'Miracle Merchant', faction: 'god',      duration: 4400, tagline: '將一項技能贈予一名玩家' },
   { id: 'dreamweaver',      zh: '攝夢人',   en: 'Dreamweaver',      faction: 'god',      duration: 4400, tagline: '每晚選一名夢遊者，使其免疫夜間傷害' },
   { id: 'demon-hunter',     zh: '獵魔人',   en: 'Demon Hunter',     faction: 'god',      duration: 4200, tagline: '夜晚狩獵一名玩家：是狼則狼死，是好人則自己出局' },
+  { id: 'wolf-brother',     zh: '狼兄',     en: 'Elder Wolf',       faction: 'wolf',     duration: 4200, tagline: '首夜與狼弟相認，帶領狼群狩獵' },
+  { id: 'wolf-younger',     zh: '狼弟',     en: 'Younger Wolf',     faction: 'wolf',     duration: 4000, tagline: '不與狼群見面，只認得狼兄' },
+  { id: 'wolf-younger-revenge', zh: '狼弟・復仇', en: 'Vengeful Wolf', faction: 'wolf',  duration: 4200, tagline: '狼兄已倒下，單獨為他復仇' },
+  { id: 'blood-moon',       zh: '血月使徒', en: 'Blood Moon Apostle', faction: 'wolf',   duration: 4400, tagline: '自爆召喚血月，封印好人的技能' },
+  { id: 'nightmare',        zh: '夢魘',     en: 'Nightmare',        faction: 'wolf',     duration: 4400, tagline: '每晚恐懼一名玩家，令其無法行動' },
+  { id: 'wolf-witch',       zh: '狼巫',     en: 'Wolf Witch',       faction: 'wolf',     duration: 4400, tagline: '查驗好人的身分，查到純白之女即令其出局' },
+  { id: 'magician',         zh: '魔術師',   en: 'Magician',         faction: 'god',      duration: 4400, tagline: '交換兩名玩家的號碼牌，扭轉今晚的命運' },
+  { id: 'silencer',         zh: '禁言長老', en: 'Silent Elder',     faction: 'god',      duration: 4200, tagline: '封住一名玩家的口，明天不能發言' },
+  { id: 'white-lady',       zh: '純白之女', en: 'Lady in White',    faction: 'god',      duration: 4400, tagline: '查驗身分，查到狼人即將其淨化' },
+  { id: 'bomber',           zh: '炸彈人',   en: 'Bomber',           faction: 'god',      duration: 4200, tagline: '被放逐時，投票給他的人一同炸飛' },
+  { id: 'cupid',            zh: '愛神',     en: 'Cupid',            faction: 'god',      duration: 4200, tagline: '連結一對情侶，同生共死' },
+  { id: 'half-blood',       zh: '混血兒',   en: 'Half-Blood',       faction: 'villager', duration: 4200, tagline: '選擇榜樣，與他同一陣營' },
+  { id: 'thief',            zh: '盜賊',     en: 'Thief',            faction: 'villager', duration: 4000, tagline: '偷走一張底牌，換一個身分' },
 ];
 const ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
 
@@ -848,6 +861,205 @@ const FX = {
     [[0.491, 0.297], [0.551, 0.305]].forEach(([fx, fy], i) => c.burstAt(1500 + i * 30, 1, () => ({ kind: 'star', x: cx + (fx - 0.5) * CW, y: cy + (fy - 0.5) * CH, size: S * 0.03, life: 600, color: '#ffc46b', glow: true, vr: 0.05, fadePow: 1.5 })));
     c.P.every(950, 99999, () => { if (Math.random() < 0.35) c.P.add({ x: cx + rand(-CW * 0.6, CW * 0.6), y: cy + CH * rand(0, 0.55), vx: rand(-0.5, 0.5), vy: rand(-1.6, -0.6), size: rand(1, 2.4), life: rand(1400, 2200), color: pick(['#ffb347', '#ffd27a', '#ff8a3a']), glow: true, twinkle: rand(80, 160) }); });
     return { reveal: 1080 };
+  },
+
+  // ───────────── new roles ─────────────
+  'wolf-brother'(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 50% at 50% 45%, rgba(140,20,30,.55), rgba(20,4,8,.95) 70%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 500 });
+    c.rays(200, '200,40,50', 0.28);
+    // a heavy stomp: dust and rocks kick up as the card slams down
+    c.cardIn(520, 'drop');
+    c.shake(560, 1.6, 520);
+    c.flash(540, '#ffb0a0', 260, 0.35);
+    c.ring(560, { color: '#e0525a', to: 2.4, width: 7 });
+    c.burstAt(560, 26, () => { const d = rand(Math.PI * 1.05, Math.PI * 1.95), v = rand(4, 11); return { kind: 'rock', x: cx + rand(-S * 0.3, S * 0.3), y: cy + S * 0.42, vx: Math.cos(d) * v, vy: Math.sin(d) * v, ay: 0.4, size: rand(4, 9), vr: rand(-0.3, 0.3), color: pick(['#3a2a2a', '#5a3a36', '#2a1a1a']), life: rand(800, 1200) }; });
+    c.burstAt(560, 14, () => ({ kind: 'smoke', x: cx + rand(-S * 0.4, S * 0.4), y: cy + S * 0.45, vx: rand(-2, 2), vy: rand(-1, -0.2), size: rand(60, 110), grow: 0.8, rgb: '90,60,60', life: 1400, alpha: 0.45 }));
+    // twin crescents: the brothers' mark
+    [-1, 1].forEach((k, i) => {
+      const m = c.svg(S * 0.22, S * 0.22, `<svg viewBox="-50 -50 100 100" width="100%" height="100%" style="filter:drop-shadow(0 0 8px #ff5a5a)"><path d="M10,-40 A40,40 0 1,0 10,40 A30,30 0 1,1 10,-40 Z" fill="#ffb27a" transform="scale(${k},1)"/></svg>`, { left: `${cx + k * S * 0.55 - S * 0.11}px`, top: `${cy - S * 0.55}px`, opacity: 0 }, c.fx2);
+      c.A(m, [{ opacity: 0, transform: 'scale(.3) rotate(-90deg)' }, { opacity: 1, transform: 'scale(1) rotate(0)' }], { duration: 600, delay: 900 + i * 120, easing: 'cubic-bezier(.2,.9,.3,1.2)' });
+    });
+    return { reveal: 700 };
+  },
+
+  'wolf-younger'(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 55% at 50% 45%, rgba(70,90,120,.5), rgba(8,10,20,.95) 70%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 500 });
+    // paw prints trot across, then the cub hops in
+    for (let i = 0; i < 6; i++) {
+      const x = W * (0.1 + i * 0.15), y = cy + S * (i % 2 ? 0.48 : 0.56);
+      const paw = c.svg(S * 0.08, S * 0.08, `<svg viewBox="-20 -20 40 40" width="100%" height="100%"><g fill="#c9d4e6" opacity=".85"><ellipse cx="0" cy="6" rx="9" ry="8"/><circle cx="-9" cy="-6" r="4"/><circle cx="-3" cy="-11" r="4"/><circle cx="4" cy="-11" r="4"/><circle cx="10" cy="-6" r="4"/></g></svg>`, { left: `${x}px`, top: `${y}px`, opacity: 0 });
+      c.A(paw, [{ opacity: 0, transform: 'scale(.4)' }, { opacity: 1, transform: 'scale(1)', offset: 0.3 }, { opacity: 0 }], { duration: 1400, delay: 80 + i * 110 });
+    }
+    c.cardIn(720, 'rise');
+    c.ring(760, { color: '#9fc6ff', to: 1.8, width: 4 });
+    c.burstAt(760, 30, () => { const d = Math.random() * TAU, v = rand(2, 7); return { kind: 'star', x: cx, y: cy, vx: Math.cos(d) * v, vy: Math.sin(d) * v, ay: 0.06, size: rand(3, 6), life: rand(800, 1300), color: pick(['#c9d4e6', '#9fc6ff', '#ffffff']), glow: true, vr: 0.1 }; });
+    return { reveal: 860, titleStyle: 'wobble' };
+  },
+
+  'wolf-younger-revenge'(c) {
+    const { cx, cy, S, W, H } = c;
+    const bg = c.el('div', { inset: '0', background: 'radial-gradient(55% 50% at 50% 45%, rgba(190,10,20,.7), rgba(25,0,4,.97) 70%)' }, c.bgFx);
+    c.A(bg, [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 0.7, offset: 0.4 }, { opacity: 1 }], { duration: 900 });
+    c.P.every(0, 99999, () => { if (Math.random() < 0.5) c.P.add({ kind: 'smoke', x: rand(-40, W + 40), y: rand(H * 0.6, H + 30), vx: rand(-0.5, 0.5), vy: rand(-0.6, -0.2), size: rand(60, 120), grow: 0.6, rgb: pick(['120,10,20', '70,0,10']), life: rand(1800, 2600), alpha: 0.4, fadeIn: 400 }); });
+    c.claws(300, '#ff2a3a');
+    c.flash(420, '#ff3040', 300, 0.55);
+    c.claws(700, '#ff2a3a');
+    c.shake(720, 1.8, 560);
+    c.cardIn(760, 'glitch');
+    c.burstAt(780, 40, () => { const d = Math.random() * TAU, v = rand(3, 12); return { kind: 'spark', x: cx, y: cy, vx: Math.cos(d) * v, vy: Math.sin(d) * v, ay: 0.15, size: rand(2, 4), trail: 4, color: pick(['#ff3a4a', '#ff8a8a', '#ffd0d0']), life: rand(600, 1100), glow: true }; });
+    return { reveal: 880, titleStyle: 'shake' };
+  },
+
+  'blood-moon'(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'linear-gradient(#12030a, #2a0610 60%, #050102)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 });
+    // the blood moon rises behind the card
+    const moon = c.el('div', { left: `${cx - S * 0.55}px`, top: `${cy - S * 0.6}px`, width: `${S * 1.1}px`, height: `${S * 1.1}px`, borderRadius: '50%',
+      background: 'radial-gradient(circle at 40% 38%, #ff8a7a, #d4202e 45%, #7a0a14 75%)', boxShadow: '0 0 80px 30px rgba(220,30,40,.55)' }, c.bgFx);
+    c.A(moon, [{ transform: `translateY(${H * 0.5}px)`, opacity: 0.2 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 1100, delay: 100, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    c.P.every(300, 99999, () => { if (Math.random() < 0.45) c.P.add({ kind: 'smoke', x: rand(0, W), y: H + 20, vx: rand(-0.4, 0.4), vy: rand(-1.2, -0.5), size: rand(50, 100), grow: 0.5, rgb: '140,10,20', life: rand(2000, 3000), alpha: 0.35, fadeIn: 500 }); });
+    c.cardIn(1000, 'emerge');
+    c.flash(1000, '#ff6070', 320, 0.4);
+    c.burstAt(1050, 24, () => ({ kind: 'dot', x: cx + rand(-S * 0.6, S * 0.6), y: cy - S * 0.6, vx: rand(-0.3, 0.3), vy: rand(1, 3), ay: 0.08, size: rand(2, 4), color: '#c0101e', life: rand(1200, 1800) }));
+    return { reveal: 1150, titleStyle: 'whisper' };
+  },
+
+  nightmare(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 55% at 50% 45%, rgba(80,30,130,.6), rgba(6,2,14,.97) 72%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 600 });
+    c.P.every(0, 99999, () => { if (Math.random() < 0.6) c.P.add({ kind: 'smoke', x: rand(-40, W + 40), y: rand(0, H), vx: rand(-0.8, 0.8), vy: rand(-0.3, 0.3), size: rand(70, 150), grow: 0.5, rgb: pick(['90,40,150', '50,20,90']), life: rand(2000, 3000), alpha: 0.32, fadeIn: 600 }); });
+    // glowing eyes open in the fog before the phantom appears
+    const eyes = c.el('div', { left: `${cx - S * 0.16}px`, top: `${cy - S * 0.1}px`, width: `${S * 0.32}px`, height: `${S * 0.1}px`,
+      background: 'radial-gradient(50% 50% at 25% 50%,#fff 0 10%,#c77dff 30%,transparent 70%),radial-gradient(50% 50% at 75% 50%,#fff 0 10%,#c77dff 30%,transparent 70%)' }, c.fx2);
+    c.A(eyes, [{ opacity: 0, transform: 'scaleY(0)' }, { opacity: 1, transform: 'scaleY(1)', offset: 0.3 }, { opacity: 1, transform: 'scaleY(1)', offset: 0.8 }, { opacity: 0, transform: 'scale(1.8)' }], { duration: 1000, delay: 150 });
+    c.cardIn(950, 'ghost');
+    c.ring(950, { color: '#b47cff', to: 2.2, width: 5 });
+    return { reveal: 1050, titleStyle: 'whisper' };
+  },
+
+  'wolf-witch'(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(55% 50% at 50% 45%, rgba(130,30,110,.5), rgba(10,4,12,.96) 72%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 500 });
+    // a cursed lantern swings in and spills magenta smoke
+    const lx = cx + S * 0.42, ly = cy - S * 0.38;
+    const lantern = c.el('div', { left: `${lx - S * 0.05}px`, top: `${ly - S * 0.07}px`, width: `${S * 0.1}px`, height: `${S * 0.14}px`, borderRadius: '6px',
+      background: 'radial-gradient(circle, #ffd0f4, #ff3fb0 45%, #5a0a3a 80%)', boxShadow: '0 0 30px 10px rgba(255,60,180,.6)' }, c.fx2);
+    c.A(lantern, [{ opacity: 0, transform: 'rotate(-30deg)' }, { opacity: 1, transform: 'rotate(18deg)', offset: 0.4 }, { opacity: 1, transform: 'rotate(-8deg)', offset: 0.7 }, { opacity: 0, transform: 'rotate(0) scale(1.4)' }], { duration: 1300, delay: 100 });
+    c.P.every(200, 1400, () => c.P.add({ kind: 'smoke', x: lx, y: ly, vx: rand(-1.2, -0.2), vy: rand(-0.6, 0.4), size: rand(30, 60), grow: 1.2, rgb: '220,60,170', life: 1400, alpha: 0.45 }));
+    c.cardIn(1000, 'emerge');
+    c.flash(1000, '#ff7ad0', 300, 0.35);
+    c.burstAt(1020, 30, () => { const d = Math.random() * TAU, v = rand(2, 8); return { kind: 'star', x: cx, y: cy, vx: Math.cos(d) * v, vy: Math.sin(d) * v, size: rand(3, 6), life: rand(800, 1300), color: pick(['#ff7ad0', '#c77dff', '#ffd0f4']), glow: true, vr: 0.1 }; });
+    return { reveal: 1100, titleStyle: 'scramble' };
+  },
+
+  magician(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 55% at 50% 45%, rgba(120,40,160,.55), rgba(12,4,18,.96) 72%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 });
+    // stage curtains part…
+    for (const k of [-1, 1]) {
+      const cur = c.el('div', { top: '0', bottom: '0', [k < 0 ? 'left' : 'right']: '0', width: '52%',
+        background: 'repeating-linear-gradient(90deg, #7a1030 0 22px, #a01840 22px 44px)', boxShadow: 'inset 0 0 60px rgba(0,0,0,.7)' }, c.fg);
+      c.A(cur, [{ transform: 'translateX(0)' }, { transform: 'translateX(0)', offset: 0.35 }, { transform: `translateX(${k * 105}%)` }], { duration: 1100, delay: 0, easing: 'cubic-bezier(.6,0,.3,1)' });
+    }
+    // …two playing cards swap places in a puff
+    [-1, 1].forEach(k => {
+      const card = c.el('div', { left: `${cx - S * 0.09 + k * S * 0.5}px`, top: `${cy - S * 0.13}px`, width: `${S * 0.18}px`, height: `${S * 0.26}px`, borderRadius: '8px',
+        background: '#fdf6e0', border: '3px solid #c9a45c', boxShadow: '0 0 18px rgba(200,140,255,.7)', display: 'grid', placeItems: 'center', color: '#7a2a9a', fontSize: `${S * 0.12}px`, fontWeight: '900' }, c.fx2, k < 0 ? '☾' : '★');
+      c.A(card, [{ opacity: 0, transform: 'translateX(0) rotate(0)' }, { opacity: 1, offset: 0.15 }, { opacity: 1, transform: `translateX(${-k * S}px) rotate(${k * 360}deg)`, offset: 0.75 }, { opacity: 0, transform: `translateX(${-k * S}px) rotate(${k * 360}deg) scale(.4)` }], { duration: 1000, delay: 700, easing: 'cubic-bezier(.5,0,.3,1)' });
+    });
+    c.burstAt(1550, 20, () => ({ kind: 'smoke', x: cx + rand(-S * 0.3, S * 0.3), y: cy + rand(-S * 0.2, S * 0.2), vx: rand(-2, 2), vy: rand(-2, 1), size: rand(40, 80), grow: 1, rgb: '200,160,255', life: 900, alpha: 0.6 }));
+    c.cardIn(1550, 'zoom');
+    c.burstAt(1560, 34, () => { const d = Math.random() * TAU, v = rand(3, 10); return { kind: 'star', x: cx, y: cy, vx: Math.cos(d) * v, vy: Math.sin(d) * v, ay: 0.05, size: rand(3, 7), life: rand(900, 1400), color: pick(['#d9a8ff', '#ffd27a', '#ffffff']), glow: true, vr: 0.12 }; });
+    return { reveal: 1650, titleStyle: 'wobble' };
+  },
+
+  silencer(c) {
+    const { cx, cy, S } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 55% at 50% 45%, rgba(60,100,50,.55), rgba(6,14,6,.96) 72%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 500 });
+    // 「噓」: a hush ripples out and every sound particle freezes and falls
+    const shh = c.el('div', { left: `${cx - S * 0.3}px`, top: `${cy - S * 0.3}px`, width: `${S * 0.6}px`, height: `${S * 0.6}px`, display: 'grid', placeItems: 'center',
+      fontSize: `${S * 0.4}px`, fontWeight: '900', color: '#e8f6c8', textShadow: '0 0 24px #9fd36a' }, c.fx2, '噓');
+    c.A(shh, [{ opacity: 0, transform: 'scale(2)' }, { opacity: 1, transform: 'scale(1)', offset: 0.35 }, { opacity: 1, transform: 'scale(1)', offset: 0.7 }, { opacity: 0, transform: 'scale(.6)' }], { duration: 1000, delay: 150 });
+    [0, 180, 360].forEach(d => c.ring(350 + d, { color: '#b8e68a', to: 2.6, width: 3, dur: 900 }));
+    c.burstAt(200, 30, () => ({ kind: 'dot', x: cx + rand(-S, S), y: cy + rand(-S * 0.6, S * 0.2), vx: 0, vy: rand(0.5, 1.5), ay: 0.12, size: rand(2, 3), color: '#cfe8a8', life: rand(900, 1400) }));
+    c.cardIn(1050, 'blur');
+    return { reveal: 1150, titleStyle: 'whisper' };
+  },
+
+  'white-lady'(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 55% at 50% 40%, rgba(255,240,190,.75), rgba(60,50,90,.9) 60%, #0c0a18)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 700 });
+    c.rays(100, '255,230,160', 0.4);
+    // a pillar of holy light; feathers and motes drift down
+    const beam = c.el('div', { left: `${cx - S * 0.3}px`, top: '0', width: `${S * 0.6}px`, height: '100%', background: 'linear-gradient(90deg, transparent, rgba(255,250,220,.7), transparent)' }, c.bgFx);
+    c.A(beam, [{ opacity: 0, transform: 'scaleX(.1)' }, { opacity: 1, transform: 'scaleX(1)', offset: 0.5 }, { opacity: 0.6, transform: 'scaleX(1.2)' }], { duration: 1200, delay: 200 });
+    c.P.every(300, 99999, () => { if (Math.random() < 0.5) c.P.add({ kind: 'star', x: rand(0, W), y: -10, vx: rand(-0.3, 0.3), vy: rand(0.6, 1.4), size: rand(2, 5), life: rand(2500, 3500), color: pick(['#fff6d0', '#ffe9a0', '#ffffff']), glow: true, vr: 0.04 }); });
+    c.cardIn(900, 'blur');
+    c.flash(900, '#fffbe8', 400, 0.6);
+    c.ring(920, { color: '#ffe9a0', to: 2.2, width: 5 });
+    return { reveal: 1000, titleStyle: 'float' };
+  },
+
+  bomber(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 55% at 50% 45%, rgba(110,50,10,.6), rgba(14,6,2,.97) 72%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 });
+    // a fuse burns across the screen…
+    const fuse = c.el('div', { left: '0', top: `${cy + S * 0.5}px`, height: '4px', width: `${cx}px`, background: '#6a4a2a' }, c.fx);
+    c.A(fuse, [{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 0 100%)' }], { duration: 900, delay: 100, easing: 'linear' });
+    c.P.every(100, 1000, t => c.P.add({ kind: 'spark', x: (t - 100) / 900 * cx, y: cy + S * 0.5, vx: rand(-2, 2), vy: rand(-4, -1), ay: 0.2, size: 2, trail: 3, color: pick(['#ffd27a', '#ff8a3a', '#ffffff']), life: 400, glow: true }));
+    // …BOOM
+    c.flash(1000, '#fff3d0', 420, 0.95);
+    c.shake(1000, 2.4, 700);
+    c.ring(1000, { color: '#ff9a3a', to: 3, width: 9, dur: 800 });
+    c.burstAt(1000, 60, () => { const d = Math.random() * TAU, v = rand(4, 16); return { kind: pick(['spark', 'spark', 'glow']), x: cx, y: cy, vx: Math.cos(d) * v, vy: Math.sin(d) * v, ay: 0.15, drag: 0.02, size: rand(2, 5), trail: 4, rgb: '255,150,60', color: pick(['#ffb347', '#ff6a2a', '#ffe08a']), life: rand(700, 1400), glow: true }; });
+    c.burstAt(1000, 22, () => ({ kind: 'smoke', x: cx + rand(-30, 30), y: cy + rand(-30, 30), vx: rand(-3, 3), vy: rand(-2.5, 0.5), size: rand(60, 120), grow: 1.2, rgb: pick(['80,60,50', '130,110,100']), life: 1600, alpha: 0.55 }));
+    c.cardIn(1050, 'pop');
+    return { reveal: 1150, titleStyle: 'shake' };
+  },
+
+  cupid(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 55% at 50% 45%, rgba(255,120,170,.6), rgba(40,6,24,.95) 72%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 500 });
+    c.rays(200, '255,160,200', 0.3);
+    // an arrow flies through two hearts and binds them
+    const arrow = c.el('div', { left: '0', top: `${cy - S * 0.3}px`, width: `${S * 0.5}px`, height: '6px', background: 'linear-gradient(90deg, #f4c6d8, #e0a030)', borderRadius: '3px', boxShadow: '0 0 12px #ff8ab8' }, c.fx2);
+    c.A(arrow, [{ transform: `translateX(${-S * 0.6}px)`, opacity: 1 }, { transform: `translateX(${W + S * 0.2}px)`, opacity: 1 }], { duration: 650, delay: 250, easing: 'cubic-bezier(.5,0,.5,1)' });
+    [-1, 1].forEach((k, i) => {
+      const h = c.el('div', { left: `${cx + k * S * 0.38 - S * 0.08}px`, top: `${cy - S * 0.38}px`, width: `${S * 0.16}px`, height: `${S * 0.16}px`, display: 'grid', placeItems: 'center', fontSize: `${S * 0.14}px`, color: '#ff4f8f', textShadow: '0 0 16px #ff8ab8' }, c.fx2, '❤');
+      c.A(h, [{ opacity: 0, transform: 'scale(.2)' }, { opacity: 1, transform: 'scale(1.3)', offset: 0.5 }, { opacity: 1, transform: `translateX(${-k * S * 0.3}px) scale(1)` }], { duration: 800, delay: 450 + i * 80, easing: 'cubic-bezier(.2,.9,.3,1.2)' });
+      c.A(h, [{ opacity: 1 }, { opacity: 0 }], { duration: 300, delay: 1350, fill: 'forwards' });
+    });
+    c.cardIn(1250, 'pop');
+    c.burstAt(1260, 30, () => { const d = Math.random() * TAU, v = rand(2, 8); return { kind: 'heart', x: cx, y: cy, vx: Math.cos(d) * v, vy: Math.sin(d) * v - 1, ay: 0.06, size: rand(5, 10), life: rand(1000, 1600), color: pick(['#ff4f8f', '#ff8ab8', '#ffd0e0']), vr: rand(-0.1, 0.1) }; });
+    return { reveal: 1350, titleStyle: 'wobble' };
+  },
+
+  'half-blood'(c) {
+    const { cx, cy, S, W, H } = c;
+    // the screen splits: village green on one side, wolf grey on the other
+    const L = c.el('div', { left: '0', top: '0', bottom: '0', width: '50%', background: 'linear-gradient(90deg, #0e2a14, #2d5a2a)' }, c.bgFx);
+    const R = c.el('div', { right: '0', top: '0', bottom: '0', width: '50%', background: 'linear-gradient(90deg, #3a3a48, #12121a)' }, c.bgFx);
+    c.A(L, [{ transform: 'translateX(-100%)' }, { transform: 'none' }], { duration: 600, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    c.A(R, [{ transform: 'translateX(100%)' }, { transform: 'none' }], { duration: 600, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    const seam = c.el('div', { left: `${cx - 2}px`, top: '0', width: '4px', height: '100%', background: '#ffe9a0', boxShadow: '0 0 20px 6px rgba(255,220,140,.7)' }, c.fx2);
+    c.A(seam, [{ opacity: 0, transform: 'scaleY(0)' }, { opacity: 1, transform: 'scaleY(1)', offset: 0.5 }, { opacity: 0 }], { duration: 900, delay: 500 });
+    c.cardIn(900, 'glitch');
+    c.burstAt(920, 30, () => { const left = Math.random() < 0.5, v = rand(2, 7); return { kind: 'dot', x: cx, y: cy + rand(-S * 0.4, S * 0.4), vx: left ? -v : v, vy: rand(-1, 1), size: rand(2, 4), color: left ? '#9be07a' : '#b8b8c8', life: rand(700, 1200), glow: true }; });
+    return { reveal: 1000, titleStyle: 'scramble' };
+  },
+
+  thief(c) {
+    const { cx, cy, S, W, H } = c;
+    c.A(c.el('div', { inset: '0', background: 'radial-gradient(60% 55% at 50% 45%, rgba(110,30,80,.5), rgba(10,4,10,.97) 72%)' }, c.bgFx), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 });
+    // a spotlight sweeps; the card is snatched in from the dark with coins scattering
+    const spot = c.el('div', { left: `${cx - S * 0.5}px`, top: `${cy - S * 0.6}px`, width: `${S}px`, height: `${S * 1.2}px`, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,240,200,.35), transparent)' }, c.bgFx);
+    c.A(spot, [{ transform: `translateX(${-W * 0.5}px)` }, { transform: `translateX(${W * 0.3}px)`, offset: 0.5 }, { transform: 'translateX(0)' }], { duration: 1000, delay: 0, easing: 'ease-in-out' });
+    c.cardIn(700, 'shadow');
+    c.burstAt(1200, 26, () => { const d = rand(Math.PI * 1.1, Math.PI * 1.9), v = rand(4, 10); return { kind: 'coin', x: cx, y: cy + S * 0.2, vx: Math.cos(d) * v, vy: Math.sin(d) * v, ay: 0.35, size: rand(5, 8), vr: rand(-0.3, 0.3), color: '#e9c24a', life: rand(900, 1400) }; });
+    c.ring(1200, { color: '#e9c96a', to: 1.8, width: 4 });
+    return { reveal: 1250 };
   },
 };
 

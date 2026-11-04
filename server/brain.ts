@@ -313,6 +313,36 @@ export function nightAction(game: any, pid: string, step: string, pr: any): any 
       }
       return { type: 'skip' };
     }
+    // ── new roles ──
+    case 'cupid':
+    case 'magic': {
+      const pool = (pr.targets || []).filter((t: string) => t !== pr.myPick);
+      if (!pool.length) return { type: 'skip' };
+      if (step === 'magic' && !pr.myPick && rand01(game.id, pid, 'mg', game.day) < 0.4) return { type: 'skip' };
+      return { type: 'pick', target: pool[Math.floor(rand01(game.id, pid, step, game.day, pr.myPick || '') * pool.length)] };
+    }
+    case 'halfBlood': {
+      const t = pr.targets?.[Math.floor(rand01(game.id, pid, 'hb') * (pr.targets?.length || 1))];
+      return t ? { type: 'pick', target: t } : null;
+    }
+    case 'fear':
+    case 'revenge': {
+      // Wolves aim at whoever the good side trusts most (the believed 預言家 first).
+      const pool = (pr.targets || []).filter((t: string) => !E.mates.has(t));
+      const t = [E.trustSeer, E.mostTrusted].find(x => x && pool.includes(x)) || pool[Math.floor(rand01(game.id, pid, step, game.day) * pool.length)];
+      return t ? { type: 'pick', target: t } : { type: 'skip' };
+    }
+    case 'silence': {
+      const t = E.rank.find(x => pr.targets?.includes(x));
+      return t ? { type: 'pick', target: t } : { type: 'skip' };
+    }
+    case 'purity':
+      return { type: 'pick', target: unchecked(E.rank).find(x => pr.targets?.includes(x)) || pr.targets?.[0] };
+    case 'wolfWitch': {
+      const pool = unchecked(pr.targets || []);
+      const t = pool[Math.floor(rand01(game.id, pid, 'ww', game.day) * pool.length)] || pr.targets?.[0];
+      return t ? { type: 'pick', target: t } : null;
+    }
     default: return null;
   }
 }

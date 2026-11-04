@@ -57,6 +57,8 @@ export default function Seats({ side, players, me, game, targets, selected, onSe
               <span className="seat-num">{p.seat}</span>
               {game.checks?.[p.id] ? <span className={`seat-verdict v-${game.checks[p.id]}`}>{game.checks[p.id] === 'wolf' ? '狼' : '好人'}</span> : null}
               {p.sheriff ? <span className="seat-badge" title="警長"><Emblem id="badge" size={20} /></span> : null}
+              {p.lover ? <span className="seat-lover" title="你的情侶">❤</span> : null}
+              {game.silenced === p.id ? <span className="seat-silenced" title="今天被禁言">禁言</span> : null}
               {(() => {
                 // Wolf marker on your teammates — and on your own seat when you are a wolf. Special wolves
                 // (狼王、白狼王、惡靈騎士…) wear their own emblem so they stand out from the 小狼.

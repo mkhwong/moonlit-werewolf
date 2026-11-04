@@ -45,7 +45,7 @@ export function botThink(game: any, pid: string, memo: Map<string, string>, time
   const level = levelOf(game);
   const smart = level !== 'easy';
   const picksSig = pr.kind === 'wolf' ? Object.values(pr.picks || {}).join(',') : '';
-  const key = `${ph.id}:${pr.kind}:${pr.myPick ?? ''}:${pr.target ?? ''}:${pr.speaker ?? ''}:${picksSig}`;
+  const key = `${ph.id}:${pr.kind}:${pr.title ?? ''}:${pr.myPick ?? ''}:${pr.target ?? ''}:${pr.speaker ?? ''}:${picksSig}`;
   if (memo.get(pid) === key) return;
   memo.set(pid, key);
   recordKnowledge(game, pid, pr);
@@ -95,6 +95,12 @@ export function botThink(game: any, pid: string, memo: Map<string, string>, time
       if (a) act(a);
     }, 1200, 3500); break;
     case 'result': later(() => act({ type: 'ack' }), 1200, 2500); break;
+    case 'thief': later(() => {
+      // 盜賊: take a wolf card if forced, otherwise prefer a special role over staying a 村民.
+      const cards = pr.cards || [];
+      const idx = cards.findIndex((r: string) => r !== 'villager');
+      act(pr.mustWolf || idx < 0 ? { type: 'card', idx: Math.random() < 0.5 ? 0 : 1 } : { type: 'card', idx });
+    }, 1500, 3000); break;
     case 'signup': {
       const boom = boomChoice(game, pid, pr);
       if (boom) { if (chance(0.5)) later(() => act(boom), 2000, 5000); break; }

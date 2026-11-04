@@ -450,5 +450,28 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
   console.log('O ok: 雙爆吞警徽 postpones then loses the badge; 場內/場外 chat; speaker extends own speech' + (extOk ? '' : ' (ext not reached)'));
 }
 
+// P: 血月使徒 — after his day 自爆 the next night's good skills are sealed; 魔術師 swap redirects the wolf kill.
+{
+  const { game, on } = setup(['bloodMoon', 'werewolf', 'seer', 'witch', 'magician', 'villager', 'villager', 'hunter', 'werewolf'], { sheriff: false });
+  let sealed = null, swapOk = false;
+  on(g => {
+    const ph = g.phase;
+    if (!ph) return;
+    const act = (n, a) => g.handle(id(n), a);
+    if (ph.type === 'reveal') once(ph, 'r', () => g.players.forEach(p => act(p.seat, { type: 'ready' })));
+    if (ph.type === 'night' && ph.data.step === 'magic' && g.day === 1) once(ph, 'mg', () => { act(5, { type: 'pick', target: id(6) }); act(5, { type: 'pick', target: id(7) }); });
+    if (ph.type === 'night' && ph.data.step === 'wolf' && g.day === 1) once(ph, 'w', () => [1, 2, 9].forEach(n => act(n, { type: 'pick', target: id(6) })));
+    if (ph.type === 'night' && ph.data.step === 'witch' && g.day === 1) once(ph, 'wi', () => act(4, { type: 'skip' }));
+    if (ph.type === 'announce' && g.day === 1) once(ph, 'an', () => { swapOk = ph.data.deaths.length === 1 && ph.data.deaths[0] === id(7); });
+    if (ph.type === 'speech' && ph.data.kind === 'day' && g.day === 1) once(ph, 'boom', () => setTimeout(() => act(1, { type: 'selfDestruct' }), 10));
+    if (ph.type === 'speech' && ph.data.kind === 'lastWords') once(ph, 'lw', () => act(g.seat(ph.data.pid), { type: 'endSpeech' }));
+    if (ph.type === 'night' && ph.data.step === 'seer' && g.day === 2) once(ph, 's2', () => { sealed = ph.priv.actors.length === 0; g.terminate(); });
+  });
+  await game.run().catch(() => {});
+  assert.ok(swapOk, '魔術師 swap moved the kill from 6 to 7');
+  assert.ok(sealed, '血月: seer sealed on night 2');
+  console.log('P ok: 魔術師 swap redirects the kill; 血月使徒 seals good skills after 自爆');
+}
+
 console.log('all scenarios passed');
 process.exit(0);

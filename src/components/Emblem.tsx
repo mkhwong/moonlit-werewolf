@@ -1,5 +1,5 @@
 import React from 'react';
-import { ROLES } from '../../shared/roles';
+import { ROLES, characterURL } from '../../shared/roles';
 
 const DARK = '#140f2e';
 
@@ -272,7 +272,21 @@ export function roleColor(id) { return ROLES[id]?.color || EXTRA_COLORS[id] || '
 
 export default function Emblem({ id, size = 64, color, className = '', title }: any) {
   const shape = SHAPES[id];
-  if (!shape) return null;
+  if (!shape) {
+    // Newer roles have no drawn emblem: show their character art in a round badge instead.
+    const art = characterURL(id);
+    if (!art) return null;
+    const clip = `em-${id}`;
+    return (
+      <svg viewBox="0 0 100 100" width={size} height={size} className={`emblem emblem-art ${className}`} aria-hidden={title ? undefined : true}>
+        {title ? <title>{title}</title> : null}
+        <defs><clipPath id={clip}><circle cx="50" cy="50" r="48" /></clipPath></defs>
+        <circle cx="50" cy="50" r="48" fill="#1a1222" />
+        <image href={art} x="-6" y="-2" width="112" height="124" clipPath={`url(#${clip})`} preserveAspectRatio="xMidYMin slice" />
+        <circle cx="50" cy="50" r="47" fill="none" stroke={color || roleColor(id)} strokeWidth="4" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className={`emblem ${className}`} role={title ? 'img' : undefined} aria-hidden={title ? undefined : true}>
       {title ? <title>{title}</title> : null}

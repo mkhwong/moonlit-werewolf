@@ -33,6 +33,26 @@ export const ROLES = {
     name: '惡靈騎士', team: 'wolf', kind: 'wolf', color: '#9a3b4a',
     desc: '狼人陣營，與狼隊友一同擊殺。免疫一切夜間死亡（狼刀、毒藥都無效），只能在白天被放逐或被帶走。擁有一次性反傷：被預言家查驗，預言家當晚死亡；被女巫毒，女巫當晚死亡。不能自爆。',
   },
+  wolfBrother: {
+    name: '狼兄', team: 'wolf', kind: 'wolf', color: '#b4404a',
+    desc: '狼人陣營，與狼隊友一同擊殺。第一晚會與狼弟相認，讓狼弟知道狼隊是誰。',
+  },
+  wolfYounger: {
+    name: '狼弟', team: 'wolf', kind: 'wolf', color: '#8f9bb0',
+    desc: '狼人陣營，不與狼隊見面，只在第一晚與狼兄相認、得知狼隊。狼兄出局後進入「復仇」：只要狼隊仍有人在場，每晚單獨行動刀一人（守衛可守，女巫看不到）。所有普通狼人出局後，狼弟回歸狼隊一同擊殺。',
+  },
+  bloodMoon: {
+    name: '血月使徒', team: 'wolf', kind: 'wolf', color: '#c2283a',
+    desc: '狼人陣營，與狼隊友一同擊殺。白天自爆後，當晚所有好人陣營的技能失效（血月）。',
+  },
+  nightmare: {
+    name: '夢魘', team: 'wolf', kind: 'wolf', color: '#8a4fd6',
+    desc: '狼人陣營，與狼隊友一同擊殺。每晚最先行動，「恐懼」一名玩家，他當晚不能使用技能；不能連續兩晚恐懼同一人。',
+  },
+  wolfWitch: {
+    name: '狼巫', team: 'wolf', kind: 'wolf', color: '#7a4a8f',
+    desc: '狼人陣營，與狼隊友一同擊殺。每晚查驗一名非狼人玩家的具體身分；從第二晚起，查驗到純白之女時，純白之女直接出局。',
+  },
   seer: {
     name: '預言家', team: 'good', kind: 'god', color: '#d9b25c',
     desc: '每晚查驗一名玩家，得知其為「好人」或「狼人」。',
@@ -81,6 +101,34 @@ export const ROLES = {
     name: '獵魔人', team: 'good', kind: 'god', color: '#8fa36a',
     desc: '從第二晚起，每晚可選擇狩獵一名玩家：對方是狼人則對方出局；對方是好人則你出局。女巫的毒藥對你無效。',
   },
+  magician: {
+    name: '魔術師', team: 'good', kind: 'god', color: '#9b4fd1',
+    desc: '每晚最先行動，交換兩名玩家的號碼牌：當晚所有夜間技能（刀、毒、守、查驗）都會落在對調後的人身上。每名玩家整局只可被交換一次，可以不交換。',
+  },
+  silencer: {
+    name: '禁言長老', team: 'good', kind: 'god', color: '#6b8f4a',
+    desc: '每晚禁言一名玩家：他明天白天不能發言（仍可投票）。不能連續兩晚禁言同一人。',
+  },
+  whiteLady: {
+    name: '純白之女', team: 'good', kind: 'god', color: '#e9d38a',
+    desc: '每晚查驗一名玩家的具體身分；從第二晚起，查驗到狼人陣營的玩家時，該玩家直接出局。',
+  },
+  bomber: {
+    name: '炸彈人', team: 'good', kind: 'god', color: '#e0782a',
+    desc: '被投票放逐時引爆炸彈：所有投票給你的玩家一同出局。',
+  },
+  cupid: {
+    name: '愛神', team: 'good', kind: 'god', color: '#f07aa8',
+    desc: '第一晚連結兩名玩家成為情侶（可以包括自己）：一人出局，另一人立即殉情。若情侶一好一狼（人狼戀），情侶與愛神成為第三方，場上只剩他們時獲勝。',
+  },
+  halfBlood: {
+    name: '混血兒', team: 'good', kind: 'villager', color: '#8a9a5b',
+    desc: '第一晚選擇一名玩家作為「榜樣」，與榜樣同一陣營獲勝。預言家查驗你永遠是好人。',
+  },
+  thief: {
+    name: '盜賊', team: 'good', kind: 'villager', color: '#8e3a6a',
+    desc: '配置比人數多兩張底牌。第一晚最先行動，查看兩張底牌並選一張成為你的身分；兩張都是狼人陣營時必須選一張狼。也可以不換，當村民。',
+  },
   villager: {
     name: '村民', team: 'good', kind: 'villager', color: '#c2b28e',
     desc: '沒有特殊技能。仔細聆聽、推理與投票，找出狼人。',
@@ -89,12 +137,14 @@ export const ROLES = {
 
 export const ROLE_ORDER = [
   'werewolf', 'wolfKing', 'whiteWolfKing', 'wolfBeauty', 'spiritKnight', 'mechWolf', 'gargoyle', 'hiddenWolf',
+  'wolfBrother', 'wolfYounger', 'bloodMoon', 'nightmare', 'wolfWitch',
   'seer', 'medium', 'witch', 'hunter', 'guard', 'idiot', 'knight', 'gravekeeper', 'bear',
-  'miracleMerchant', 'dreamweaver', 'demonHunter', 'villager',
+  'miracleMerchant', 'dreamweaver', 'demonHunter', 'magician', 'silencer', 'whiteLady', 'bomber', 'cupid',
+  'halfBlood', 'thief', 'villager',
 ];
 
 // Wolf-team roles that do not open their eyes with the other wolves at night
-export const LONE_WOLVES = ['mechWolf', 'gargoyle', 'hiddenWolf'];
+export const LONE_WOLVES = ['mechWolf', 'gargoyle', 'hiddenWolf', 'wolfYounger'];
 // Wolf-team roles that may not self-destruct during the day
 export const NO_BOOM = ['wolfBeauty', 'gargoyle', 'hiddenWolf', 'spiritKnight'];
 
@@ -130,6 +180,19 @@ export const CHARACTER_ART: Record<string, { art: string; ms: number }> = {
   hiddenWolf: { art: 'hidden-wolf', ms: 4200 },
   dreamweaver: { art: 'dreamweaver', ms: 4400 },
   demonHunter: { art: 'demon-hunter', ms: 4200 },
+  wolfBrother: { art: 'wolf-brother', ms: 4200 },
+  wolfYounger: { art: 'wolf-younger', ms: 4000 },
+  wolfYoungerRevenge: { art: 'wolf-younger-revenge', ms: 4200 }, // 狼弟 in 復仇 mode
+  bloodMoon: { art: 'blood-moon', ms: 4400 },
+  nightmare: { art: 'nightmare', ms: 4400 },
+  wolfWitch: { art: 'wolf-witch', ms: 4400 },
+  magician: { art: 'magician', ms: 4400 },
+  silencer: { art: 'silencer', ms: 4200 },
+  whiteLady: { art: 'white-lady', ms: 4400 },
+  bomber: { art: 'bomber', ms: 4200 },
+  cupid: { art: 'cupid', ms: 4200 },
+  halfBlood: { art: 'half-blood', ms: 4200 },
+  thief: { art: 'thief', ms: 4000 },
 };
 export const characterURL = (role: string) => (CHARACTER_ART[role] ? `/characters/${CHARACTER_ART[role].art}.webp` : null);
 
@@ -190,6 +253,25 @@ export const PACKS = [
     roles: { werewolf: 3, hiddenWolf: 1, seer: 1, witch: 1, hunter: 1, idiot: 1, villager: 4 } },
   { id: 'p12e', name: '機械狼通靈師', size: 12, tag: '進階', blurb: '機械狼偷學技能，通靈師查驗具體身分。',
     roles: { werewolf: 3, mechWolf: 1, medium: 1, witch: 1, hunter: 1, guard: 1, villager: 4 } },
+  // 新角色板子
+  { id: 'n10thief', name: '盜賊局', size: 10, tag: '新角色', blurb: '十人局加兩張底牌（共十二張）：盜賊第一晚揀一張變身。',
+    roles: { werewolf: 3, seer: 1, witch: 1, hunter: 1, guard: 1, thief: 1, villager: 4 } },
+  { id: 'n12bro', name: '狼兄狼弟', size: 12, tag: '新角色', blurb: '狼兄與狼弟首夜相認；狼兄倒下，狼弟單獨復仇。',
+    roles: { wolfBrother: 1, wolfYounger: 1, werewolf: 2, seer: 1, witch: 1, hunter: 1, guard: 1, villager: 4 } },
+  { id: 'n12magic', name: '魔術夢魘', size: 12, tag: '新角色', blurb: '魔術師交換號碼牌，夢魘恐懼神職，技能互相干擾。',
+    roles: { nightmare: 1, werewolf: 3, seer: 1, witch: 1, hunter: 1, magician: 1, villager: 4 } },
+  { id: 'n12blood', name: '血月使徒', size: 12, tag: '新角色', blurb: '血月使徒自爆後，當晚好人技能全部失效。',
+    roles: { bloodMoon: 1, werewolf: 3, seer: 1, witch: 1, hunter: 1, idiot: 1, villager: 4 } },
+  { id: 'n12white', name: '純白狼巫', size: 12, tag: '新角色', blurb: '冇預言家！純白之女與狼巫互相查殺，運氣與擋刀都重要。',
+    roles: { wolfWitch: 1, werewolf: 3, whiteLady: 1, witch: 1, hunter: 1, guard: 1, villager: 4 } },
+  { id: 'n12silence', name: '禁言混血', size: 12, tag: '新角色', blurb: '禁言長老封口，混血兒跟榜樣站隊。',
+    roles: { werewolf: 4, seer: 1, witch: 1, hunter: 1, silencer: 1, halfBlood: 1, villager: 3 } },
+  { id: 'n12bomb', name: '炸彈人局', size: 12, tag: '新角色', blurb: '放逐炸彈人，投佢嘅人一齊炸死，投票要小心。',
+    roles: { werewolf: 4, seer: 1, witch: 1, hunter: 1, bomber: 1, villager: 4 } },
+  { id: 'n12cupid', name: '愛神情侶', size: 12, tag: '新角色', blurb: '愛神連結情侶；人狼戀會變成第三方。',
+    roles: { werewolf: 4, seer: 1, witch: 1, hunter: 1, cupid: 1, villager: 4 } },
+  { id: 'n15all', name: '十五人新角色大亂鬥', size: 15, tag: '新角色', blurb: '狼兄狼弟、夢魘對魔術師、禁言長老、愛神，混亂又好玩。',
+    roles: { wolfBrother: 1, wolfYounger: 1, nightmare: 1, werewolf: 2, seer: 1, witch: 1, hunter: 1, magician: 1, silencer: 1, cupid: 1, villager: 4 } },
   // 大型局
   { id: 'p14', name: '十四人狼美人局', size: 14, blurb: '五狼含狼美人，五神四民。',
     roles: { werewolf: 4, wolfBeauty: 1, seer: 1, witch: 1, hunter: 1, guard: 1, idiot: 1, villager: 4 } },
@@ -237,6 +319,13 @@ export const TIMER_FIELDS = [
 ];
 
 export const NIGHT_STEPS = {
+  thief: { role: 'thief', title: '盜賊', sub: '查看兩張底牌，選一張成為你的身分', ambient: '盜賊正在換牌…' },
+  cupid: { role: 'cupid', title: '愛神', sub: '選擇兩名玩家成為情侶', ambient: '愛神正在射箭…' },
+  lovers: { role: 'cupid', title: '情侶', sub: '確認你的情侶', ambient: '情侶正在相認…' },
+  brothers: { role: 'wolfBrother', title: '狼兄狼弟', sub: '狼兄與狼弟相認', ambient: '狼兄與狼弟正在相認…' },
+  halfBlood: { role: 'halfBlood', title: '混血兒', sub: '選擇你的榜樣', ambient: '混血兒正在選擇榜樣…' },
+  magic: { role: 'magician', title: '魔術師', sub: '選擇兩名玩家交換號碼牌', ambient: '魔術師正在變戲法…' },
+  fear: { role: 'nightmare', title: '夢魘', sub: '選擇今晚要恐懼的玩家', ambient: '夢魘正在散播恐懼…' },
   merchant: { role: 'miracleMerchant', title: '奇蹟商人', sub: '選擇幸運兒與要送出的技能', ambient: '奇蹟商人正在交易…' },
   dream: { role: 'dreamweaver', title: '攝夢人', sub: '選擇今晚的夢遊者', ambient: '攝夢人正在編織夢境…' },
   mechLearn: { role: 'mechWolf', title: '機械狼', sub: '選擇一名玩家，學習他的技能', ambient: '機械狼正在學習技能…' },
@@ -251,6 +340,10 @@ export const NIGHT_STEPS = {
   lucky: { role: 'lucky', title: '幸運兒', sub: '使用奇蹟商人送你的技能', ambient: '幸運兒正在行動…' },
   grave: { role: 'gravekeeper', title: '守墓人', sub: '查看昨天被放逐者的陣營', ambient: '守墓人正在守墓…' },
   mechAct: { role: 'mechWolf', title: '機械狼', sub: '使用學習到的技能', ambient: '機械狼正在行動…' },
+  revenge: { role: 'wolfYoungerRevenge', title: '狼弟', sub: '為狼兄復仇，單獨選擇一名玩家擊殺', ambient: '狼弟正在復仇…' },
+  wolfWitch: { role: 'wolfWitch', title: '狼巫', sub: '查驗一名非狼人玩家的具體身分', ambient: '狼巫正在施咒…' },
+  purity: { role: 'whiteLady', title: '純白之女', sub: '查驗一名玩家的具體身分', ambient: '純白之女正在淨化…' },
+  silence: { role: 'silencer', title: '禁言長老', sub: '選擇明天要禁言的玩家', ambient: '禁言長老正在施法…' },
 };
 
 // Skill a 機械狼 gains from the role it learns
@@ -262,6 +355,10 @@ export const MAX_PLAYERS = 18;
 export const MIN_PLAYERS = 4;
 
 export function packById(id) { return PACKS.find(p => p.id === id) || null; }
+/** Players a setup seats: every card, minus the two 盜賊 bottom cards. */
+export function seatCount(roles: Record<string, number> | null | undefined): number {
+  return countRoles(roles) - (roles?.thief ? 2 : 0);
+}
 export function countRoles(roles: Record<string, number> | null | undefined): number {
   return Object.values(roles || {}).reduce((a, b) => a + (b || 0), 0);
 }

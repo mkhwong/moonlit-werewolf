@@ -7,7 +7,7 @@ import { ROLES, NIGHT_STEPS, CHARACTER_ART, nightNumberLabel, dayNumberLabel } f
 // Phases that are pure cinematics (the whole phase is the animation)
 export const FULL_CINE = new Set([
   'nightfall', 'dawn', 'announce', 'sheriffResult', 'voteResult', 'exileFx', 'idiotFx',
-  'shotFx', 'selfDestructFx', 'duelFx', 'speechOrder', 'badgeFx', 'bearFx', 'charmFx',
+  'shotFx', 'selfDestructFx', 'bombFx', 'duelFx', 'speechOrder', 'badgeFx', 'bearFx', 'charmFx',
 ]);
 
 const VOTE_LABEL = { sheriff: '警長投票', sheriffPk: '警長 PK 投票', exile: '放逐投票', exilePk: '放逐 PK 投票' };
@@ -271,6 +271,7 @@ function simpleText(ph, game, P): [string, string?] | null {
     case 'exileFx': return [`${who(d.pid)} 被放逐`];
     case 'idiotFx': return [`${P[d.pid]?.seat}號 是白痴`, '免於放逐，但失去投票權'];
     case 'shotFx': return [d.role === 'whiteWolfKing' ? `${P[d.shooter]?.seat}號 白狼王帶人` : `${P[d.shooter]?.seat}號 帶走了 ${P[d.target]?.seat}號`, d.role === 'whiteWolfKing' ? `帶走了 ${who(d.target)}` : `${P[d.target]?.name} 出局`];
+    case 'bombFx': return [`${P[d.pid]?.seat}號 是炸彈人`, d.victims?.length ? `炸死 ${d.victims.map(id => `${P[id]?.seat}號`).join('、')}` : '炸彈落空'];
     case 'selfDestructFx': return [`${P[d.pid]?.seat}號 ${d.wwk ? '白狼王' : '狼人'}自爆`, `白天結束，進入黑夜${d.badgeLost ? '・警徽流失' : ''}`];
     case 'duelFx': return [`${P[d.knight]?.seat}號 騎士 決鬥 ${P[d.target]?.seat}號`, d.success ? `${P[d.target]?.seat}號 是狼人，出局` : `${P[d.target]?.seat}號 是好人，騎士出局`];
     case 'bearFx': return d.roar ? ['熊咆哮了', '熊的左右鄰座中有狼人'] : ['熊沒有咆哮'];
@@ -341,7 +342,14 @@ export default function CinematicLayer({ game, playersById }: any) {
       <Impact
         color="#d8434c" emblem={d.wwk ? 'whiteWolfKing' : 'wolfTeam'} sfx="自爆" shake
         head={`${P[d.pid]?.seat}號 ${d.wwk ? '白狼王' : '狼人'}自爆`}
-        sub="白天立即結束，進入黑夜" note={d.badgeLost ? '警長競選中斷，警徽流失' : null}
+        sub="白天立即結束，進入黑夜" note={d.badgeLost ? '警長競選中斷，警徽流失' : d.bloodMoon ? '血月升起：今晚好人技能全部失效' : null}
+      />
+    ); break;
+    case 'bombFx': body = (
+      <Impact
+        color={ROLES.bomber.color} emblem="bomber" sfx="爆炸" shake
+        head={`${P[d.pid]?.seat}號 是炸彈人！`}
+        sub={d.victims?.length ? `炸死了 ${d.victims.map(id => `${P[id]?.seat}號`).join('、')}` : '沒有人投他，炸彈落空'}
       />
     ); break;
     case 'duelFx': body = (

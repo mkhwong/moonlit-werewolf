@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Game, shuffle } from './server/game';
 import { botThink, botName } from './server/bots';
 import {
-  ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS, sizeDefaults,
+  ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS, sizeDefaults, seatCount,
 } from './shared/roles';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -89,7 +89,7 @@ class Room { [key: string]: any;
 
   // ── Lobby seating plan: one chair per role in the chosen setup; players can stand up and pick a chair ──
   seatCount() {
-    return Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, countRoles(this.roleCounts())));
+    return Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, seatCount(this.roleCounts())));
   }
 
   /** Lowest empty chair, or null when every chair is taken (the player stands). */
@@ -174,13 +174,13 @@ class Room { [key: string]: any;
     if (seated.some(p => !p.name)) return '還有玩家未輸入暱稱';
     if (!this.config.spectators && seated.length !== this.players.length) return '還有玩家站著，請先入座';
     const counts = this.roleCounts();
-    const total = countRoles(counts);
+    const total = seatCount(counts);
     if (seated.length < total) return `還差 ${total - seated.length} 人入座`;
     if (seated.length < MIN_PLAYERS) return `至少需要 ${MIN_PLAYERS} 名玩家`;
     // Everyone seated (except the host, whose 開始遊戲 is their ready) must press 準備.
     const notReady = seated.filter(p => !p.bot && p.id !== this.hostId && !p.ready).length;
     if (notReady) return `還有 ${notReady} 位玩家未準備`;
-    if (total !== seated.length) return `角色共 ${total} 個，但目前有 ${seated.length} 名玩家入座`;
+    if (total !== seated.length) return `角色共 ${total} 個${counts.thief ? '（另加兩張盜賊底牌）' : ''}，但目前有 ${seated.length} 名玩家入座`;
     const wolves = ROLE_ORDER.filter(r => ROLES[r].team === 'wolf').reduce((a, r) => a + (counts[r] || 0), 0);
     if (!wolves) return '至少需要一名狼人陣營角色';
     if (wolves >= total) return '至少需要一名好人陣營角色';
@@ -377,7 +377,7 @@ function resizeSetup(room, size) {
   const c = room.config;
   const n = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, size));
   const cur = room.roleCounts();
-  if (countRoles(cur) === n) return;
+  if (seatCount(cur) === n) return;
   Object.assign(c.settings, sizeDefaults(n)); // ≤9 人 無警長; 10 人 有警長 + 單爆; 11+ 有警長 + 雙爆 — host can still change it
   // Stay on presets while one exists for this size (also when we only fell back to 自訂 for a size without one).
   if (c.mode === 'preset' || c.autoCustom) {
@@ -386,14 +386,14 @@ function resizeSetup(room, size) {
     if (c.mode === 'preset') { c.mode = 'custom'; c.autoCustom = true; }
   }
   const next = { ...cur };
-  let d = n - countRoles(next);
+  let d = n - seatCount(next);
   while (d > 0) {
     if ((next.villager || 0) < 8) next.villager = (next.villager || 0) + 1;
     else if ((next.werewolf || 0) < 8) next.werewolf = (next.werewolf || 0) + 1;
     else break;
     d--;
   }
-  const gods = ROLE_ORDER.filter(r => ROLES[r].team === 'good' && r !== 'villager').reverse();
+  const gods = ROLE_ORDER.filter(r => ROLES[r].team === 'good' && r !== 'villager' && r !== 'thief').reverse();
   while (d < 0) {
     if ((next.villager || 0) > 0) next.villager--;
     else {

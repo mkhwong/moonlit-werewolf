@@ -20,7 +20,10 @@ function cueFor(ph, game, P, meId): [string | null, string[]] {
     case 'nightfall': return ['nightfall', ['nightfall']];
     case 'night': return ['gong', CLIPS[`night.${d.step}`] ? [`night.${d.step}`] : []];
     case 'dawn': return ['dawn', ['dawn']];
-    case 'announce': return d.deaths.length ? ['toll', ['f.deaths', ...list(d.deaths)]] : ['peace', ['peace']];
+    case 'announce': {
+      const sil = game.silenced ? [`silence.${n(game.silenced)}`] : [];
+      return d.deaths.length ? ['toll', ['f.deaths', ...list(d.deaths), ...sil]] : ['peace', ['peace', ...sil]];
+    }
     case 'bearFx': return d.roar ? ['roar', ['bear.roar']] : [null, ['bear.quiet']];
     case 'sheriffSignup': return ['fanfare', ['signup']];
     case 'speech': return [d.pid === meId ? 'ding' : null, [`${SPEECH_KEY[d.kind] || 'speech.day'}.${n(d.pid)}`]];
@@ -36,13 +39,14 @@ function cueFor(ph, game, P, meId): [string | null, string[]] {
     case 'idiotFx': return ['boing', [`idiot.${n(d.pid)}`]];
     case 'skill': return [null, [`skill.${n(d.pid)}`]];
     case 'shotFx': return ['shot', d.role === 'whiteWolfKing' ? ['f.wwkTook', seat(d.target)] : [seat(d.shooter), 'f.took', seat(d.target)]];
-    case 'selfDestructFx': return ['boom', [`boom.${n(d.pid)}`]];
+    case 'selfDestructFx': return ['boom', [`boom.${n(d.pid)}`, ...(d.bloodMoon ? ['bloodMoon'] : [])]];
+    case 'bombFx': return ['boom', [`bomber.${n(d.pid)}`, ...(d.victims?.length ? ['f.bomb', ...list(d.victims)] : [])]];
     case 'wwkTake': return [null, ['wwkTake']];
     case 'duelFx': return ['clash', [seat(d.knight), 'f.duelWith', seat(d.target), 'f.duel', seat(d.target), d.success ? 'f.duelWolf' : 'f.duelGood']];
     case 'charmFx': return ['charm', [`charm.${n(d.pid)}`]];
     case 'badge': return [null, ['badge']];
     case 'badgeFx': return ['whoosh', d.to ? [`badgeTo.${n(d.to)}`] : ['badge.torn']];
-    case 'gameOver': return [game.winner === 'wolf' ? 'wolfwin' : 'win', [game.winner === 'wolf' ? 'win.wolf' : 'win.good']];
+    case 'gameOver': return [game.winner === 'wolf' ? 'wolfwin' : 'win', [game.winner === 'wolf' ? 'win.wolf' : game.winner === 'lovers' ? 'win.lovers' : 'win.good']];
     default: return [null, []];
   }
 }

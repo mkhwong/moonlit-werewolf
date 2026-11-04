@@ -40,8 +40,15 @@ export class Game { [key: string]: any;
   constructor({ roster, roleCounts, settings, notify }: any) {
     const pool = [];
     for (const r of ROLE_ORDER) for (let i = 0; i < (roleCounts[r] || 0); i++) pool.push(r);
-    if (pool.length !== roster.length) throw new Error('role count mismatch');
+    // 盜賊: the deck holds two extra cards; the 盜賊 card itself is always dealt to a player.
+    const extra = roleCounts.thief ? 2 : 0;
+    if (pool.length !== roster.length + extra) throw new Error('role count mismatch');
     shuffle(pool);
+    if (extra) {
+      const ti = pool.indexOf('thief');
+      if (ti >= roster.length) { const j = Math.floor(Math.random() * roster.length); [pool[ti], pool[j]] = [pool[j], pool[ti]]; }
+    }
+    this.bottomCards = pool.slice(roster.length);
     this.id = Math.random().toString(36).slice(2, 10);
     this.settings = settings;
     this.notify = notify || (() => {});
@@ -66,6 +73,17 @@ export class Game { [key: string]: any;
     this.lucky = null;          // { pid, skill, used }
     this.dreamLast = null;
     this.reflectUsed = false;
+    // New roles
+    this.lovers = null;            // [a, b] linked by 愛神
+    this.loversCross = false;      // 人狼戀 → third party
+    this.halfTeam = null;          // 混血兒 follows their 榜樣's team
+    this.halfModel = null;
+    this.swapped = new Set();      // 魔術師: each player may be swapped once
+    this.fearLast = null;          // 夢魘 can't fear the same player two nights running
+    this.silenceLast = null;       // 禁言長老 likewise
+    this.silenced = null;          // { pid, day }
+    this.bloodMoonNight = null;    // night number whose good skills are sealed by 血月使徒
+    this.youngerKnows = false;     // 狼弟 met 狼兄 on night 1
     this.pendingDeaths = [];
     this.announced = true;
     this.election = null;
@@ -109,7 +127,32 @@ export class Game { [key: string]: any;
   plog(pid, text) { (this.privateLog[pid] ||= []).push({ day: this.day, time: this.time, text }); }
   secret(text) { this.history.push({ day: this.day, time: this.time, text, kind: 'secret' }); }
   seats(ids) { return ids.map(id => this.seat(id) + '號').join('、'); }
-  isPackWolf(p) { return teamOf(p.role) === 'wolf' && !LONE_WOLVES.includes(p.role); }
+  isPackWolf(p) {
+    if (p.role === 'wolfYounger') return this.smallWolvesGone();
+    return teamOf(p.role) === 'wolf' && !LONE_WOLVES.includes(p.role);
+  }
+  /** 狼弟 returns to the pack once every 普通狼人 (or, with none in the setup, every other pack wolf but 狼兄) is out. */
+  smallWolvesGone() {
+    const small = this.has('werewolf')
+      ? this.players.filter(p => p.role === 'werewolf')
+      : this.players.filter(p => teamOf(p.role) === 'wolf' && !LONE_WOLVES.includes(p.role) && p.role !== 'wolfBrother');
+    return small.every(p => !p.alive);
+  }
+  /** 狼弟 復仇: 狼兄 is out, the pack still has members, and 狼弟 hasn't rejoined it yet. */
+  revengeOn() {
+    const y = this.players.find(p => p.role === 'wolfYounger' && p.alive);
+    const bro = this.players.find(p => p.role === 'wolfBrother');
+    return !!(y && bro && !bro.alive && !this.smallWolvesGone());
+  }
+  /** Team for winning: 混血兒 follows the 榜樣; everyone else their card. */
+  teamOfP(p) { return p.role === 'halfBlood' && this.halfTeam ? this.halfTeam : teamOf(p.role); }
+  isLover(id) { return !!this.lovers?.includes(id); }
+  /** 魔術師: tonight's swap redirects every night skill aimed at one of the pair to the other. */
+  swapOf(id) {
+    const s = this.night?.swap;
+    if (!s || !id) return id;
+    return id === s[0] ? s[1] : id === s[1] ? s[0] : id;
+  }
   wolfMates(p) { return this.players.filter(o => o.id !== p.id && this.isPackWolf(o)); }
 
   // Order ids by seat, going round the table from `from` in direction `dir`.
@@ -238,9 +281,17 @@ export class Game { [key: string]: any;
     this.night = {
       guard: null, kill: null, save: false, poison: null, mechGuard: null, mechPoison: null,
       dream: null, hunt: null, luckyGuard: null, luckyPoison: null, merchantFail: false, reflect: [],
+      swap: null, fear: null, revenge: null, silence: null, checkKills: [],
     };
     await this.cinematic('nightfall', { day: this.day }, CINE.nightfall);
     const steps = [];
+    const first = this.day === 1;
+    if (first && this.has('thief')) steps.push('thief');
+    if (first && this.has('cupid')) steps.push('cupid', 'lovers');
+    if (first && this.has('wolfBrother') && this.has('wolfYounger')) steps.push('brothers');
+    if (first && this.has('halfBlood')) steps.push('halfBlood');
+    if (this.has('magician')) steps.push('magic');
+    if (this.has('nightmare')) steps.push('fear');
     if (this.has('miracleMerchant')) steps.push('merchant');
     if (this.has('dreamweaver')) steps.push('dream');
     if (this.has('mechWolf') && this.day === 1) steps.push('mechLearn');
@@ -251,6 +302,10 @@ export class Game { [key: string]: any;
     if (this.has('seer')) steps.push('seer');
     if (this.has('medium')) steps.push('medium');
     if (this.has('gargoyle')) steps.push('gargoyle');
+    if (this.has('wolfWitch')) steps.push('wolfWitch');
+    if (this.has('whiteLady')) steps.push('purity');
+    if (this.has('silencer')) steps.push('silence');
+    if (this.has('wolfYounger') && this.has('wolfBrother')) steps.push('revenge');
     if (this.has('demonHunter') && this.day > 1) steps.push('hunt');
     if (this.has('gravekeeper') && this.day > 1) steps.push('grave');
     if (this.has('mechWolf') && this.day > 1) steps.push('mechAct');
@@ -265,9 +320,28 @@ export class Game { [key: string]: any;
   }
 
   stepActors(step) {
+    const list = this.stepActorsRaw(step);
+    // 夢魘's fear and 血月使徒's blood moon take skills away for the night.
+    if (['wolf', 'lovers', 'brothers', 'revenge'].includes(step)) return list;
+    const sealed = this.bloodMoonNight === this.day;
+    return list.filter(p => p.id !== this.night?.fear && !(sealed && this.teamOfP(p) === 'good'));
+  }
+
+  stepActorsRaw(step) {
     const alive = this.alive();
     const role = r => alive.filter(p => p.role === r);
     switch (step) {
+      case 'thief': return role('thief');
+      case 'cupid': return role('cupid');
+      case 'lovers': return this.lovers ? alive.filter(p => this.lovers.includes(p.id)) : [];
+      case 'brothers': return alive.filter(p => p.role === 'wolfBrother' || p.role === 'wolfYounger');
+      case 'halfBlood': return role('halfBlood');
+      case 'magic': return role('magician');
+      case 'fear': return role('nightmare');
+      case 'wolfWitch': return role('wolfWitch');
+      case 'purity': return role('whiteLady');
+      case 'silence': return role('silencer');
+      case 'revenge': return this.revengeOn() ? role('wolfYounger') : [];
       case 'mechLearn': return role('mechWolf');
       case 'guard': return role('guard');
       case 'wolf': {
@@ -360,11 +434,27 @@ export class Game { [key: string]: any;
     }
     if (step === 'dream' && this.has('dreamweaver') && !pv.actors.length) n.dream = null;
     if (step === 'hunt' && pv.actors.length && !pv.done) this.secret('獵魔人沒有狩獵');
+    if (step === 'thief' && pv.actors.length && !pv.done) {
+      const cards = this.bottomCards || [];
+      if (cards.length === 2 && cards.every(r => teamOf(r) === 'wolf')) this.handleNight(this.get(pv.actors[0]), ph, { type: 'card', idx: Math.random() < 0.5 ? 0 : 1 });
+    }
+    if (step === 'halfBlood' && pv.actors.length && !pv.done) {
+      const me = this.get(pv.actors[0]);
+      const opts = this.alive().filter(p => p.id !== me.id);
+      if (opts.length) { const t = choice(opts); this.halfModel = t.id; this.halfTeam = teamOf(t.role); this.plog(me.id, `未選擇，系統隨機以 ${t.seat}號 作為榜樣`); }
+    }
+    if (step === 'fear' && !pv.done) this.fearLast = null;
+    if (step === 'silence' && !pv.done) this.silenceLast = null;
+    if (step === 'brothers' && pv.actors.length) this.youngerKnows = true;
   }
 
   resolveNight() {
     const n = this.night;
     const deaths = new Map();
+    // 魔術師: every target tonight is redirected through the swap.
+    if (n.swap) for (const k of ['kill', 'guard', 'mechGuard', 'luckyGuard', 'poison', 'mechPoison', 'luckyPoison', 'hunt', 'revenge']) n[k] = this.swapOf(n[k]);
+    // 禁言長老: the silenced player can't speak tomorrow.
+    this.silenced = n.silence && this.isAlive(n.silence) ? { pid: n.silence, day: this.day } : null;
     const immuneAtNight = id => this.get(id)?.role === 'spiritKnight';
     // 1. Wolf kill: guard (守衛, 機械狼, 幸運兒), antidote
     if (n.kill && !immuneAtNight(n.kill)) {
@@ -402,6 +492,12 @@ export class Game { [key: string]: any;
         else if (!deaths.has(hunter.id)) deaths.set(hunter.id, 'hunt');
       }
     }
+    // 3b. 狼弟's revenge knife (guards still work; the witch never sees it)
+    if (n.revenge && this.isAlive(n.revenge) && !deaths.has(n.revenge) && !immuneAtNight(n.revenge)) {
+      const guarded = n.guard === n.revenge || n.mechGuard === n.revenge || n.luckyGuard === n.revenge;
+      if (guarded) this.secret(`${this.seat(n.revenge)}號 被守護，擋下狼弟的復仇`);
+      else deaths.set(n.revenge, 'revenge');
+    }
     // 4. 夢遊者 is immune to every night death above
     const dreamer = n.dream && this.isAlive(n.dream) ? n.dream : null;
     if (dreamer && deaths.has(dreamer)) {
@@ -431,6 +527,8 @@ export class Game { [key: string]: any;
       const m = this.players.find(p => p.role === 'miracleMerchant' && p.alive);
       if (m) deaths.set(m.id, 'merchant');
     }
+    // 8. 純白之女 / 狼巫 check-kills can't be stopped
+    for (const [id, cause] of n.checkKills) if (this.isAlive(id) && !deaths.has(id)) deaths.set(id, cause);
     for (const id of [...deaths.keys()]) if (immuneAtNight(id)) deaths.delete(id);
     this.pendingDeaths = [...deaths]
       .map(([pid, cause]) => ({ pid, cause }))
@@ -452,6 +550,7 @@ export class Game { [key: string]: any;
     this.time = 'day';
     this.lastExiled = null;
     await this.cinematic('dawn', { day: this.day }, CINE.dawn);
+    if (this.silenced && this.silenced.day === this.day && this.isAlive(this.silenced.pid)) this.log(`禁言長老施法：${this.seat(this.silenced.pid)}號 今天不能發言`, 'silence');
     try {
       if ((this.day === 1 || this.electionPostponed === this.day) && this.settings.sheriff && !this.sheriffId && !this.badgeLost
         && !this.evaluate(new Set(this.pendingDeaths.map(d => d.pid)))) {
@@ -500,10 +599,17 @@ export class Game { [key: string]: any;
 
   evaluate(deadSet = new Set()) {
     const alive = this.players.filter(p => p.alive && !deadSet.has(p.id));
-    const wolves = alive.filter(p => teamOf(p.role) === 'wolf').length;
-    if (!wolves) return 'good';
-    const gods = alive.filter(p => kindOf(p.role) === 'god').length;
-    const vill = alive.filter(p => kindOf(p.role) === 'villager').length;
+    // 人狼戀: the lovers (and 愛神) leave their sides and win if they're all that's left.
+    const third = this.loversCross ? new Set([...this.lovers, ...this.players.filter(p => p.role === 'cupid').map(p => p.id)]) : new Set();
+    const thirdAlive = this.loversCross && this.lovers.some(id => alive.some(p => p.id === id));
+    if (thirdAlive && alive.every(p => third.has(p.id))) return 'lovers';
+    const side = alive.filter(p => !third.has(p.id));
+    const wolves = side.filter(p => this.teamOfP(p) === 'wolf').length;
+    if (!wolves) return thirdAlive ? null : 'good';
+    if (thirdAlive) return null;
+    const good = side.filter(p => this.teamOfP(p) === 'good');
+    const gods = good.filter(p => kindOf(p.role) === 'god').length;
+    const vill = good.filter(p => kindOf(p.role) === 'villager').length;
     const hadGods = this.players.some(p => kindOf(p.role) === 'god');
     const hadVill = this.players.some(p => kindOf(p.role) === 'villager');
     if (this.settings.winMode === 'side') {
@@ -516,7 +622,7 @@ export class Game { [key: string]: any;
     const w = this.evaluate();
     if (w) {
       this.winner = w;
-      this.log(w === 'good' ? '好人陣營獲勝' : '狼人陣營獲勝', 'win');
+      this.log(w === 'good' ? '好人陣營獲勝' : w === 'lovers' ? '情侶（第三方）獲勝' : '狼人陣營獲勝', 'win');
       throw new GameOver();
     }
   }
@@ -529,6 +635,13 @@ export class Game { [key: string]: any;
       charmVictim = this.charm;
       actual.push({ pid: charmVictim, cause: 'charm' });
     }
+    // 愛神: a lover who dies takes the other with them.
+    if (this.lovers) {
+      const [a, b] = this.lovers;
+      for (const [x, y] of [[a, b], [b, a]]) {
+        if (actual.some(d => d.pid === x) && this.isAlive(y) && !actual.some(d => d.pid === y)) actual.push({ pid: y, cause: 'love' });
+      }
+    }
     for (const d of actual) {
       const p = this.get(d.pid);
       p.alive = false;
@@ -536,16 +649,17 @@ export class Game { [key: string]: any;
       p.deathCause = d.cause;
     }
     this.notify();
+    for (const d of actual.filter(x => x.cause === 'love')) this.log(`${this.seat(d.pid)}號 與情侶一同殉情`, 'charm');
     if (charmVictim) {
       this.log(`狼美人出局，${this.seat(charmVictim)}號 被魅惑殉情`, 'charm');
       await this.cinematic('charmFx', { pid: charmVictim }, CINE.charm);
     }
     this.checkWin();
-    for (const d of actual) await this.deathTriggers(d, d.cause === 'charm' ? false : lastWords);
+    for (const d of actual) await this.deathTriggers(d, d.cause === 'charm' || d.cause === 'love' ? false : lastWords);
   }
 
   canShoot(p, cause) {
-    if (['poison', 'selfDestruct', 'charm', 'dream', 'reflect', 'merchant'].includes(cause)) return false;
+    if (['poison', 'selfDestruct', 'charm', 'dream', 'reflect', 'merchant', 'love', 'purify', 'curse', 'bomb'].includes(cause)) return false;
     if (p.role === 'hunter' || p.role === 'wolfKing') return true;
     return p.role === 'mechWolf' && this.mech.learned === 'hunter';
   }
@@ -624,6 +738,10 @@ export class Game { [key: string]: any;
   }
 
   async speechTurn(pid, kind, sec) {
+    if (kind !== 'lastWords' && this.silenced && this.silenced.pid === pid && this.silenced.day === this.day) {
+      this.log(`${this.seat(pid)}號 被禁言，今天不能發言`, 'silence');
+      return;
+    }
     let remaining = this.ms(sec);
     for (;;) {
       const ph = await this.runPhase('speech', { pid, kind }, { duration: remaining, interruptible: true, soft: !!this.settings.faceToFace });
@@ -813,6 +931,15 @@ export class Game { [key: string]: any;
     this.lastExiled = p.id;
     this.log(`${p.seat}號 被放逐出局`, 'exile', { exiled: p.id, day: this.day });
     await this.cinematic('exileFx', { pid: p.id }, CINE.exile);
+    if (p.role === 'bomber') {
+      // 炸彈人: everyone who voted to exile them goes up with the bomb.
+      const voters = (res.by?.[p.id] || []).filter(id => id !== p.id && this.isAlive(id));
+      p.revealed = 'bomber';
+      this.log(voters.length ? `${p.seat}號 是炸彈人！引爆炸彈，炸死 ${this.seats(voters)}` : `${p.seat}號 是炸彈人，但沒有人投他`, 'boom', { bomb: { from: p.id, to: voters } });
+      await this.cinematic('bombFx', { pid: p.id, victims: voters }, CINE.selfDestruct);
+      await this.killAndResolve([{ pid: p.id, cause: 'vote' }, ...voters.map(id => ({ pid: id, cause: 'bomb' }))], { lastWords: true });
+      return;
+    }
     await this.killAndResolve([{ pid: p.id, cause: 'vote' }], { lastWords: true });
   }
 
@@ -871,8 +998,12 @@ export class Game { [key: string]: any;
       }
       if (lost) this.badgeLost = true;
       this.log(`${p.seat}號 ${wwk ? '白狼王' : '狼人'}自爆${lost ? '，警徽流失' : postpone ? '，警長競選推遲到明天' : ''}，白天結束`, 'boom', { boom: p.id });
-      await this.cinematic('selfDestructFx', { pid: p.id, wwk, badgeLost: lost }, CINE.selfDestruct);
+      await this.cinematic('selfDestructFx', { pid: p.id, wwk, badgeLost: lost, bloodMoon: p.role === 'bloodMoon' }, CINE.selfDestruct);
       const deaths = [{ pid: p.id, cause: 'selfDestruct' }];
+      if (p.role === 'bloodMoon') {
+        this.bloodMoonNight = this.day + 1;
+        this.log('血月升起：今晚所有好人陣營的技能失效', 'boom');
+      }
       if (wwk) {
         const ph = await this.runPhase('wwkTake', { pid: p.id }, {
           duration: this.ms(this.settings.timers.skill), priv: { target: null },
@@ -1108,9 +1239,14 @@ export class Game { [key: string]: any;
     const check = (mode) => {
       if (pv.result) { if (a.type === 'ack') this.completeSoon(ph); return; }
       if (a.type !== 'pick' || !ok(a.target) || a.target === me.id) return;
-      const t = this.get(a.target);
-      const value = mode === 'seer' ? seenTeam(t.role) : t.role;
-      pv.result = { target: t.id, value };
+      if (step === 'wolfWitch' && this.isPackWolf(this.get(a.target))) return; // 狼巫 checks non-wolves only
+      const shown = this.get(a.target);          // the seat that was picked…
+      const t = this.get(this.swapOf(a.target)); // …and who is really behind it after 魔術師's swap
+      const value = mode === 'seer' ? (t.role === 'halfBlood' ? 'good' : seenTeam(t.role)) : t.role;
+      pv.result = { target: shown.id, value };
+      // From night 2: 純白之女 checking a wolf, or 狼巫 checking 純白之女, takes them out at dawn.
+      if (this.day >= 2 && step === 'purity' && this.teamOfP(t) === 'wolf') { n.checkKills.push([t.id, 'purify']); this.secret(`純白之女查驗到狼人 ${t.seat}號，${t.seat}號 將出局`); }
+      if (this.day >= 2 && step === 'wolfWitch' && t.role === 'whiteLady') { n.checkKills.push([t.id, 'curse']); this.secret(`狼巫查驗到純白之女 ${t.seat}號，她將出局`); }
       if (value === 'wolf' || value === 'good') (this.checks[me.id] ||= {})[t.id] = value;
       if (step === 'seer' && t.role === 'spiritKnight' && !this.reflectUsed) {
         this.reflectUsed = true;
@@ -1118,8 +1254,8 @@ export class Game { [key: string]: any;
         this.secret(`預言家查驗惡靈騎士，遭到反傷`);
       }
       const txt = mode === 'seer' ? (value === 'wolf' ? '狼人' : '好人') : ROLES[value].name;
-      this.plog(me.id, `查驗 ${t.seat}號：${txt}`);
-      this.secret(`${ROLES[me.role].name}${me.role === 'mechWolf' ? '（學得技能）' : ''}查驗 ${t.seat}號：${txt}`);
+      this.plog(me.id, `查驗 ${shown.seat}號：${txt}`);
+      this.secret(`${ROLES[me.role].name}${me.role === 'mechWolf' ? '（學得技能）' : ''}查驗 ${shown.seat}號：${txt}${t.id !== shown.id ? `（魔術師交換，實為 ${t.seat}號）` : ''}`);
       this.completeSoon(ph, { min: 4000, delay: 6000 });
     };
     switch (step) {
@@ -1171,6 +1307,90 @@ export class Game { [key: string]: any;
         break;
       }
       case 'seer': check('seer'); break;
+      case 'wolfWitch': check('medium'); break;
+      case 'purity': check('medium'); break;
+      case 'thief': {
+        if (pv.done) return;
+        const cards = this.bottomCards || [];
+        const mustWolf = cards.length === 2 && cards.every(r => teamOf(r) === 'wolf');
+        if (a.type === 'card' && (a.idx === 0 || a.idx === 1) && cards[a.idx]) {
+          me.role = cards[a.idx];
+          cards[a.idx] = 'thief';
+          this.plog(me.id, `你選擇了底牌「${ROLES[me.role].name}」，成為${ROLES[me.role].name}`);
+          this.secret(`盜賊 ${me.seat}號 換成${ROLES[me.role].name}`);
+          if (this.isPackWolf(me)) {
+            const mates = this.wolfMates(me);
+            this.plog(me.id, mates.length ? `你的狼隊友：${this.seats(mates.map(m => m.id))}` : '你是唯一的狼人');
+          }
+        } else if (a.type === 'skip' && !mustWolf) {
+          this.plog(me.id, '你沒有換牌，以村民身分遊戲');
+          this.secret(`盜賊 ${me.seat}號 沒有換牌`);
+        } else return;
+        pv.done = true;
+        break;
+      }
+      case 'cupid':
+      case 'magic': {
+        if (pv.done) return;
+        if (a.type === 'skip' && step === 'magic') { pv.done = true; this.plog(me.id, '今晚沒有交換'); break; }
+        if (a.type === 'unpick') { pv.first = null; break; }
+        if (a.type !== 'pick' || !ok(a.target)) return;
+        if (step === 'magic' && this.swapped.has(a.target)) return;
+        if (!pv.first) { pv.first = a.target; break; }
+        if (a.target === pv.first) return;
+        const pair = [pv.first, a.target];
+        pv.done = true;
+        if (step === 'cupid') {
+          this.lovers = pair;
+          this.loversCross = teamOf(this.get(pair[0]).role) !== teamOf(this.get(pair[1]).role);
+          this.plog(me.id, `你讓 ${this.seats(pair)} 成為情侶`);
+          this.secret(`愛神讓 ${this.seats(pair)} 成為情侶${this.loversCross ? '（人狼戀，第三方）' : ''}`);
+        } else {
+          n.swap = pair;
+          pair.forEach(id => this.swapped.add(id));
+          this.plog(me.id, `交換了 ${this.seats(pair)} 的號碼牌`);
+          this.secret(`魔術師交換 ${this.seats(pair)}`);
+        }
+        break;
+      }
+      case 'halfBlood': {
+        if (pv.done || a.type !== 'pick' || !ok(a.target) || a.target === me.id) return;
+        const t = this.get(a.target);
+        this.halfModel = t.id;
+        this.halfTeam = teamOf(t.role);
+        pv.done = true;
+        this.plog(me.id, `你選擇了 ${t.seat}號 作為榜樣，與他同一陣營`);
+        this.secret(`混血兒以 ${t.seat}號 為榜樣（${this.halfTeam === 'wolf' ? '狼人陣營' : '好人陣營'}）`);
+        break;
+      }
+      case 'fear':
+      case 'silence': {
+        if (pv.done) return;
+        const last = step === 'fear' ? this.fearLast : this.silenceLast;
+        if (a.type === 'pick') {
+          if (!ok(a.target) || a.target === me.id || a.target === last) return;
+          if (step === 'fear') { n.fear = a.target; this.fearLast = a.target; } else { n.silence = a.target; this.silenceLast = a.target; }
+          this.plog(me.id, `${step === 'fear' ? '恐懼' : '禁言'}了 ${this.seat(a.target)}號`);
+          this.secret(`${step === 'fear' ? '夢魘恐懼' : '禁言長老禁言'} ${this.seat(a.target)}號`);
+        } else if (a.type === 'skip') {
+          if (step === 'fear') this.fearLast = null; else this.silenceLast = null;
+          this.plog(me.id, step === 'fear' ? '今晚沒有恐懼任何人' : '今晚沒有禁言任何人');
+        } else return;
+        pv.done = true;
+        break;
+      }
+      case 'revenge': {
+        if (pv.done) return;
+        if (a.type === 'pick') {
+          if (!ok(a.target) || a.target === me.id) return;
+          n.revenge = a.target;
+          this.plog(me.id, `為狼兄復仇，刀了 ${this.seat(a.target)}號`);
+          this.secret(`狼弟復仇，刀 ${this.seat(a.target)}號`);
+        } else if (a.type === 'skip') this.plog(me.id, '今晚沒有出刀');
+        else return;
+        pv.done = true;
+        break;
+      }
       case 'medium': check('medium'); break;
       case 'gargoyle': check('medium'); break;
       case 'beauty': {
@@ -1415,6 +1635,67 @@ export class Game { [key: string]: any;
           desc: step === 'seer' ? '得知對方屬於好人或狼人' : '得知對方的具體身分',
           targets: others, confirmLabel: '查驗',
         };
+      case 'thief': {
+        if (pv.done) return { kind: 'info', text: `你現在的身分：${ROLES[me.role].name}` };
+        const cards = this.bottomCards || [];
+        return { kind: 'thief', cards, mustWolf: cards.length === 2 && cards.every(r => teamOf(r) === 'wolf') };
+      }
+      case 'cupid':
+      case 'magic': {
+        const verb = step === 'cupid' ? '連結' : '交換';
+        if (pv.done) {
+          const pair = step === 'cupid' ? this.lovers : n.swap;
+          return { kind: 'info', text: pair ? `${verb}了 ${this.seats(pair)}` : '今晚沒有交換' };
+        }
+        const pool = step === 'cupid' ? alive : alive.filter(id => !this.swapped.has(id));
+        return {
+          kind: 'pick', title: step === 'cupid' ? (pv.first ? '選擇第二位情侶' : '選擇第一位情侶') : (pv.first ? '選擇第二位玩家' : '選擇第一位玩家'),
+          desc: pv.first ? `已選 ${this.seat(pv.first)}號（再點選第二位）` : step === 'cupid' ? '兩人成為情侶，一人出局另一人殉情；可以選自己' : '兩人的號碼牌對調，今晚所有技能都會落在對方身上；每人整局只可被交換一次',
+          targets: pool.filter(id => id !== pv.first), confirmLabel: pv.first ? verb : '下一位',
+          skipLabel: step === 'magic' ? '不交換' : undefined, myPick: pv.first || null,
+        };
+      }
+      case 'lovers': {
+        const other = this.lovers.find(id => id !== me.id);
+        return { kind: 'info', text: `愛神讓你與 ${this.seat(other)}號 成為情侶${this.loversCross ? '。你們是人狼戀：要活到最後，只剩你們（和愛神）才勝利' : '。一人出局，另一人會殉情'}` };
+      }
+      case 'brothers': {
+        if (me.role === 'wolfYounger') {
+          const pack = this.players.filter(p => this.isPackWolf(p) && p.id !== me.id);
+          const bro = this.players.find(p => p.role === 'wolfBrother');
+          return { kind: 'info', text: `狼兄是 ${bro ? this.seat(bro.id) + '號' : '—'}；狼隊：${pack.length ? this.seats(pack.map(p => p.id)) : '—'}。之後你不會再與狼隊見面` };
+        }
+        const y = this.players.find(p => p.role === 'wolfYounger');
+        return { kind: 'info', text: `你的狼弟是 ${y ? this.seat(y.id) + '號' : '—'}。你出局後，他會為你復仇` };
+      }
+      case 'halfBlood':
+        if (pv.done) return { kind: 'info', text: `你的榜樣是 ${this.seat(this.halfModel)}號` };
+        return { kind: 'pick', title: '選擇你的榜樣', desc: '你會與榜樣同一陣營獲勝', targets: others, confirmLabel: '拜師' };
+      case 'fear':
+      case 'silence': {
+        if (pv.done) return { kind: 'info', text: (step === 'fear' ? n.fear : n.silence) ? `今晚${step === 'fear' ? '恐懼' : '禁言'} ${this.seat(step === 'fear' ? n.fear : n.silence)}號` : '今晚沒有選擇' };
+        const last = step === 'fear' ? this.fearLast : this.silenceLast;
+        return {
+          kind: 'pick', title: step === 'fear' ? '恐懼一名玩家' : '禁言一名玩家',
+          desc: (step === 'fear' ? '他今晚不能使用技能' : '他明天白天不能發言（仍可投票）') + (last ? `；昨晚選了 ${this.seat(last)}號，今晚不能重複` : ''),
+          targets: others.filter(id => id !== last), skipLabel: '不選', confirmLabel: step === 'fear' ? '恐懼' : '禁言',
+        };
+      }
+      case 'revenge':
+        if (pv.done) return { kind: 'info', text: n.revenge ? `今晚復仇刀 ${this.seat(n.revenge)}號` : '今晚沒有出刀' };
+        return { kind: 'pick', title: '為狼兄復仇', desc: '單獨選擇一名玩家擊殺（守衛可以守住，女巫看不到）', targets: others, skipLabel: '不出刀', confirmLabel: '復仇', danger: true, revenge: true };
+      case 'wolfWitch':
+      case 'purity': {
+        if (pv.result) return result('medium');
+        const targets = step === 'wolfWitch' ? others.filter(id => !this.isPackWolf(this.get(id))) : others;
+        return {
+          kind: 'pick', title: '查驗一名玩家', danger: this.day >= 2,
+          desc: step === 'purity'
+            ? `得知對方的具體身分${this.day >= 2 ? '；如果是狼人陣營，他會直接出局' : '（從第二晚起，查到狼人會令對方出局）'}`
+            : `查驗非狼人玩家的具體身分${this.day >= 2 ? '；如果是純白之女，她會直接出局' : '（從第二晚起，查到純白之女會令她出局）'}`,
+          targets, confirmLabel: '查驗',
+        };
+      }
       case 'gargoyle':
         if (pv.result) return result('medium');
         return { kind: 'pick', title: '查驗一名玩家', desc: '得知對方的具體身分', targets: others, confirmLabel: '查驗' };
@@ -1486,9 +1767,11 @@ export class Game { [key: string]: any;
         id: p.id, seat: p.seat, name: p.name, alive: p.alive, sheriff: this.sheriffId === p.id,
         idiotRevealed: p.idiotRevealed, revealed: p.revealed, deathDay: p.deathDay,
       };
-      if (all) { o.role = p.role; o.deathCause = p.deathCause; }
+      if (all) { o.role = p.role; o.deathCause = p.deathCause; o.team = this.teamOfP(p); o.third = this.loversCross && (this.isLover(p.id) || p.role === 'cupid'); }
       else if (me && p.id === me.id) o.role = p.role;
-      else if ((meWolf || me?.role === 'hiddenWolf') && this.isPackWolf(p)) { o.role = p.role; o.mate = true; }
+      else if ((meWolf || me?.role === 'hiddenWolf' || (me?.role === 'wolfYounger' && this.youngerKnows)) && this.isPackWolf(p)) { o.role = p.role; o.mate = true; }
+      else if (me?.role === 'wolfBrother' && p.role === 'wolfYounger') { o.role = p.role; o.mate = true; }
+      if (me && this.lovers?.includes(me.id) && this.lovers.includes(p.id) && p.id !== me.id) o.lover = true;
       return o;
     });
     const E = this.election;
@@ -1515,6 +1798,10 @@ export class Game { [key: string]: any;
         merchantUsed: me.role === 'miracleMerchant' ? this.merchant.used : undefined,
         dreamLast: me.role === 'dreamweaver' ? this.dreamLast : undefined,
         lucky: this.lucky && this.lucky.pid === me.id ? { skill: this.lucky.skill, used: this.lucky.used } : undefined,
+        revenge: me.role === 'wolfYounger' ? this.players.some(p => p.role === 'wolfBrother' && !p.alive) : undefined,
+        halfModel: me.role === 'halfBlood' && this.halfModel ? this.seat(this.halfModel) : undefined,
+        halfTeam: me.role === 'halfBlood' ? this.halfTeam : undefined,
+        lover: this.lovers?.includes(me.id) ? this.seat(this.lovers.find(id => id !== me.id)) : undefined,
       } : null,
       phase: ph ? {
         id: ph.id, type: ph.type, data: ph.data, startedAt: ph.startedAt, introMs: ph.introMs,
@@ -1524,6 +1811,8 @@ export class Game { [key: string]: any;
       speechPlan: this.speechPlan,
       sheriffId: this.sheriffId,
       badgeLost: this.badgeLost,
+      silenced: this.silenced && this.silenced.day === this.day && this.time === 'day' ? this.silenced.pid : null,
+      lovers: all ? this.lovers : null,
       publicLog: this.publicLog,
       claims: this.claims,
       checks: me ? (this.checks[me.id] || {}) : {},
