@@ -497,26 +497,35 @@ export default function Game({ state }: any) {
         <div className="bottom-row">
           {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} onClick={() => setSheet('role')} /> : null}
           <div className="bottom-right">
-            <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} speechMin={speechMin} setSpeechMin={setSpeechMin} />
-            {/* Special skills (騎士決鬥 / 退水) get their own row; ＋30 秒 sits left of 結束發言. */}
-            {introDone && !cine && me?.alive && hasSkillButtons(pr, mode) ? (
-              <div className="skill-row"><SkillButtons pr={pr} mode={mode} setMode={setMode} sel={sel} P={P} /></div>
-            ) : null}
-            {canExtend || (pr.kind === 'speaking' && introDone && !cine) ? (
-              <div className="end-row">
-                {canExtend ? (
-                  <button type="button" className="btn btn-ghost extend-speech" onClick={() => emit('extendSpeech')}>
-                    {ph.data.pid === me?.id ? '我的發言' : `${P[ph.data.pid]?.seat}號 發言`} ＋30 秒<small>剩 {3 - (ph.data.ext || 0)} 次</small>
-                  </button>
-                ) : null}
-                {pr.kind === 'speaking' && introDone && !cine ? (
-                  <button type="button" className={`btn btn-moon btn-lg end-speech ${canEnd ? '' : 'is-locked'}`} disabled={!canEnd}
-                    title={canEnd ? '' : '請先按住說話'} onClick={() => act({ type: 'endSpeech' })}>
-                    結束{SPEECH_LABEL[pr.speechKind]}{canEnd ? null : <small>請先按住說話</small>}
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+            {/* With 退水 stacked over ＋30 秒 the 輪到你發言 banner is dropped (結束發言 already says it's your turn). */}
+            <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} speechMin={speechMin || (me?.alive && hasSkillButtons(pr, mode) && canExtend)} setSpeechMin={setSpeechMin} />
+            {/* One row on the right: a column with the skill buttons (退水 / 騎士決鬥) stacked on top of ＋30 秒
+                (same width), then 結束發言. */}
+            {(() => {
+              const skills = introDone && !cine && me?.alive && hasSkillButtons(pr, mode);
+              const showEnd = pr.kind === 'speaking' && introDone && !cine;
+              if (!skills && !canExtend && !showEnd) return null;
+              return (
+                <div className="end-row">
+                  {skills || canExtend ? (
+                    <div className="end-col">
+                      {skills ? <div className="skill-stack"><SkillButtons pr={pr} mode={mode} setMode={setMode} sel={sel} P={P} /></div> : null}
+                      {canExtend ? (
+                        <button type="button" className="btn btn-ghost extend-speech" onClick={() => emit('extendSpeech')}>
+                          {ph.data.pid === me?.id ? '我的發言' : `${P[ph.data.pid]?.seat}號 發言`} ＋30 秒<small>剩 {3 - (ph.data.ext || 0)} 次</small>
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {showEnd ? (
+                    <button type="button" className={`btn btn-moon btn-lg end-speech ${canEnd ? '' : 'is-locked'}`} disabled={!canEnd}
+                      title={canEnd ? '' : '請先按住說話'} onClick={() => act({ type: 'endSpeech' })}>
+                      結束{SPEECH_LABEL[pr.speechKind]}{canEnd ? null : <small>請先按住說話</small>}
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

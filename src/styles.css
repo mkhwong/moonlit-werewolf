@@ -1222,3 +1222,14 @@ html .wwt > .wwt-hint { display: none !important; }
 
 /* 準備 = green ring round the seat medal */
 .lobby-room .seat.is-ready .seat-medal { background: linear-gradient(145deg, #8fe08a, #1f6b2a 50%, #6fd16a); box-shadow: 0 0 0 2px #5fd35a, 0 0 12px rgba(95, 211, 90, .55); border-radius: 50%; }
+
+/* 退水 / 騎士決鬥 stacked above ＋30 秒, same width */
+.end-row { align-items: flex-end; }
+.end-col { display: flex; flex-direction: column; gap: 6px; min-width: 132px; }
+.end-col > .btn, .skill-stack > .btn { width: 100%; }
+.skill-stack { display: flex; gap: 6px; }
+.skill-stack > .btn { flex: 1 1 0; min-width: 0; min-height: 40px; padding: 4px 8px; font-size: 15px; white-space: nowrap; }
+.skill-stack > .skill-cancel { flex: 0 0 auto; width: auto; }
+.end-col > .extend-speech { min-height: 50px; }
+.end-row > .end-speech { min-height: 50px; }
+.end-row > .end-speech { align-self: flex-end; }

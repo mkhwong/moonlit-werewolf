@@ -500,10 +500,13 @@ io.on('connection', socket => {
     const room = rooms.get(code);
     if (!room) return ack(cb)({ ok: false, error: '找不到這個房間代碼' });
     const watchOnly = room.status !== 'lobby' || room.freeSeat() == null;
-    if (watchOnly && !room.config.spectators) {
+    // Someone who dropped out (F5, lost connection) can come back by typing the same name — so let
+    // people in even when the room is full or the game has started, as long as a named player is offline.
+    const canReclaim = room.players.some(x => !x.bot && x.name && !x.online);
+    if (watchOnly && !room.config.spectators && !canReclaim) {
       return ack(cb)({ ok: false, error: room.status !== 'lobby' ? '遊戲已開始，無法加入' : '座位已滿' });
     }
-    if (room.players.length >= MAX_PLAYERS + MAX_SPECTATORS) return ack(cb)({ ok: false, error: '房間已滿' });
+    if (room.players.length >= MAX_PLAYERS + MAX_SPECTATORS && !canReclaim) return ack(cb)({ ok: false, error: '房間已滿' });
     const player = room.addPlayer();
     bind(socket, room, player);
     ack(cb)({ ok: true, code: room.code, token: player.token });
@@ -523,7 +526,23 @@ io.on('connection', socket => {
     const name = String(p?.name || '').replace(/\s+/g, ' ').trim().slice(0, 12);
     if (!name) return ack(cb)({ ok: false, error: '請輸入暱稱' });
     if (c.room.status !== 'lobby' && c.player.name) return ack(cb)({ ok: false, error: '遊戲中不能更改暱稱' });
-    if (c.room.players.some(x => x.id !== c.player.id && x.name === name)) return ack(cb)({ ok: false, error: '這個暱稱已被使用' });
+    const dup = c.room.players.find(x => x.id !== c.player.id && x.name === name);
+    if (dup) {
+      // 重新連線: a fresh, nameless connection that types the name of an offline player takes that seat back.
+      if (!c.player.name && !dup.bot && !dup.online) {
+        const temp = c.player;
+        c.room.removePlayer(temp.id);
+        bind(socket, c.room, dup);
+        c.room.note(`${name} 重新連線`);
+        c.room.broadcast();
+        return ack(cb)({ ok: true, code: c.room.code, token: dup.token, reclaimed: true });
+      }
+      return ack(cb)({ ok: false, error: dup.online ? '這位玩家正在遊戲中，不能使用這個暱稱' : '這個暱稱已被使用' });
+    }
+    // Let in only to reclaim a seat (spectators off / room full): any other name is turned away.
+    if (!c.player.name && c.player.seat == null && !c.room.config.spectators) {
+      return ack(cb)({ ok: false, error: '只可以用斷線玩家的暱稱重新加入' });
+    }
     if (!c.player.name) c.room.note(c.player.seat != null ? `${name} 加入了房間` : `${name} 進房觀戰`);
     c.player.name = name;
     c.room.broadcast();
