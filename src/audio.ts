@@ -133,6 +133,10 @@ const SFX: Record<string, (t: number) => void> = {
   drum: t => { tone(90, t, 0.5, { vol: 0.5, to: 45 }); burst(t, 0.15, { freq: 600, vol: 0.3 }); },
   exile: t => { tone(70, t, 0.9, { vol: 0.5, to: 35 }); burst(t, 0.9, { freq: 2500, to: 200, vol: 0.25 }); },
   shot: t => { burst(t, 0.45, { freq: 4000, to: 300, vol: 0.7 }); tone(80, t, 0.35, { vol: 0.45, to: 40 }); burst(t + 0.25, 1.2, { freq: 900, to: 150, vol: 0.12 }); },
+  fuse: t => { // crackling fuse, ~2.2 s
+    burst(t, 2.2, { type: 'highpass', freq: 4500, vol: 0.1 });
+    for (let i = 0; i < 18; i++) burst(t + i * 0.12 + Math.random() * 0.05, 0.025, { type: 'bandpass', freq: 2600 + Math.random() * 1800, q: 4, vol: 0.45 });
+  },
   boom: t => { burst(t, 2.2, { freq: 1800, to: 60, vol: 0.75 }); tone(55, t, 1.8, { vol: 0.5, to: 25 }); },
   clash: t => { [1320, 1870, 2490, 3170].forEach(f => tone(f, t, 0.9, { type: 'triangle', vol: 0.08, attack: 0.002 })); burst(t, 0.08, { type: 'highpass', freq: 3000, vol: 0.6 }); },
   roar: t => { tone(70, t, 1.6, { type: 'sawtooth', vol: 0.5, attack: 0.08, vib: 14 }); tone(105, t, 1.4, { type: 'sawtooth', vol: 0.25, attack: 0.08, vib: 10 }); burst(t, 1.5, { freq: 500, to: 180, vol: 0.7 }); },
@@ -250,14 +254,20 @@ export async function sayClips(keys: string[], text: string) {
   const my = ++seq;
   stopClips(); stopSpeech();
   const c = ac();
-  const bufs = c ? await Promise.all(keys.map(loadClip)) : [];
+  // 'at:3.3' is not a clip: it holds the next piece until 3.3 s after the line starts (to sync with a cinematic).
+  const isAt = (k: string) => k.startsWith('at:');
+  const bufs = c ? await Promise.all(keys.map(k => (isAt(k) ? null : loadClip(k)))) : [];
   if (my !== seq || !chan.host) return;
   // Play the pieces that exist (a missing joining word just leaves a short gap); if the main line itself
   // is missing, stay silent rather than switching to a different-sounding device voice.
   if (!c || !keys.some((k, i) => bufs[i] && !k.startsWith('seat.') && k !== 'f.and')) return;
   if (!voiceOut) { voiceOut = c.createGain(); voiceOut.gain.value = chan.vol.host; voiceOut.connect(c.destination); }
-  let t = c.currentTime + 0.04;
-  for (const b of bufs.filter(Boolean) as AudioBuffer[]) {
+  const t0 = c.currentTime + 0.04;
+  let t = t0;
+  for (let i = 0; i < keys.length; i++) {
+    if (isAt(keys[i])) { t = Math.max(t, t0 + (Number(keys[i].slice(3)) || 0)); continue; }
+    const b = bufs[i] as AudioBuffer | null;
+    if (!b) continue;
     const src = c.createBufferSource();
     src.buffer = b;
     src.connect(voiceOut);

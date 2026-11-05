@@ -234,3 +234,68 @@
   .we-eye { transform: none; opacity: 1; }
   .cine-impact.cine-shake { animation: fade-in .2s both; }
 }
+
+/* ───────── 炸彈人: fuse → blast → who it took (times match BOMB_T: blast 2.2s, list 3.3s) ───────── */
+.cine-bomb {
+  background: radial-gradient(ellipse at 50% 55%, #2a1608, #0b0608 62%, #040205);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 20px;
+  animation: fade-in .25s both, shake .7s 2.2s both;
+}
+.bx-head { position: absolute; top: 9vh; left: 0; right: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; animation: rise .5s .15s both; z-index: 3; }
+.bx-head b { font-family: var(--serif); font-weight: 900; font-size: clamp(26px, 7vw, 44px); color: var(--moon); }
+.bx-head span { font-family: var(--serif); font-weight: 900; font-size: clamp(20px, 5.4vw, 30px); color: #f0a050; letter-spacing: .2em; }
+.bx-stage { position: absolute; left: 50%; top: 52%; width: 0; height: 0; }
+.bx-bomb { position: absolute; left: -108px; top: -140px; transform-origin: 108px 140px;
+  animation: bx-in .5s cubic-bezier(.2, 1.4, .4, 1) both, bx-wobble 2.2s ease-in both, bx-gone .01s 2.2s forwards; }
+@keyframes bx-in { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes bx-wobble {
+  0%, 40% { rotate: 0deg; } 50% { rotate: -2deg; } 58% { rotate: 2deg; } 66% { rotate: -3deg; } 72% { rotate: 4deg; }
+  78% { rotate: -5deg; scale: 1.03; } 84% { rotate: 5deg; scale: 1.06; } 90% { rotate: -6deg; scale: 1.1; } 96% { rotate: 6deg; scale: 1.16; } 100% { rotate: 0deg; scale: 1.22; }
+}
+@keyframes bx-gone { to { opacity: 0; visibility: hidden; } }
+.bx-fuse { stroke-dasharray: 1 1; stroke-dashoffset: 0; animation: bx-burn 2.2s linear forwards; }
+@keyframes bx-burn { to { stroke-dashoffset: 1; } }
+.bx-spark { offset-path: path('M128 70 C150 40 182 52 176 26 C172 10 194 4 206 14'); offset-rotate: 0deg; offset-distance: 100%; animation: bx-spark-run 2.2s linear forwards, bx-flicker .12s steps(2) infinite; filter: drop-shadow(0 0 6px #ffb340) drop-shadow(0 0 14px #ff7a1a); }
+@keyframes bx-spark-run { from { offset-distance: 100%; } to { offset-distance: 0%; } }
+@keyframes bx-flicker { 50% { opacity: .7; } }
+.bx-burn { position: absolute; top: calc(52% + 120px); left: 0; right: 0; text-align: center; color: #f0a050; letter-spacing: .5em; font-weight: 700;
+  animation: fade-in .4s .5s both, bx-blink .5s .9s 3 alternate, bx-gone .01s 2.2s forwards; }
+@keyframes bx-blink { to { opacity: .35; } }
+.bx-flash { position: fixed; inset: 0; background: radial-gradient(circle at 50% 52%, #fff, #ffe2a0 30%, #ff8a2a 60%, rgba(255, 90, 20, .2)); opacity: 0; animation: bx-flash .9s 2.2s ease-out forwards; pointer-events: none; }
+@keyframes bx-flash { 0% { opacity: 0; } 8% { opacity: 1; } 100% { opacity: 0; } }
+.bx-fire { position: absolute; left: -60vmin; top: -60vmin; width: 120vmin; height: 120vmin; border-radius: 50%;
+  background: radial-gradient(circle, #fff6d0 0, #ffd060 14%, #ff7a1a 32%, #b8240e 48%, rgba(60, 10, 6, .0) 66%);
+  transform: scale(0); opacity: 0; animation: bx-fire 1.1s 2.2s cubic-bezier(.1, .8, .3, 1) forwards; }
+@keyframes bx-fire { 0% { transform: scale(.05); opacity: 1; } 55% { opacity: .95; } 100% { transform: scale(1.15); opacity: 0; } }
+.bx-rings i { position: absolute; left: -40vmin; top: -40vmin; width: 80vmin; height: 80vmin; border-radius: 50%; border: 4px solid #ffcf7a; opacity: 0;
+  animation: bx-ring .9s 2.25s ease-out forwards; }
+.bx-rings i + i { animation-delay: 2.45s; border-width: 2px; }
+@keyframes bx-ring { 0% { transform: scale(.1); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+.bx-debris i { position: absolute; left: 0; top: 0; width: var(--s); height: calc(var(--s) * .6); background: #2b2430; border-radius: 2px; box-shadow: 0 0 6px #ff8a2a; opacity: 0;
+  animation: bx-debris 1.1s 2.2s cubic-bezier(.1, .7, .3, 1) forwards; }
+@keyframes bx-debris {
+  0% { opacity: 1; transform: rotate(var(--a)) translateX(0) rotate(0deg); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)) rotate(var(--r)); }
+}
+.bx-smoke i { position: absolute; width: 34vmin; height: 34vmin; border-radius: 50%; background: radial-gradient(circle, rgba(70, 60, 64, .75), rgba(40, 34, 40, 0) 70%);
+  filter: blur(6px); opacity: 0; animation: bx-smoke 2.6s 2.5s ease-out forwards; }
+.bx-smoke i:nth-child(1) { left: -30vmin; top: -20vmin; }
+.bx-smoke i:nth-child(2) { left: -4vmin; top: -26vmin; animation-delay: 2.6s; }
+.bx-smoke i:nth-child(3) { left: -20vmin; top: -6vmin; animation-delay: 2.7s; }
+.bx-smoke i:nth-child(4) { left: -12vmin; top: -32vmin; animation-delay: 2.8s; }
+@keyframes bx-smoke { 0% { opacity: 0; transform: scale(.5); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateY(-14vh) scale(1.5); } }
+.bx-sfx { position: absolute; left: -50vw; width: 100vw; top: -24vmin; text-align: center; font-family: var(--serif); font-weight: 900; font-size: clamp(80px, 26vw, 190px); line-height: 1;
+  color: #ff8a2a; -webkit-text-stroke: 2px #ffe2a0; paint-order: stroke fill; text-shadow: 0 0 50px rgba(255, 120, 30, .8);
+  opacity: 0; animation: bx-sfx 1.2s 2.25s cubic-bezier(.2, 1.4, .3, 1) forwards; }
+@keyframes bx-sfx { 0% { opacity: 0; transform: scale(2.4); } 18% { opacity: 1; transform: scale(.95); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.1) translateY(-20px); } }
+.bx-result { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 8vh; }
+.bx-lead { color: #f0c890; letter-spacing: .3em; font-weight: 700; font-size: clamp(16px, 4.4vw, 22px); text-align: center; animation: rise .4s 3.3s both; }
+.bx-none { font-family: var(--serif); font-size: clamp(24px, 6.4vw, 36px); color: var(--moon); letter-spacing: .15em; }
+.bx-none small { display: block; margin-top: 8px; font-family: inherit; font-size: 15px; color: var(--moon-2); letter-spacing: .3em; }
+.bx-stone { background: linear-gradient(170deg, #5a3a2a, #34211a 70%, #22150f); box-shadow: inset 0 0 0 3px rgba(0, 0, 0, .25), inset 0 0 30px rgba(0, 0, 0, .55), 0 0 26px rgba(255, 110, 30, .35), 0 18px 30px rgba(0, 0, 0, .6); }
+@media (prefers-reduced-motion: reduce) {
+  .cine-bomb { animation: fade-in .25s both; }
+  .bx-bomb { animation: bx-gone .01s 2.2s forwards; }
+  .bx-debris, .bx-rings, .bx-smoke { display: none; }
+}

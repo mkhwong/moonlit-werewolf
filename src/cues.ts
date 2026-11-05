@@ -10,7 +10,7 @@ const text = (keys: string[]) => keys.map(k => CLIPS[k] || '').join('');
 const SPEECH_KEY = { lastWords: 'speech.lastWords', sheriff: 'speech.sheriff', sheriffPk: 'speech.pk', pk: 'speech.pk', day: 'speech.day' };
 
 /** [sound effect, clip keys] for a phase. */
-function cueFor(ph, game, P, meId): [string | null, string[]] {
+function cueFor(ph, game, P, meId): [string | [string, number][] | null, string[]] {
   const d = ph.data || {};
   const seat = id => `seat.${P[id]?.seat}`;
   const n = id => P[id]?.seat;
@@ -40,7 +40,8 @@ function cueFor(ph, game, P, meId): [string | null, string[]] {
     case 'skill': return [null, [`skill.${n(d.pid)}`]];
     case 'shotFx': return ['shot', d.role === 'whiteWolfKing' ? ['f.wwkTook', seat(d.target)] : [seat(d.shooter), 'f.took', seat(d.target)]];
     case 'selfDestructFx': return ['boom', [`boom.${n(d.pid)}`, ...(d.bloodMoon ? ['bloodMoon'] : [])]];
-    case 'bombFx': return ['boom', [`bomber.${n(d.pid)}`, ...(d.victims?.length ? ['f.bomb', ...list(d.victims)] : [])]];
+    // Fuse hiss while 「N號係炸彈人！」 plays, the blast at 2.2 s, then the victims from 3.3 s.
+    case 'bombFx': return [[['fuse', 0], ['boom', 2.2]], [`bomber.${n(d.pid)}`, ...(d.victims?.length ? ['at:3.3', 'f.bomb', ...list(d.victims)] : [])]];
     case 'wwkTake': return [null, ['wwkTake']];
     case 'duelFx': return ['clash', [seat(d.knight), 'f.duelWith', seat(d.target), 'f.duel', seat(d.target), d.success ? 'f.duelWolf' : 'f.duelGood']];
     case 'charmFx': return ['charm', [`charm.${n(d.pid)}`]];
@@ -70,7 +71,7 @@ export function useAudioCues(game, P) {
     if (!ph || last.current === ph.id) return;
     last.current = ph.id;
     const [fx, keys] = cueFor(ph, game, P, meId);
-    if (fx) sfx(fx);
+    if (fx) (Array.isArray(fx) ? fx : [[fx, 0] as [string, number]]).forEach(([name, delay]) => sfx(name, delay));
     if (keys.length) sayClips(keys, text(keys)); else if (ph.type !== 'reveal') stopSpeech();
   }, [ph?.id]);
 

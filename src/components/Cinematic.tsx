@@ -176,6 +176,79 @@ function Impact({ sfx, color = '#a8232c', emblem, avatar, head, sub, note, shake
   );
 }
 
+/** 炸彈人 voted out: the fuse burns down, the bomb goes off, then the seats it took are announced. */
+function star(n, r1, r2, cx = 0, cy = 0) {
+  return Array.from({ length: n * 2 }, (_, i) => {
+    const r = i % 2 ? r2 : r1, a = (Math.PI * i) / n - Math.PI / 2;
+    return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`;
+  }).join(' ');
+}
+export const BOMB_T = { blast: 2200, list: 3300, per: 650, hold: 2200 };
+const DEBRIS = Array.from({ length: 16 }, (_, i) => ({ a: i * 22.5 + (i % 3) * 7, d: 34 + (i * 37) % 26, s: 6 + (i * 5) % 9, r: (i * 73) % 360 }));
+function BombScene({ data, players }: any) {
+  const b = players[data.pid];
+  const victims = data.victims || [];
+  const fuse = 'M128 70 C150 40 182 52 176 26 C172 10 194 4 206 14';
+  return (
+    <div className="cine cine-bomb">
+      <div className="bx-head">
+        <b>{b?.seat}號 {b?.name}</b>
+        <span>是炸彈人！</span>
+      </div>
+      <div className="bx-stage" aria-hidden>
+        <svg className="bx-bomb" viewBox="0 0 240 240" width="240" height="240">
+          <defs>
+            <radialGradient id="bx-shell" cx="38%" cy="34%" r="70%">
+              <stop offset="0" stopColor="#6a6274" /><stop offset=".55" stopColor="#2f2a36" /><stop offset="1" stopColor="#141018" />
+            </radialGradient>
+          </defs>
+          <circle cx="108" cy="140" r="74" fill="url(#bx-shell)" />
+          <path d="M60 112 Q70 84 98 76" stroke="rgba(255,255,255,.28)" strokeWidth="9" fill="none" strokeLinecap="round" />
+          <rect x="106" y="58" width="36" height="28" rx="5" fill="#e0782a" stroke="#6b3410" strokeWidth="3" transform="rotate(34 124 72)" />
+          <path className="bx-fuse" d={fuse} pathLength={1} stroke="#c9a26a" strokeWidth="6" fill="none" strokeLinecap="round" />
+          <g className="bx-spark">
+            <polygon points={star(8, 16, 6, 0, 0)} fill="#ffd25e" />
+            <circle r="6" fill="#fff8d8" />
+          </g>
+        </svg>
+        <div className="bx-flash" />
+        <div className="bx-fire" />
+        <div className="bx-rings"><i /><i /></div>
+        <div className="bx-debris">
+          {DEBRIS.map((p, i) => <i key={i} style={{ '--a': `${p.a}deg`, '--d': `${p.d}vmin`, '--s': `${p.s}px`, '--r': `${p.r}deg` } as any} />)}
+        </div>
+        <div className="bx-smoke"><i /><i /><i /><i /></div>
+        <div className="bx-sfx">轟！</div>
+      </div>
+      <div className="bx-burn" aria-hidden>引信燃燒中…</div>
+      <div className="bx-result">
+        {victims.length ? (
+          <>
+            <div className="bx-lead">炸彈爆炸，被炸死的是</div>
+            <div className="an-list">
+              {victims.map((pid, i) => {
+                const p = players[pid];
+                const d = BOMB_T.list + 250 + i * BOMB_T.per;
+                return (
+                  <div key={pid} className="an-stone bx-stone" style={{ animationDelay: `${d}ms` }}>
+                    <span className="an-rip">炸死</span>
+                    <Avatar name={p?.name} size={56} dim />
+                    <b>{p?.seat}號</b>
+                    <span className="an-name">{p?.name}</span>
+                    <i className="seal an-seal" style={{ animationDelay: `${d + 450}ms` }}>出局</i>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="bx-lead bx-none">沒有人投他<br /><small>炸彈落空，無人被炸死</small></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SheriffIntro() {
   return (
     <div className="cine cine-sheriff">
@@ -345,13 +418,7 @@ export default function CinematicLayer({ game, playersById }: any) {
         sub="白天立即結束，進入黑夜" note={d.badgeLost ? '警長競選中斷，警徽流失' : d.bloodMoon ? '血月升起：今晚好人技能全部失效' : null}
       />
     ); break;
-    case 'bombFx': body = (
-      <Impact
-        color={ROLES.bomber.color} emblem="bomber" sfx="爆炸" shake
-        head={`${P[d.pid]?.seat}號 是炸彈人！`}
-        sub={d.victims?.length ? `炸死了 ${d.victims.map(id => `${P[id]?.seat}號`).join('、')}` : '沒有人投他，炸彈落空'}
-      />
-    ); break;
+    case 'bombFx': body = <BombScene data={d} players={P} />; break;
     case 'duelFx': body = (
       <Impact
         color={d.success ? '#d8434c' : ROLES.knight.color} emblem="knight" sfx="決鬥" shake

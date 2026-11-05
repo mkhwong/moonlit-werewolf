@@ -936,7 +936,8 @@ export class Game { [key: string]: any;
       const voters = (res.by?.[p.id] || []).filter(id => id !== p.id && this.isAlive(id));
       p.revealed = 'bomber';
       this.log(voters.length ? `${p.seat}號 是炸彈人！引爆炸彈，炸死 ${this.seats(voters)}` : `${p.seat}號 是炸彈人，但沒有人投他`, 'boom', { bomb: { from: p.id, to: voters } });
-      await this.cinematic('bombFx', { pid: p.id, victims: voters }, CINE.selfDestruct);
+      // Fuse 2.2 s → blast → the seats it took, one by one (see BOMB_T in Cinematic.tsx).
+      await this.cinematic('bombFx', { pid: p.id, victims: voters }, 3550 + 650 * voters.length + 2200);
       await this.killAndResolve([{ pid: p.id, cause: 'vote' }, ...voters.map(id => ({ pid: id, cause: 'bomb' }))], { lastWords: true });
       return;
     }
