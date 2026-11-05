@@ -115,7 +115,7 @@ export const ROLES = {
   },
   bomber: {
     name: '炸彈人', team: 'good', kind: 'god', color: '#e0782a',
-    desc: '被投票放逐時引爆炸彈：所有投票給你的玩家一同出局。',
+    desc: '神職。被投票放逐時引爆炸彈：所有投票給你的玩家一同出局。晚上被殺或被毒不會爆炸。',
   },
   cupid: {
     name: '愛神', team: 'good', kind: 'god', color: '#f07aa8',

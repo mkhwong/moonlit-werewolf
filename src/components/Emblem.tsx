@@ -264,6 +264,121 @@ const SHAPES = {
     </g>
   ),
   wolfTeam: c => wolfHead(c, '#fff6c9'),
+  // ── v2.0 roles ──
+  wolfBrother: c => wolfHead(c, '#fff6c9', (
+    <g>
+      <path d="M26 40 L42 66 M32 38 L46 60" stroke="#2a0812" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M36 86 Q50 96 64 86" stroke="#d9b25c" strokeWidth="3" fill="none" />
+      <path d="M44 88 L46 96 L48 89 M52 89 L54 96 L56 88" fill="#e8dcc0" />
+    </g>
+  )),
+  wolfYounger: c => (
+    <g>
+      <g transform="translate(0 -4) scale(.86)" opacity=".55">{wolfHead('#b4404a', '#5a1a20')}</g>
+      <g transform="translate(24 30) scale(.62)">{wolfHead(c, '#fff6c9', (
+        <path d="M50 38 L53 45 L50 43 L47 45 Z" fill="#e8dcc0" />
+      ))}</g>
+    </g>
+  ),
+  bloodMoon: c => (
+    <g>
+      <circle cx="50" cy="44" r="34" fill={c} />
+      <path d="M50 10 A34 34 0 0 1 50 78 A26 34 0 0 0 50 10 Z" fill="rgba(0,0,0,.28)" />
+      <circle cx="38" cy="34" r="6" fill="rgba(0,0,0,.2)" /><circle cx="56" cy="56" r="4.5" fill="rgba(0,0,0,.2)" /><circle cx="60" cy="30" r="3" fill="rgba(0,0,0,.2)" />
+      {[[36, 76, 90], [50, 78, 97], [64, 76, 88]].map(([x, y, e]) => (
+        <path key={x} d={`M${x - 3} ${y} V${e - 5} A3 3 0 0 0 ${x + 3} ${e - 5} V${y} Z`} fill={c} />
+      ))}
+    </g>
+  ),
+  nightmare: c => wolfHead(c, '#e8dcc0', (
+    <g>
+      <path d="M50 0 Q40 8 46 14 Q52 18 46 26 M34 6 Q28 12 34 18 M66 6 Q72 12 66 18" stroke="#c7b0f0" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity=".8" />
+      {[37, 63].map(x => (
+        <path key={x} d={`M${x} 56 m-6 0 a6 6 0 1 1 6 6 a3.5 3.5 0 1 1 -3.5 -3.5`} stroke="#120a14" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      ))}
+    </g>
+  )),
+  wolfWitch: c => (
+    <g>
+      <g transform="translate(12 26) scale(.76)">{wolfHead(c, '#9bf0b0')}</g>
+      <path d="M14 36 Q50 24 86 36 Q50 44 14 36 Z" fill="#2a1d3a" />
+      <path d="M30 34 Q40 4 66 2 Q56 12 62 32 Z" fill="#2a1d3a" />
+      <path d="M31 30 Q46 26 62 29" stroke="#d9b25c" strokeWidth="4" fill="none" />
+      <circle cx="68" cy="4" r="3" fill="#d9b25c" />
+    </g>
+  ),
+  magician: c => (
+    <g>
+      <ellipse cx="44" cy="68" rx="34" ry="8" fill={c} />
+      <path d="M22 66 V24 Q44 18 66 24 V66 Q44 72 22 66 Z" fill={c} />
+      <path d="M22 54 Q44 60 66 54 V62 Q44 68 22 62 Z" fill="#d9b25c" />
+      <path d="M22 24 Q44 30 66 24" stroke="rgba(0,0,0,.3)" strokeWidth="2" fill="none" />
+      <path d="M58 92 L90 52" stroke={DARK} strokeWidth="6" strokeLinecap="round" />
+      <path d="M84 59 L90 52" stroke="#f4ecd2" strokeWidth="6" strokeLinecap="round" />
+      <polygon points={star(4, 7, 2, 84, 40)} fill="#fff4cf" />
+      <polygon points={star(4, 5, 1.5, 12, 14)} fill="#fff4cf" />
+      <path d="M8 84 Q20 96 34 88 M30 84 L34 88 L29 92" stroke="#e8dcc0" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  ),
+  silencer: c => (
+    <g>
+      <path d="M14 18 H86 Q92 18 92 24 V62 Q92 68 86 68 H44 L26 86 L30 68 H14 Q8 68 8 62 V24 Q8 18 14 18 Z" fill={c} />
+      <circle cx="32" cy="43" r="5" fill={DARK} /><circle cx="50" cy="43" r="5" fill={DARK} /><circle cx="68" cy="43" r="5" fill={DARK} />
+      <circle cx="50" cy="43" r="30" fill="none" stroke="#e8dcc0" strokeWidth="6" />
+      <path d="M29 22 L71 64" stroke="#e8dcc0" strokeWidth="6" strokeLinecap="round" />
+    </g>
+  ),
+  whiteLady: c => (
+    <g>
+      <circle cx="50" cy="40" r="32" fill="none" stroke={c} strokeWidth="3" opacity=".8" />
+      <path d="M50 92 Q48 70 50 52" stroke="#6f8f52" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <path d="M50 74 Q62 66 70 72 Q60 80 50 76" fill="#6f8f52" />
+      <path d="M50 54 Q36 36 42 14 Q50 26 50 54 Z" fill="#f4ecd2" />
+      <path d="M50 54 Q64 36 58 14 Q50 26 50 54 Z" fill="#f4ecd2" />
+      <path d="M50 56 Q30 52 20 34 Q38 34 50 56 Z" fill="#e8dcc0" />
+      <path d="M50 56 Q70 52 80 34 Q62 34 50 56 Z" fill="#e8dcc0" />
+      <circle cx="50" cy="44" r="4" fill={c} />
+    </g>
+  ),
+  bomber: c => (
+    <g>
+      <circle cx="44" cy="60" r="32" fill="#3a3340" />
+      <path d="M22 50 Q28 34 42 30" stroke="rgba(255,255,255,.35)" strokeWidth="5" fill="none" strokeLinecap="round" />
+      <rect x="50" y="22" width="18" height="14" rx="3" fill={c} transform="rotate(35 59 29)" />
+      <path d="M64 22 Q72 8 84 14" stroke="#c9a26a" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <polygon points={star(8, 13, 5, 86, 12)} fill="#f6d061" />
+      <circle cx="86" cy="12" r="4" fill="#fff4cf" />
+    </g>
+  ),
+  cupid: c => (
+    <g>
+      <path d="M50 88 Q14 62 14 38 Q14 18 32 18 Q44 18 50 32 Q56 18 68 18 Q86 18 86 38 Q86 62 50 88 Z" fill={c} />
+      <path d="M26 32 Q28 24 36 24" stroke="#fff" strokeWidth="3.5" fill="none" opacity=".6" strokeLinecap="round" />
+      <path d="M6 84 L92 14" stroke="#e8dcc0" strokeWidth="4" strokeLinecap="round" />
+      <path d="M92 14 L80 16 L88 26 Z" fill="#d9b25c" />
+      <path d="M6 84 L4 74 L12 78 Z M6 84 L16 86 L12 78 Z M12 79 L10 69 L18 73 Z M12 79 L22 81 L18 73 Z" fill="#d9b25c" />
+    </g>
+  ),
+  halfBlood: c => (
+    <g>
+      <path d="M50 6 Q22 44 22 62 A28 28 0 0 0 50 90 Z" fill={c} />
+      <path d="M50 6 Q78 44 78 62 A28 28 0 0 1 50 90 Z" fill="#d8434c" />
+      <path d="M50 6 V90" stroke={DARK} strokeWidth="2.5" />
+      <path d="M33 56 Q30 66 36 74" stroke="#fff" strokeWidth="3.5" fill="none" opacity=".55" strokeLinecap="round" />
+      <path d="M56 50 L70 54 L60 59 Z" fill="#fff6c9" />
+      <circle cx="37" cy="56" r="4" fill={DARK} />
+    </g>
+  ),
+  thief: c => (
+    <g>
+      <rect x="18" y="10" width="34" height="50" rx="4" fill="#e8dcc0" transform="rotate(-14 35 35)" />
+      <rect x="48" y="10" width="34" height="50" rx="4" fill={c} transform="rotate(14 65 35)" />
+      <path d="M60 22 L68 32 L60 42 L52 32 Z" fill="#e8dcc0" opacity=".7" transform="rotate(14 65 35)" />
+      <path d="M10 62 Q30 52 50 60 Q70 52 90 62 Q88 80 70 80 Q58 80 50 70 Q42 80 30 80 Q12 80 10 62 Z" fill="#1c1424" />
+      <ellipse cx="30" cy="67" rx="7" ry="4.5" fill="#e8dcc0" /><ellipse cx="70" cy="67" rx="7" ry="4.5" fill="#e8dcc0" />
+      <path d="M90 62 Q96 60 98 66 M10 62 Q4 60 2 66" stroke="#1c1424" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </g>
+  ),
 };
 
 const EXTRA_COLORS = { wolfTeam: '#d8434c', sleep: '#e8dcc0', lucky: '#8fbf6a' };

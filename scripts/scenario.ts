@@ -473,5 +473,35 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
   console.log('P ok: 魔術師 swap redirects the kill; 血月使徒 seals good skills after 自爆');
 }
 
+// Q: 炸彈人 is a 神職; voted out → everyone who voted for him dies with him.
+{
+  const { ROLES } = await import('../shared/roles');
+  assert.equal(ROLES.bomber.kind, 'god', '炸彈人 is a 神職');
+  const { game, on } = setup(['werewolf', 'werewolf', 'seer', 'witch', 'bomber', 'villager', 'villager', 'hunter', 'werewolf'], { sheriff: false });
+  let bombLog = null;
+  on(g => {
+    const ph = g.phase;
+    if (!ph) return;
+    const act = (n, a) => g.handle(id(n), a);
+    if (ph.type === 'reveal') once(ph, 'r', () => g.players.forEach(p => act(p.seat, { type: 'ready' })));
+    if (ph.type === 'night' && ph.data.step === 'wolf' && g.day === 1) once(ph, 'w', () => [1, 2, 9].forEach(n => { act(n, { type: 'pick', target: id(6) }); act(n, { type: 'lock' }); }));
+    if (ph.type === 'night' && ph.data.step === 'witch' && g.day === 1) once(ph, 'wi', () => act(4, { type: 'skip' }));
+    if (ph.type === 'vote' && ph.data.kind === 'exile' && g.day === 1) once(ph, 'v', () => {
+      [1, 2, 9, 3].forEach(n => act(n, { type: 'vote', target: id(5) }));
+      [4, 7, 8].forEach(n => act(n, { type: 'vote', target: id(1) }));
+      act(5, { type: 'vote', target: id(3) });
+    });
+    if (ph.type === 'speech' && ph.data.kind === 'lastWords') once(ph, 'lw', () => act(g.seat(ph.data.pid), { type: 'endSpeech' }));
+  });
+  const res = await game.run().catch(e => e);
+  bombLog = game.publicLog.find(l => l.bomb);
+  assert.ok(bombLog, 'bomb went off');
+  assert.deepEqual([...bombLog.bomb.to].sort(), [id(1), id(2), id(3), id(9)].sort(), 'all four voters blown up');
+  assert.ok(![1, 2, 3, 5, 9].some(n => game.isAlive(id(n))), 'bomber and voters are out');
+  assert.ok([4, 7, 8].every(n => game.isAlive(id(n))), 'non-voters survive');
+  assert.equal(game.winner, 'good', 'all wolves bombed → 好人勝');
+  console.log('Q ok: 炸彈人 (神職) voted out takes all 4 of his voters; non-voters live');
+}
+
 console.log('all scenarios passed');
 process.exit(0);
