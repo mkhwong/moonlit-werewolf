@@ -6,6 +6,8 @@ import ActionPanel, { SPEECH_LABEL, SkillButtons, hasSkillButtons, ClaimPanel } 
 import CinematicLayer, { FULL_CINE, VoteRecord } from '../components/Cinematic';
 import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
+import NightMap from '../components/NightMap';
+import PastGamesSheet from '../components/PastGames';
 import { act, call, call as emit, useNow, now } from '../socket';
 import { useNotes } from '../notes';
 import { useAudioCues } from '../cues';
@@ -239,6 +241,7 @@ function GameOver({ state, P }: any) {
   const wolfWin = g.winner === 'wolf';
   const loveWin = g.winner === 'lovers';
   const [showLog, setShowLog] = useState(false);
+  const [past, setPast] = useState(false);
   return (
     <div className={`over ${wolfWin ? 'over-wolf' : 'over-good'}`}>
       <div className="over-title">
@@ -259,8 +262,13 @@ function GameOver({ state, P }: any) {
           );
         })}
       </ul>
-      <button className="btn btn-ghost" onClick={() => setShowLog(v => !v)} aria-expanded={showLog}>{showLog ? '收起完整紀錄' : '查看完整紀錄（含夜晚行動）'}</button>
+      <NightMap game={g} />
+      <div className="over-btns">
+        <button className="btn btn-ghost" onClick={() => setShowLog(v => !v)} aria-expanded={showLog}>{showLog ? '收起文字紀錄' : '文字紀錄（含夜晚行動）'}</button>
+        {state.pastGames?.length > 1 ? <button className="btn btn-ghost" onClick={() => setPast(true)}>本房戰績（{state.pastGames.length} 局）</button> : null}
+      </div>
       {showLog ? <div className="panel over-log"><LogList entries={g.history} empty="沒有紀錄" /></div> : null}
+      {past ? <PastGamesSheet list={state.pastGames} onClose={() => setPast(false)} /> : null}
       <button className="btn btn-moon btn-lg" onClick={() => call('toLobby')}>返回大廳</button>
       <p className="muted over-lobby-note">{state.othersInLobby
         ? `已有 ${state.othersInLobby} 人返回大廳，房主可以喺大廳開新局`

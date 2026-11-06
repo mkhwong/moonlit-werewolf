@@ -67,6 +67,8 @@ class Room { [key: string]: any;
     };
     this.log = [];        // short lobby notices for the 法官 board
     this.game = null;
+    this.pastGames = [];  // finished games of this room session (newest last), for 「本房戰績」
+    this.gameNo = 0;
     this.botMemo = new Map();
     this.botTimers = new Set();
     this.voice = new Map();     // pid -> { mic } for players who switched voice on
@@ -229,9 +231,11 @@ class Room { [key: string]: any;
     this.lastGame = null;
     for (const p of this.players) p.atResult = false;
     const game = this.game;
+    const no = ++this.gameNo;
+    const label = this.config.mode === 'preset' ? packById(this.config.packId)?.name || '預設' : '自訂配置';
     game.run().then(result => {
       if (this.game !== game) return;
-      if (result === 'over') this.status = 'ended';
+      if (result === 'over') { this.status = 'ended'; this.archive(game, no, label); }
       else { this.status = 'lobby'; this.game = null; }
       this.broadcast();
     });
@@ -259,6 +263,17 @@ class Room { [key: string]: any;
       p.atResult = !!(fromResult && p.id !== by.id && !p.bot && this.lastGame.players.some(x => x.id === p.id));
     }
     this.broadcast();
+  }
+
+  /** Keep a finished game's full record (roles, night map, log) for the rest of this room session. */
+  archive(game, no, label) {
+    const v = game.viewFor(null);
+    this.pastGames.push({
+      no, label, endedAt: Date.now(), winner: game.winner, days: game.day, size: v.players.length,
+      players: v.players.map(p => ({ id: p.id, seat: p.seat, name: p.name, role: p.role, alive: p.alive, deathCause: p.deathCause, team: p.team, third: p.third })),
+      nightMap: v.nightMap, nightDeaths: v.nightDeaths, history: v.history, lovers: v.lovers,
+    });
+    if (this.pastGames.length > 30) this.pastGames.shift();
   }
 
   /** One player leaves the result screen for the lobby. */
@@ -336,6 +351,7 @@ class Room { [key: string]: any;
       },
       you: { id: p.id, name: p.name, seat: p.seat, isHost: p.id === this.hostId, pref: p.pref || null, ready: !!p.ready },
       game: atResult ? this.lastGame.viewFor(p.id) : this.game ? this.game.viewFor(p.id) : null,
+      pastGames: this.pastGames.map(g => ({ no: g.no, label: g.label, endedAt: g.endedAt, winner: g.winner, size: g.size, days: g.days })),
       othersInLobby: atResult ? this.players.filter(x => !x.bot && !x.atResult).length : undefined,
       voice: this.voiceView(p),
     };
@@ -729,6 +745,13 @@ io.on('connection', socket => {
   });
 
   // 返回大廳 from the result screen — each player for themselves.
+  // 本房戰績: the full record of an earlier game in this room.
+  socket.on('pastGame', (p, cb) => {
+    const c = ctx(socket);
+    const g = c?.room.pastGames.find(x => x.no === Number(p?.no));
+    ack(cb)(g ? { ok: true, game: g } : { ok: false });
+  });
+
   socket.on('toLobby', (p, cb) => {
     const c = ctx(socket);
     if (!c) return ack(cb)({ ok: false });

@@ -558,6 +558,9 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
   assert.equal(secondPrompt?.title, '狼弟・第二刀');
   assert.ok(!secondPrompt.targets.includes(id(4)), 'second knife can’t hit the first target');
   assert.deepEqual(deathsN3, [id(4), id(5)].sort(), 'night 3: two kills');
+  assert.ok(game.nightMap.some(a => a.day === 1 && a.kind === 'checkGood' && a.from[0] === id(4) && a.to[0] === id(2)), 'night map: 預言家 → 狼弟 好人');
+  assert.ok(game.nightMap.some(a => a.day === 3 && a.kind === 'knife' && a.label === '第二刀' && a.to[0] === id(5)), 'night map: 第二刀');
+  assert.deepEqual(game.nightDeaths[2].map(d => d.pid).sort(), [id(8), id(9)].sort(), 'night map: dawn deaths');
   console.log('R ok: 狼弟 checks good, revenge knife, then 2 kills as last wolf; 場外 opens after last words');
 }
 

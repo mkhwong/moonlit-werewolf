@@ -4,6 +4,7 @@ import Emblem, { Avatar } from '../components/Emblem';
 import { call } from '../socket';
 import { PttDock, VoiceCtx } from '../components/VoiceControls';
 import { Sheet, GuidePopup } from '../components/Sheets';
+import PastGamesSheet from '../components/PastGames';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt } from '../components/Throw';
 import { sfx } from '../audio';
 import {
@@ -352,6 +353,7 @@ export default function Lobby({ state, onLeave, notify }: any) {
               </button>
             </>
           ) : null}
+          {state.pastGames?.length ? <button type="button" className="tool" onClick={() => setSheet('past')}>戰績 {state.pastGames.length}</button> : null}
           <button type="button" className="tool" onClick={share}>分享</button>
           <button type="button" className="tool" onClick={onLeave}>離開</button>
           <button type="button" className="tool-room" onClick={() => copyText(room.code).then(() => notify('房間代碼已複製'))} aria-label={`房間代碼 ${room.code}，點一下複製`}>房間 <b>{room.code}</b></button>
@@ -472,6 +474,7 @@ export default function Lobby({ state, onLeave, notify }: any) {
 
       {sheet === 'setup' && host ? <SetupSheet room={room} you={you} counts={counts} onClose={() => setSheet(null)} /> : null}
       {sheet === 'timer' && host ? <TimerSheet room={room} onClose={() => setSheet(null)} /> : null}
+      {sheet === 'past' ? <PastGamesSheet list={state.pastGames} onClose={() => setSheet(null)} /> : null}
       {sheet === 'guide' ? <GuidePopup game={fakeGame} onClose={() => setSheet(null)} /> : null}
       {sheet === 'throw' ? <ThrowFlyout game={fakeGame} onPick={it => { setThrowItem(it); setSheet(null); }} onClose={() => setSheet(null)} /> : null}
       {sheet && sheet.player ? (
