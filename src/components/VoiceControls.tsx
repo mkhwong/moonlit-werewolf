@@ -46,7 +46,7 @@ export function VoiceToggle() {
   );
 }
 
-const CHANNEL_LABEL = { speech: '按住說話', wolves: '按住和狼隊友說話', room: '按住和大家聊天' };
+const CHANNEL_LABEL = { speech: '按住說話', wolves: '按住和狼隊友說話', brothers: '按住和狼兄弟說話', room: '按住和大家聊天' };
 
 /**
  * Slim hold-to-talk bar pinned to the bottom of the screen (about 6% of its height),

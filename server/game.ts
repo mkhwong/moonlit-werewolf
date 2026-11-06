@@ -25,7 +25,8 @@ const rnd = (a, b) => Math.round(a + Math.random() * (b - a));
 const choice = a => a[Math.floor(Math.random() * a.length)];
 const teamOf = r => ROLES[r].team;
 // What checks, the bear, the knight, the demon hunter and the gravekeeper see: 隱狼 looks good.
-const seenTeam = r => (r === 'hiddenWolf' ? 'good' : ROLES[r].team);
+// 隱狼 and 狼弟 check as 好人 (預言家, 守墓人, 騎士, 熊, 獵魔人).
+const seenTeam = r => (r === 'hiddenWolf' || r === 'wolfYounger' ? 'good' : ROLES[r].team);
 const kindOf = r => ROLES[r].kind;
 
 export function shuffle(a) {
@@ -131,18 +132,19 @@ export class Game { [key: string]: any;
     if (p.role === 'wolfYounger') return this.smallWolvesGone();
     return teamOf(p.role) === 'wolf' && !LONE_WOLVES.includes(p.role);
   }
-  /** 狼弟 returns to the pack once every 普通狼人 (or, with none in the setup, every other pack wolf but 狼兄) is out. */
+  /** 狼弟 returns to the wolf team once every other wolf-team player (狼兄 included) is out. */
   smallWolvesGone() {
-    const small = this.has('werewolf')
-      ? this.players.filter(p => p.role === 'werewolf')
-      : this.players.filter(p => teamOf(p.role) === 'wolf' && !LONE_WOLVES.includes(p.role) && p.role !== 'wolfBrother');
-    return small.every(p => !p.alive);
+    return this.players.filter(p => teamOf(p.role) === 'wolf' && p.role !== 'wolfYounger').every(p => !p.alive);
   }
-  /** 狼弟 復仇: 狼兄 is out, the pack still has members, and 狼弟 hasn't rejoined it yet. */
+  /** 狼弟 復仇: 狼兄 is out, the rest of the wolf team is still in, so 狼弟 hunts alone with one knife. */
   revengeOn() {
     const y = this.players.find(p => p.role === 'wolfYounger' && p.alive);
     const bro = this.players.find(p => p.role === 'wolfBrother');
     return !!(y && bro && !bro.alive && !this.smallWolvesGone());
+  }
+  /** 狼弟 is the last wolf: he takes the wolf kill and a second knife every night (two kills). */
+  youngerAlone() {
+    return !!this.players.find(p => p.role === 'wolfYounger' && p.alive) && this.smallWolvesGone();
   }
   /** Team for winning: 混血兒 follows the 榜樣; everyone else their card. */
   teamOfP(p) { return p.role === 'halfBlood' && this.halfTeam ? this.halfTeam : teamOf(p.role); }
@@ -281,7 +283,7 @@ export class Game { [key: string]: any;
     this.night = {
       guard: null, kill: null, save: false, poison: null, mechGuard: null, mechPoison: null,
       dream: null, hunt: null, luckyGuard: null, luckyPoison: null, merchantFail: false, reflect: [],
-      swap: null, fear: null, revenge: null, silence: null, checkKills: [],
+      swap: null, fear: null, revenge: null, revengeSecond: false, silence: null, checkKills: [],
     };
     await this.cinematic('nightfall', { day: this.day }, CINE.nightfall);
     const steps = [];
@@ -305,7 +307,7 @@ export class Game { [key: string]: any;
     if (this.has('wolfWitch')) steps.push('wolfWitch');
     if (this.has('whiteLady')) steps.push('purity');
     if (this.has('silencer')) steps.push('silence');
-    if (this.has('wolfYounger') && this.has('wolfBrother')) steps.push('revenge');
+    if (this.has('wolfYounger')) steps.push('revenge'); // 復仇刀, or the 第二刀 once 狼弟 is the last wolf
     if (this.has('demonHunter') && this.day > 1) steps.push('hunt');
     if (this.has('gravekeeper') && this.day > 1) steps.push('grave');
     if (this.has('mechWolf') && this.day > 1) steps.push('mechAct');
@@ -341,7 +343,7 @@ export class Game { [key: string]: any;
       case 'wolfWitch': return role('wolfWitch');
       case 'purity': return role('whiteLady');
       case 'silence': return role('silencer');
-      case 'revenge': return this.revengeOn() ? role('wolfYounger') : [];
+      case 'revenge': return this.revengeOn() || this.youngerAlone() ? role('wolfYounger') : [];
       case 'mechLearn': return role('mechWolf');
       case 'guard': return role('guard');
       case 'wolf': {
@@ -492,11 +494,11 @@ export class Game { [key: string]: any;
         else if (!deaths.has(hunter.id)) deaths.set(hunter.id, 'hunt');
       }
     }
-    // 3b. 狼弟's revenge knife (guards still work; the witch never sees it)
+    // 3b. 狼弟's own knife — 復仇刀, or the 第二刀 once he is the last wolf (guards still work; the witch never sees it)
     if (n.revenge && this.isAlive(n.revenge) && !deaths.has(n.revenge) && !immuneAtNight(n.revenge)) {
       const guarded = n.guard === n.revenge || n.mechGuard === n.revenge || n.luckyGuard === n.revenge;
-      if (guarded) this.secret(`${this.seat(n.revenge)}號 被守護，擋下狼弟的復仇`);
-      else deaths.set(n.revenge, 'revenge');
+      if (guarded) this.secret(`${this.seat(n.revenge)}號 被守護，擋下狼弟的${n.revengeSecond ? '第二刀' : '復仇'}`);
+      else deaths.set(n.revenge, n.revengeSecond ? 'wolf' : 'revenge');
     }
     // 4. 夢遊者 is immune to every night death above
     const dreamer = n.dream && this.isAlive(n.dream) ? n.dream : null;
@@ -645,6 +647,7 @@ export class Game { [key: string]: any;
     for (const d of actual) {
       const p = this.get(d.pid);
       p.alive = false;
+      p.outside = false; // 場外 opens only after this player's death is fully played out (skill, badge, last words)
       p.deathDay = this.day;
       p.deathCause = d.cause;
     }
@@ -690,6 +693,8 @@ export class Game { [key: string]: any;
     }
     if (this.sheriffId === p.id) await this.badgeTransfer(p, d.cause);
     if (lastWords) await this.lastWords(p.id);
+    p.outside = true;
+    this.notify();
   }
 
   async badgeTransfer(p, cause) {
@@ -1060,6 +1065,7 @@ export class Game { [key: string]: any;
   /** 文字聊天 at any time. Living players talk 場內; the dead talk 場外 — the living never see 場外. */
   tryChat(me, text) {
     if (this.settings.faceToFace || this.finished) return;
+    if (!me.alive && !me.outside) return; // not in 場外 yet: their last words are still to come
     const t = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 120);
     if (!t) return;
     const now = Date.now();
@@ -1135,7 +1141,7 @@ export class Game { [key: string]: any;
     if (!ph.priv.actors.includes(me.id) || me.bot || !['charge', 'lurk'].includes(stance)) return;
     this.wolfPlan.stance = stance;
     this.wolfPlan.byHuman = true;
-    this.wolfChat.push({ day: this.day, pid: me.id, seat: me.seat, text: stance === 'charge' ? '（戰術：衝鋒，幫狼隊預言家打）' : '（戰術：倒鉤，躲喺真預言家嗰邊）' });
+    this.wolfChat.push({ day: this.day, pid: me.id, seat: me.seat, text: stance === 'charge' ? '（戰術：衝鋒，幫狼隊預言家打）' : '（戰術：倒鉤，躲喺真預言家嗰邊）', at: Date.now() });
   }
 
   tryWolfChat(me, text) {
@@ -1143,7 +1149,8 @@ export class Game { [key: string]: any;
     if (!ph || ph.done || ph.type !== 'night' || ph.data.step !== 'wolf' || !ph.priv.actors.includes(me.id)) return;
     const t = String(text || '').trim().slice(0, 120);
     if (!t) return;
-    this.wolfChat.push({ day: this.day, pid: me.id, seat: me.seat, text: t });
+    this.wolfChat.push({ day: this.day, pid: me.id, seat: me.seat, text: t, at: Date.now() });
+    if (this.wolfChat.length > 200) this.wolfChat.splice(0, this.wolfChat.length - 200);
   }
 
   // ───────────────────────── player actions ─────────────────────────
@@ -1382,11 +1389,13 @@ export class Game { [key: string]: any;
       }
       case 'revenge': {
         if (pv.done) return;
+        const second = this.youngerAlone();
         if (a.type === 'pick') {
-          if (!ok(a.target) || a.target === me.id) return;
+          if (!ok(a.target) || a.target === me.id || (second && a.target === n.kill)) return;
           n.revenge = a.target;
-          this.plog(me.id, `為狼兄復仇，刀了 ${this.seat(a.target)}號`);
-          this.secret(`狼弟復仇，刀 ${this.seat(a.target)}號`);
+          n.revengeSecond = second;
+          this.plog(me.id, second ? `第二刀刀了 ${this.seat(a.target)}號` : `為狼兄復仇，刀了 ${this.seat(a.target)}號`);
+          this.secret(second ? `狼弟（最後一隻狼）第二刀 ${this.seat(a.target)}號` : `狼弟復仇，刀 ${this.seat(a.target)}號`);
         } else if (a.type === 'skip') this.plog(me.id, '今晚沒有出刀');
         else return;
         pv.done = true;
@@ -1662,9 +1671,9 @@ export class Game { [key: string]: any;
       }
       case 'brothers': {
         if (me.role === 'wolfYounger') {
-          const pack = this.players.filter(p => this.isPackWolf(p) && p.id !== me.id);
           const bro = this.players.find(p => p.role === 'wolfBrother');
-          return { kind: 'info', text: `狼兄是 ${bro ? this.seat(bro.id) + '號' : '—'}；狼隊：${pack.length ? this.seats(pack.map(p => p.id)) : '—'}。之後你不會再與狼隊見面` };
+          const team = this.players.filter(p => teamOf(p.role) === 'wolf' && p.id !== me.id && p.role !== 'wolfBrother');
+          return { kind: 'info', text: `狼兄是 ${bro ? this.seat(bro.id) + '號' : '—'}；狼隊：${team.length ? this.seats(team.map(p => p.id)) : '—'}。之後你不會再與狼隊見面（可以用咪同狼兄講嘢）` };
         }
         const y = this.players.find(p => p.role === 'wolfYounger');
         return { kind: 'info', text: `你的狼弟是 ${y ? this.seat(y.id) + '號' : '—'}。你出局後，他會為你復仇` };
@@ -1682,9 +1691,14 @@ export class Game { [key: string]: any;
           targets: others.filter(id => id !== last), skipLabel: '不選', confirmLabel: step === 'fear' ? '恐懼' : '禁言',
         };
       }
-      case 'revenge':
+      case 'revenge': {
+        if (this.youngerAlone()) {
+          if (pv.done) return { kind: 'info', text: n.revenge ? `今晚第二刀 ${this.seat(n.revenge)}號` : '今晚沒有出第二刀' };
+          return { kind: 'pick', title: '狼弟・第二刀', desc: `狼隊只剩你，每晚可以刀兩人。${n.kill ? `第一刀：${this.seat(n.kill)}號。` : ''}再選一名玩家（守衛可以守住，女巫看不到）`, targets: others.filter(id => id !== n.kill), skipLabel: '不出刀', confirmLabel: '出刀', danger: true, revenge: true };
+        }
         if (pv.done) return { kind: 'info', text: n.revenge ? `今晚復仇刀 ${this.seat(n.revenge)}號` : '今晚沒有出刀' };
         return { kind: 'pick', title: '為狼兄復仇', desc: '單獨選擇一名玩家擊殺（守衛可以守住，女巫看不到）', targets: others, skipLabel: '不出刀', confirmLabel: '復仇', danger: true, revenge: true };
+      }
       case 'wolfWitch':
       case 'purity': {
         if (pv.result) return result('medium');
@@ -1804,6 +1818,7 @@ export class Game { [key: string]: any;
         halfModel: me.role === 'halfBlood' && this.halfModel ? this.seat(this.halfModel) : undefined,
         halfTeam: me.role === 'halfBlood' ? this.halfTeam : undefined,
         lover: this.lovers?.includes(me.id) ? this.seat(this.lovers.find(id => id !== me.id)) : undefined,
+        outside: !me.alive && !!me.outside, // dead and through their last words → may use 場外
       } : null,
       phase: ph ? {
         id: ph.id, type: ph.type, data: ph.data, startedAt: ph.startedAt, introMs: ph.introMs,
@@ -1822,7 +1837,8 @@ export class Game { [key: string]: any;
       privateLog: me ? (this.privateLog[me.id] || []) : [],
       speechLog: this.speechLog.slice(-150),
       // The living only see 場內 chat; the dead (and spectators) see both.
-      chat: (me && me.alive && !this.finished ? this.chat.filter(m => !m.out) : this.chat).slice(-150),
+      // A dead player only joins 場外 once their last words are over, so nothing said there can leak into them.
+      chat: (me && (me.alive || !me.outside) && !this.finished ? this.chat.filter(m => !m.out) : this.chat).slice(-150),
       wolfChat: meWolf || wolfStepActor || all ? this.wolfChat : [],
       history: all ? this.history : null,
     };

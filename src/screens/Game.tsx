@@ -261,9 +261,10 @@ function GameOver({ state, P }: any) {
       </ul>
       <button className="btn btn-ghost" onClick={() => setShowLog(v => !v)} aria-expanded={showLog}>{showLog ? '收起完整紀錄' : '查看完整紀錄（含夜晚行動）'}</button>
       {showLog ? <div className="panel over-log"><LogList entries={g.history} empty="沒有紀錄" /></div> : null}
-      {state.you.isHost
-        ? <button className="btn btn-moon btn-lg" onClick={() => call('host', { cmd: 'lobby' })}>返回大廳，再來一局</button>
-        : <p className="muted">等待房主返回大廳開新局</p>}
+      <button className="btn btn-moon btn-lg" onClick={() => call('toLobby')}>返回大廳</button>
+      <p className="muted over-lobby-note">{state.othersInLobby
+        ? `已有 ${state.othersInLobby} 人返回大廳，房主可以喺大廳開新局`
+        : '每人自己撳返回大廳；房主喺大廳開新局'}</p>
     </div>
   );
 }
@@ -317,7 +318,9 @@ export default function Game({ state }: any) {
   }, [boomArmed]);
   useEffect(() => { if (!pr.canSelfDestruct) setBoomArmed(false); }, [pr.canSelfDestruct]);
 
-  useEffect(() => { setSel(null); setMode(null); setClaimOpen(false); }, [ph?.id, pr.kind]);
+  // 女巫: once the antidote is spent the only potion left is poison — open straight on picking a target.
+  const witchPoisonOnly = pr.kind === 'witch' && !pr.antidote && !!pr.poison;
+  useEffect(() => { setSel(null); setMode(witchPoisonOnly ? 'poison' : null); setClaimOpen(false); }, [ph?.id, pr.kind, witchPoisonOnly]);
   useEffect(() => { setSel(null); }, [pr.myPick]); // two-pick steps (愛神、魔術師): start the second choice fresh
   // The speaking panel (text box + 結束發言) can be minimised to a « tab on the right; the choice sticks for later turns.
   const [speechMin, setSpeechMin] = useState(false);

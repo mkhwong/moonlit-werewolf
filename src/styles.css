@@ -1209,6 +1209,16 @@ html .wwt > .wwt-hint { display: none !important; }
 .judge-chat button { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(201,164,92,.6); background: rgba(201,164,92,.18); color: var(--gold); font-size: 13px; font-weight: 700; }
 .judge-chat button:disabled { opacity: .4; }
 .judge-chat.is-out input { border-color: #6a5d7c; background: rgba(40,30,55,.6); }
+.judge-chat-wait { margin: 0; padding: 9px 10px; border-top: 1px solid rgba(201, 164, 92, .22); text-align: center; font-size: 13px; color: #b9b0c4; letter-spacing: .05em; }
+/* 狼隊頻道 toggle: a small two-way switch at the left of the chat box */
+.chat-chan { display: flex; flex: none; height: 32px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(201, 164, 92, .45); }
+.judge-chat .chat-chan button { height: 100%; padding: 0 8px; border: 0; border-radius: 0; background: transparent; color: var(--moon-2); font-size: 12px; font-weight: 700; }
+.judge-chat .chat-chan button[aria-pressed="true"] { background: rgba(201, 164, 92, .25); color: var(--gold); }
+.judge-chat.is-wolf .chat-chan { border-color: rgba(200, 50, 60, .7); }
+.judge-chat.is-wolf .chat-chan button[aria-pressed="true"] { background: #8e1b22; color: #ffd9d9; }
+.judge-chat.is-wolf input { border-color: rgba(200, 50, 60, .65); background: rgba(60, 8, 14, .55); }
+.judge-feed-wrap.is-wolf { box-shadow: inset 0 0 0 1px rgba(200, 50, 60, .45), inset 0 0 40px rgba(140, 20, 30, .25); }
+.jf-wolf i { font-style: normal; font-size: 10px; padding: 0 5px; margin-right: 5px; border-radius: 3px; background: #8e1b22; color: #ffd9d9; vertical-align: 1px; }
 
 .seat-mate-special { background: #14060c; box-shadow: 0 0 0 2px var(--c, #e0525a), 0 0 8px var(--c, #e0525a); padding: 1px; }
 

@@ -363,7 +363,8 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
     (g, ph) => {
       if (ph.type !== 'speech' || res) return !!res;
       const before = ph.endsAt;
-      const notAllowed = g.extendSpeech(id(5), false);
+      const outsider = g.alive().find(p => p.id !== ph.data.pid && p.id !== g.sheriffId && p.id !== id(6));
+      const notAllowed = g.extendSpeech(outsider.id, false);
       const r1 = g.extendSpeech(id(6), true);
       const added = ph.endsAt - before;
       g.extendSpeech(id(6), true); g.extendSpeech(id(6), true);
@@ -501,6 +502,63 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
   assert.ok([4, 7, 8].every(n => game.isAlive(id(n))), 'non-voters survive');
   assert.equal(game.winner, 'good', 'all wolves bombed → 好人勝');
   console.log('Q ok: 炸彈人 (神職) voted out takes all 4 of his voters; non-voters live');
+}
+
+// R: 狼弟 checks as 好人; avenges 狼兄 alone; once the rest of the wolves are out he rejoins and kills two a night.
+//    Also: a dead player only reaches 場外 after their own last words.
+{
+  const { game, on } = setup(['wolfBrother', 'wolfYounger', 'werewolf', 'seer', 'witch', 'guard', 'villager', 'villager', 'villager', 'villager', 'villager', 'villager'], { sheriff: false });
+  let seerSaw = null, wolfActorsN3 = null, secondPrompt = null, deathsN2 = null, deathsN3 = null;
+  let lwBlocked = null, outsideAfter = null;
+  on(g => {
+    const ph = g.phase;
+    if (!ph) return;
+    const act = (n, a) => g.handle(id(n), a);
+    const step = ph.type === 'night' ? ph.data.step : null;
+    if (ph.type === 'reveal') once(ph, 'r', () => g.players.forEach(p => act(p.seat, { type: 'ready' })));
+    if (step === 'guard') once(ph, 'g', () => act(6, { type: 'skip' }));
+    if (step === 'witch') once(ph, 'wi', () => act(5, { type: 'skip' }));
+    if (step === 'seer' && g.day === 1) once(ph, 's', () => { act(4, { type: 'pick', target: id(2) }); setTimeout(() => { seerSaw = g.viewFor(id(4)).phase.prompt.value; }, 5); });
+    if (step === 'seer' && g.day > 1) once(ph, 's', () => act(4, { type: 'pick', target: id(10) }));
+    if (step === 'wolf') once(ph, 'w', () => {
+      const k = { 1: 7, 2: 8, 3: 4 }[g.day];
+      if (g.day === 3) wolfActorsN3 = [...ph.priv.actors];
+      ph.priv.actors.forEach(a => act(g.seat(a), { type: 'pick', target: id(k) }));
+    });
+    if (step === 'revenge') once(ph, 'rv', () => {
+      if (!ph.priv.actors.length) return;
+      if (g.day === 3) secondPrompt = g.viewFor(id(2)).phase.prompt;
+      act(2, { type: 'pick', target: id(g.day === 2 ? 9 : 5) });
+    });
+    if (ph.type === 'speech' && ph.data.kind === 'lastWords' && ph.data.pid === id(7)) once(ph, 'lw7', () => {
+      const before = g.chat.length;
+      g.handle(id(7), { type: 'chat', text: '我係村民' });
+      lwBlocked = g.chat.length === before && !g.get(id(7)).outside && g.viewFor(id(7)).me.outside === false;
+    });
+    if (ph.type === 'speech' && ph.data.kind !== 'lastWords' && g.day === 1 && outsideAfter == null) {
+      g.handle(id(7), { type: 'chat', text: '場外講嘢' });
+      outsideAfter = g.chat.some(m => m.pid === id(7) && m.out) && !g.viewFor(id(8)).chat.some(m => m.out) && g.viewFor(id(7)).chat.some(m => m.out);
+    }
+    if (ph.type === 'speech') once(ph, 'sp', () => act(g.seat(ph.data.pid), { type: 'endSpeech' }));
+    if (ph.type === 'vote' && ph.data.kind === 'exile') once(ph, 'v', () => {
+      const t = g.day === 1 ? 1 : 3;
+      g.alive().forEach(p => act(p.seat, { type: 'vote', target: id(t === p.seat ? 12 : t) }));
+    });
+    if (ph.type === 'announce') {
+      if (g.day === 2) deathsN2 ??= [...ph.data.deaths].sort();
+      if (g.day === 3) { deathsN3 ??= [...ph.data.deaths].sort(); g.terminate(); }
+    }
+  });
+  await game.run();
+  assert.equal(seerSaw, 'good', '預言家查狼弟 = 好人');
+  assert.ok(lwBlocked, 'no 場外 chat during own last words');
+  assert.ok(outsideAfter, 'after last words the dead player chats 場外, and the living never see it');
+  assert.deepEqual(deathsN2, [id(8), id(9)].sort(), 'night 2: pack kill + 狼弟 revenge');
+  assert.deepEqual(wolfActorsN3, [id(2)], 'night 3: 狼弟 is the wolf team');
+  assert.equal(secondPrompt?.title, '狼弟・第二刀');
+  assert.ok(!secondPrompt.targets.includes(id(4)), 'second knife can’t hit the first target');
+  assert.deepEqual(deathsN3, [id(4), id(5)].sort(), 'night 3: two kills');
+  console.log('R ok: 狼弟 checks good, revenge knife, then 2 kills as last wolf; 場外 opens after last words');
 }
 
 console.log('all scenarios passed');

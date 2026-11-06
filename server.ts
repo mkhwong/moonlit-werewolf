@@ -226,6 +226,8 @@ class Room { [key: string]: any;
       if (host && other) [host.role, other.role] = [other.role, host.role];
     }
     this.status = 'playing';
+    this.lastGame = null;
+    for (const p of this.players) p.atResult = false;
     const game = this.game;
     game.run().then(result => {
       if (this.game !== game) return;
@@ -243,13 +245,26 @@ class Room { [key: string]: any;
     this.botMemo.clear();
   }
 
-  backToLobby() {
+  /** Back to the lobby. After a finished game each player goes back on their own (`by`): the first one
+   *  reopens the lobby, and everyone else keeps the result screen (`atResult`) until they press it too. */
+  backToLobby(by = null) {
+    const fromResult = this.status === 'ended' && by && this.game;
     this.stopBots();
     if (this.game) this.game.terminate();
+    this.lastGame = fromResult ? this.game : null;
     this.game = null;
     this.status = 'lobby';
-    for (const p of this.players) p.ready = false; // a new round: everyone presses 準備 again
+    for (const p of this.players) {
+      p.ready = false; // a new round: everyone presses 準備 again
+      p.atResult = !!(fromResult && p.id !== by.id && !p.bot && this.lastGame.players.some(x => x.id === p.id));
+    }
     this.broadcast();
+  }
+
+  /** One player leaves the result screen for the lobby. */
+  leaveResult(p) {
+    if (this.status === 'ended') return this.backToLobby(p);
+    if (p.atResult) { p.atResult = false; this.broadcast(); }
   }
 
   // ───── voice rules: who may be heard, and by whom ─────
@@ -263,7 +278,8 @@ class Room { [key: string]: any;
     if (ph.type === 'gameOver') return { channel: 'room', listeners: others };
     const introOver = ignoreIntro || Date.now() >= ph.startedAt + ph.introMs;
     if (ph.type === 'speech' && ph.data.pid === pid && introOver) return { channel: 'speech', listeners: others };
-    if (ph.type === 'night' && ph.data.step === 'wolf' && introOver && ph.priv.actors.includes(pid)) {
+    // Night team talk: the wolf pack, and 狼兄 + 狼弟 when they meet on night 1.
+    if (ph.type === 'night' && (ph.data.step === 'wolf' || ph.data.step === 'brothers') && introOver && ph.priv.actors.includes(pid)) {
       return { channel: 'wolves', listeners: others.filter(id => ph.priv.actors.includes(id)) };
     }
     return null;
@@ -297,17 +313,19 @@ class Room { [key: string]: any;
       members: [...this.voice.keys()],
       talking,
       canTalk: !!can,
-      channel: can ? can.channel : null,
+      // (client label only: 狼兄弟 night-1 talk shares the private 'wolves' channel)
+      channel: can ? (can.channel === 'wolves' && this.game?.phase?.data?.step === 'brothers' ? 'brothers' : can.channel) : null,
       ice: ICE_SERVERS,
     };
   }
 
   view(p) {
+    const atResult = !!(p.atResult && this.lastGame && this.status === 'lobby');
     return {
       serverNow: Date.now(),
       room: {
         code: this.code,
-        status: this.status,
+        status: atResult ? 'ended' : this.status,
         hostId: this.hostId,
         seatCount: this.seatCount(),
         log: this.log.slice(-8),
@@ -317,7 +335,8 @@ class Room { [key: string]: any;
         startProblem: this.status === 'lobby' ? this.startProblem() : null,
       },
       you: { id: p.id, name: p.name, seat: p.seat, isHost: p.id === this.hostId, pref: p.pref || null, ready: !!p.ready },
-      game: this.game ? this.game.viewFor(p.id) : null,
+      game: atResult ? this.lastGame.viewFor(p.id) : this.game ? this.game.viewFor(p.id) : null,
+      othersInLobby: atResult ? this.players.filter(x => !x.bot && !x.atResult).length : undefined,
       voice: this.voiceView(p),
     };
   }
@@ -706,6 +725,14 @@ io.on('connection', socket => {
       c.room.game.skipPhase();
     }
     else if (p?.cmd === 'end' || p?.cmd === 'lobby') c.room.backToLobby();
+    ack(cb)({ ok: true });
+  });
+
+  // 返回大廳 from the result screen — each player for themselves.
+  socket.on('toLobby', (p, cb) => {
+    const c = ctx(socket);
+    if (!c) return ack(cb)({ ok: false });
+    c.room.leaveResult(c.player);
     ack(cb)({ ok: true });
   });
 

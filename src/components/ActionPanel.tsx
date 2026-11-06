@@ -166,11 +166,13 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
     case 'witch':
       body = mode === 'poison' ? (
         <>
-          <h3>使用毒藥</h3>
-          <p>選擇要毒殺的玩家。被毒殺的獵人不能開槍。</p>
+          <h3>{pr.antidote ? '使用毒藥' : '女巫的毒藥'}</h3>
+          <p>{pr.antidote ? '' : '解藥已用，無法得知今晚的死訊。'}點選要毒殺的玩家，或者今晚不用。被毒殺的獵人不能開槍。</p>
           <div className="row">
             <button className="btn btn-shu" disabled={!sel} onClick={() => { playPotion('poison', sel); act({ type: 'poison', target: sel }); }}>{sel ? `毒殺 ${seat(sel)}` : '請點選玩家'}</button>
-            <button className="btn btn-ghost" onClick={() => { setMode(null); setSel(null); }}>返回</button>
+            {pr.antidote
+              ? <button className="btn btn-ghost" onClick={() => { setMode(null); setSel(null); }}>返回</button>
+              : <button className="btn btn-ghost" onClick={() => act({ type: 'skip' })}>不使用</button>}
           </div>
         </>
       ) : (
