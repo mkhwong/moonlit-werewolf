@@ -1387,3 +1387,18 @@ html .wwt > .wwt-hint { display: none !important; }
 .acct-privacy svg { color: var(--gold-2); flex: none; }
 .acct-privacy a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
 .acct-privacy-links { white-space: nowrap; }
+/* 私隱聲明 pop-up (home page) */
+.privacy-pop { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50;
+  width: min(640px, calc(100% - 32px)); box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  background: rgba(20, 14, 30, .96); border: 1px solid var(--gold-2); border-radius: 10px; box-shadow: 0 12px 34px rgba(0, 0, 0, .6);
+  animation: privacy-up .45s cubic-bezier(.2, .9, .3, 1) both; }
+@keyframes privacy-up { from { opacity: 0; transform: translate(-50%, 24px); } }
+.privacy-pop > svg { flex: none; color: var(--gold); }
+.privacy-pop-text { flex: 1; min-width: 0; }
+.privacy-pop-text b { font-family: var(--serif); color: var(--gold); letter-spacing: .12em; }
+.privacy-pop-text p { margin: 2px 0 0; font-size: 13px; line-height: 1.5; color: var(--moon-2); }
+.privacy-pop-links a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
+.privacy-pop .btn { flex: none; }
+@media (max-width: 520px) { .privacy-pop { flex-wrap: wrap; } .privacy-pop .btn { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .privacy-pop { animation: none; } }
+.privacy-pop-spacer { height: 190px; } /* lets the page scroll clear of the notice while it is open */

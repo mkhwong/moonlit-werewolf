@@ -47,6 +47,29 @@ export default function Home({ notify, connected }: any) {
         </div>
         <p className="muted small home-foot">建議 6–18 人，邊開語音邊玩。</p>
       </main>
+      <PrivacyNotice />
     </div>
+  );
+}
+
+/** 私隱聲明 pop-up at the bottom of the home (sign-in) page; 「知道了」 hides it on this device. */
+const PKEY = 'ww.privacyNotice';
+function PrivacyNotice() {
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem(PKEY) !== '1'; } catch { return true; } });
+  if (!open) return null;
+  const ok = () => { try { localStorage.setItem(PKEY, '1'); } catch { /* storage unavailable */ } setOpen(false); };
+  return (
+    <>
+    <div className="privacy-pop-spacer" aria-hidden />
+    <div className="privacy-pop" role="dialog" aria-label="私隱聲明">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z" fill="currentColor" /></svg>
+      <div className="privacy-pop-text">
+        <b>私隱聲明</b>
+        <p>Google 登入資料只用作登入及記錄戰績，絕不出售，亦不會向任何第三方披露。唔登入都可以用訪客身份照玩。</p>
+        <p className="privacy-pop-links"><a href="/privacy" target="_blank" rel="noopener">私隱政策</a>・<a href="/terms" target="_blank" rel="noopener">服務條款</a></p>
+      </div>
+      <button type="button" className="btn btn-moon btn-sm" onClick={ok}>知道了</button>
+    </div>
+    </>
   );
 }
