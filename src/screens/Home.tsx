@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import Scene from '../components/Scene';
 import { call, saveSession } from '../socket';
 import AccountPanel from '../components/AccountPanel';
+import { Sheet } from '../components/Sheets';
+import { PATCH_NOTES, VERSION } from '../patchNotes';
 
 export default function Home({ notify, connected }: any) {
   const params = new URLSearchParams(location.search);
@@ -47,6 +49,7 @@ export default function Home({ notify, connected }: any) {
         </div>
         <p className="muted small home-foot">建議 6–18 人，邊開語音邊玩。</p>
       </main>
+      <PatchNotes />
       <PrivacyNotice />
     </div>
   );
@@ -70,6 +73,28 @@ function PrivacyNotice() {
       </div>
       <button type="button" className="btn btn-moon btn-sm" onClick={ok}>知道了</button>
     </div>
+    </>
+  );
+}
+
+/** 更新日誌: a small text link in the bottom-left corner; opens a plain-text list of updates. */
+function PatchNotes() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="patch-link" onClick={() => setOpen(true)}>{VERSION}・更新日誌</button>
+      {open ? (
+        <Sheet title="更新日誌" onClose={() => setOpen(false)} className="patch-sheet">
+          <div className="patch-notes">
+            {PATCH_NOTES.map(n => (
+              <section key={n.v}>
+                <h3>{n.v}<small>{n.date}</small></h3>
+                <ul>{n.items.map((t, i) => <li key={i}>{t}</li>)}</ul>
+              </section>
+            ))}
+          </div>
+        </Sheet>
+      ) : null}
     </>
   );
 }

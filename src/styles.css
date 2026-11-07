@@ -1402,3 +1402,13 @@ html .wwt > .wwt-hint { display: none !important; }
 @media (max-width: 520px) { .privacy-pop { flex-wrap: wrap; } .privacy-pop .btn { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .privacy-pop { animation: none; } }
 .privacy-pop-spacer { height: 190px; } /* lets the page scroll clear of the notice while it is open */
+/* 更新日誌 corner link (home) */
+.patch-link { position: fixed; left: max(12px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 40;
+  padding: 4px 8px; border: 0; border-radius: 4px; background: rgba(12, 8, 17, .55); color: var(--moon-3); font: inherit; font-size: 12px;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.patch-link:hover, .patch-link:focus-visible { color: var(--gold); }
+.patch-notes { display: flex; flex-direction: column; gap: 14px; font-size: 14px; line-height: 1.6; }
+.patch-notes h3 { margin: 0 0 2px; font-family: var(--serif); color: var(--gold); font-size: 16px; display: flex; align-items: baseline; gap: 10px; }
+.patch-notes h3 small { font-family: inherit; font-size: 12px; color: var(--moon-3); font-weight: 400; }
+.patch-notes ul { margin: 0; padding-left: 1.2em; color: var(--moon-2); }
+.patch-notes li { margin: 2px 0; }
