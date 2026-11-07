@@ -1383,3 +1383,7 @@ html .wwt > .wwt-hint { display: none !important; }
 .prec-role { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
 .prec-res { font-weight: 900; text-align: center; }
 .prec-games li.won .prec-res { color: #f0c86a; } .prec-games li.lost .prec-res { color: var(--moon-3); }
+.acct-privacy { flex-basis: 100%; margin: 4px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--moon-3); display: flex; flex-wrap: wrap; align-items: center; gap: 3px 4px; }
+.acct-privacy svg { color: var(--gold-2); flex: none; }
+.acct-privacy a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
+.acct-privacy-links { white-space: nowrap; }

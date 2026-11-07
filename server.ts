@@ -48,24 +48,54 @@ app.get('/avatar/:id', async (req, res) => {
   } catch { res.status(502).end(); }
 });
 // 私隱政策 / 服務條款 — linked from the Google sign-in consent screen (Branding page).
-const legal = (title, items) => `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}・月夜狼人殺</title>
-<body style="font:16px/1.7 system-ui,sans-serif;background:#120d1c;color:#e9e4f2;max-width:720px;margin:40px auto;padding:0 18px">
-<h1 style="color:#e6c37a;font-size:26px">月夜狼人殺・${title}</h1><p style="color:#9a92ab">最後更新：2026 年 11 月</p>${items.map(([h, t]) => `<h2 style="font-size:18px;color:#e6c37a;margin-top:28px">${h}</h2><p>${t}</p>`).join('')}
-<p style="margin-top:36px"><a style="color:#e6c37a" href="/">返回遊戲</a></p></body></html>`;
-app.get('/privacy', (_req, res) => res.send(legal('私隱政策', [
-  ['我們收集甚麼', '你可以不登入，以訪客身份遊玩，我們不會保存任何個人資料。若你選擇用 Google 登入，我們只會取得你的 Google 帳戶編號、電郵地址、名稱及頭像網址。'],
-  ['用途', '這些資料只用於建立你的遊戲帳戶：顯示暱稱、個人簡介、頭像，以及記錄勝負戰績。其他玩家只會看到你的暱稱、簡介、頭像及戰績，不會看到你的電郵地址。'],
-  ['儲存位置', '帳戶資料及你上載的頭像，儲存在遊戲營運者的 Google Drive（一個專用資料夾內的試算表及圖片）。遊戲伺服器只能存取它自己建立的檔案。'],
-  ['語音', '遊戲中的語音以點對點方式在玩家之間傳送，伺服器不會錄音或保存。'],
-  ['分享', '我們不會出售或向第三方分享你的資料。'],
-  ['刪除資料', '如要刪除帳戶及所有資料，請聯絡遊戲營運者，我們會從試算表及資料夾中移除你的紀錄及頭像。你亦可隨時在 Google 帳戶的「第三方應用程式」中撤銷授權。'],
-])));
-app.get('/terms', (_req, res) => res.send(legal('服務條款', [
-  ['服務', '月夜狼人殺是一個免費的線上狼人殺遊戲，按現狀提供，可能隨時更改或暫停。'],
-  ['帳戶', '登入是自選的。請勿冒充他人，或在暱稱、簡介、頭像中使用冒犯、違法或侵權的內容；營運者可移除相關內容或帳戶。'],
-  ['行為', '請尊重其他玩家。禁止騷擾、作弊或干擾遊戲運作。'],
-  ['責任', '在法律容許的範圍內，營運者不會就使用本遊戲引致的任何損失負責。'],
-])));
+const legal = (title, lead, sections) => `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}・月夜狼人殺</title>
+<style>
+  body { font: 16px/1.75 system-ui, sans-serif; background: #120d1c; color: #e9e4f2; max-width: 720px; margin: 40px auto; padding: 0 18px; }
+  h1 { color: #e6c37a; font-size: 26px; margin-bottom: 4px; } .upd { color: #9a92ab; margin-top: 0; }
+  .lead { border: 1px solid #6b5a33; background: #1d1529; border-radius: 10px; padding: 14px 16px; margin: 20px 0 8px; }
+  h2 { font-size: 17px; color: #e6c37a; margin: 26px 0 6px; } ul { margin: 0; padding-left: 1.3em; } li { margin: 3px 0; }
+  a { color: #e6c37a; } footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #2c2440; color: #9a92ab; font-size: 14px; }
+</style>
+<h1>月夜狼人殺・${title}</h1><p class="upd">最後更新：2026 年 11 月</p>
+<div class="lead">${lead}</div>
+${sections.map(([h, items], i) => `<h2>${i + 1}. ${h}</h2><ul>${items.map(t => `<li>${t}</li>`).join('')}</ul>`).join('')}
+<footer><a href="/">返回遊戲</a>　·　<a href="/privacy">私隱政策</a>　·　<a href="/terms">服務條款</a></footer></html>`;
+app.get('/privacy', (_req, res) => res.send(legal('私隱政策',
+  '<b>一句講晒：</b>Google 登入資料只用作登入及記錄你的遊戲戰績，<b>絕不出售，亦不會向任何第三方披露</b>。不登入亦可以訪客身份遊玩。',
+  [
+    ['訪客', ['不登入亦可遊玩，我們不會收集訪客的任何個人資料。']],
+    ['登入時取得的資料', [
+      'Google 帳戶編號：用作辨認你的帳戶。',
+      '電郵地址：只有遊戲營運者看得到，其他玩家看不到。',
+      '名稱及 Google 頭像：作為預設暱稱及頭像，你可以隨時更改。',
+    ]],
+    ['用途（只限以下）', [
+      '登入及保持登入狀態（30 日）。',
+      '顯示你的暱稱、個人簡介及頭像。',
+      '記錄勝負戰績。',
+      '不會用作廣告、推廣或寄發電郵。',
+    ]],
+    ['其他玩家看到甚麼', ['暱稱、個人簡介、頭像及勝負戰績。', '其他玩家看不到你的電郵地址或 Google 帳戶編號。']],
+    ['資料存放', [
+      '帳戶資料及上載的頭像，存放於遊戲營運者 Google Drive 的專用資料夾（一個試算表及圖片檔）。',
+      '遊戲伺服器只能存取它自己建立的檔案，不能讀取 Drive 內其他資料。',
+    ]],
+    ['不會分享', ['我們不會出售、出租或向任何第三方提供你的資料。']],
+    ['語音', ['遊戲語音在玩家之間直接傳送，伺服器不會錄音或保存。']],
+    ['刪除資料', [
+      '如要刪除帳戶、戰績及頭像，請聯絡遊戲營運者，我們會從試算表及資料夾中移除。',
+      '你亦可隨時在 Google 帳戶「安全性 → 第三方應用程式」撤銷授權。',
+    ]],
+  ])));
+app.get('/terms', (_req, res) => res.send(legal('服務條款',
+  '月夜狼人殺是一個免費的線上狼人殺遊戲。使用本遊戲即表示你同意以下條款。',
+  [
+    ['服務', ['本遊戲按現狀免費提供，可能隨時更改、暫停或終止。']],
+    ['帳戶', ['登入是自選的。', '請勿冒充他人，或在暱稱、簡介、頭像中使用冒犯、違法或侵權的內容；營運者可移除相關內容或帳戶。']],
+    ['行為', ['請尊重其他玩家。', '禁止騷擾、作弊或干擾遊戲運作。']],
+    ['責任', ['在法律容許的範圍內，營運者不會就使用本遊戲引致的任何損失負責。']],
+    ['私隱', ['個人資料的處理方式見 <a href="/privacy">私隱政策</a>。']],
+  ])));
 
 // One-time owner connection: /admin/google?key=ADMIN_KEY → Google consent → refresh token to paste into Render.
 const ADMIN_KEY = process.env.ADMIN_KEY || '';

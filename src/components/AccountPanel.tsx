@@ -4,6 +4,17 @@ import { Sheet } from './Sheets';
 import Emblem, { Avatar } from './Emblem';
 import { ROLES } from '../../shared/roles';
 
+/** 私隱聲明 shown wherever you sign in or manage the account. */
+export function Privacy() {
+  return (
+    <p className="acct-privacy">
+      <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z" fill="currentColor" /></svg>
+      登入資料只用作登入及記錄戰績，絕不會向第三方披露。
+      <span className="acct-privacy-links"><a href="/privacy" target="_blank" rel="noopener">私隱政策</a>・<a href="/terms" target="_blank" rel="noopener">服務條款</a></span>
+    </p>
+  );
+}
+
 /** Home-screen strip: Google sign-in when signed out, your card (勝負・勝率・簡介) when signed in. */
 export default function AccountPanel({ notify }: any) {
   const { account, enabled, loading } = useAccount();
@@ -23,6 +34,7 @@ export default function AccountPanel({ notify }: any) {
           <p className="muted small">用 Google 登入，記錄你嘅暱稱、簡介同勝負。唔登入都可以照玩。</p>
         </div>
         <div className="acct-gbtn" ref={btn} />
+        <Privacy />
       </div>
     );
   }
@@ -89,6 +101,7 @@ export function AccountSheet({ onClose, notify }: any) {
         <label htmlFor="acct-msg">個人簡介（其他玩家撳你個頭像會見到）</label>
         <textarea id="acct-msg" value={msg} maxLength={60} rows={2} onChange={e => setMsg(e.target.value)} placeholder="例如：專業倒鉤狼，預言家請查我" />
         <p className="muted small">測試模式（有電腦玩家陪玩）嘅局唔計入勝負。</p>
+        <Privacy />
         <div className="row">
           <button className="btn btn-moon" type="submit" disabled={busy || !nick.trim()}>儲存</button>
           <button className="btn btn-ghost" type="button" onClick={async () => { await signOut(); onClose(); }}>登出</button>
