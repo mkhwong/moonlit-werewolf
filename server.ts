@@ -45,7 +45,7 @@ app.get('/avatar/:id', async (req, res) => {
     const img = await accounts.avatar(String(req.params.id));
     if (!img) return res.status(404).end();
     res.set({ 'content-type': img.type, 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' }).send(img.buf);
-  } catch { res.status(502).end(); }
+  } catch (e) { console.error('[accounts] avatar', req.params.id, e.message); res.status(502).end(); }
 });
 // 私隱政策 / 服務條款 — linked from the Google sign-in consent screen (Branding page).
 const legal = (title, lead, sections) => `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}・月夜狼人殺</title>

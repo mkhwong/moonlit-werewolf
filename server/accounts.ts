@@ -27,7 +27,7 @@ export type Account = {
 };
 
 const TAB = '帳戶';
-const HEADER = ['Google ID', 'Email', '暱稱', '個人簡介', '勝', '負', '總局數', '勝率', '最後遊戲', '建立日期', '頭像檔案ID'];
+const HEADER = ['Google ID', 'Email', '暱稱', '個人簡介', '勝', '負', '總局數', '勝率', '最後遊戲', '建立日期', '頭像檔案ID', 'Google 頭像'];
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -137,10 +137,10 @@ export class AccountStore {
 
   async load() {
     await this.ensureTab();
-    const r = await this.api(`/values/${encodeURIComponent(`${TAB}!A1:K`)}?valueRenderOption=UNFORMATTED_VALUE`);
+    const r = await this.api(`/values/${encodeURIComponent(`${TAB}!A1:L`)}?valueRenderOption=UNFORMATTED_VALUE`);
     const rows: any[][] = r.values || [];
-    if (!rows.length || rows[0][0] !== HEADER[0]) {
-      await this.api(`/values/${encodeURIComponent(`${TAB}!A1:K1`)}?valueInputOption=RAW`, { method: 'PUT', body: JSON.stringify({ values: [HEADER] }) });
+    if (!rows.length || rows[0][0] !== HEADER[0] || HEADER.some((h, i) => rows[0][i] !== h)) {
+      await this.api(`/values/${encodeURIComponent(`${TAB}!A1:L1`)}?valueInputOption=RAW`, { method: 'PUT', body: JSON.stringify({ values: [HEADER] }) });
     }
     const keep = new Map(this.byId);
     this.byId.clear();
@@ -152,7 +152,7 @@ export class AccountStore {
         id, email: String(row[1] || ''), nickname: clip(row[2], 12) || '玩家', message: clip(row[3], 60),
         wins: Number(row[4]) || 0, losses: Number(row[5]) || 0, lastPlayed: String(row[8] || ''), created: String(row[9] || ''),
         avatarId: String(row[10] || ''), avatarVer: keep.get(id)?.avatarVer,
-        picture: keep.get(id)?.picture || '',
+        picture: String(row[11] || '') || keep.get(id)?.picture || '',
       });
       this.rowOf.set(id, i + 2);
     });
@@ -161,7 +161,7 @@ export class AccountStore {
 
   rowValues(a: Account) {
     const games = a.wins + a.losses;
-    return [a.id, a.email, a.nickname, a.message, a.wins, a.losses, games, games ? Math.round((a.wins / games) * 1000) / 10 + '%' : '', a.lastPlayed, a.created, a.avatarId];
+    return [a.id, a.email, a.nickname, a.message, a.wins, a.losses, games, games ? Math.round((a.wins / games) * 1000) / 10 + '%' : '', a.lastPlayed, a.created, a.avatarId, a.picture];
   }
 
   schedule() {
@@ -182,11 +182,11 @@ export class AccountStore {
         if (dirty.length) {
           await this.api('/values:batchUpdate', {
             method: 'POST',
-            body: JSON.stringify({ valueInputOption: 'RAW', data: dirty.map(id => ({ range: `${TAB}!A${this.rowOf.get(id)}:K${this.rowOf.get(id)}`, values: [this.rowValues(this.byId.get(id)!)] })) }),
+            body: JSON.stringify({ valueInputOption: 'RAW', data: dirty.map(id => ({ range: `${TAB}!A${this.rowOf.get(id)}:L${this.rowOf.get(id)}`, values: [this.rowValues(this.byId.get(id)!)] })) }),
           });
         }
         if (fresh.length) {
-          const r = await this.api(`/values/${encodeURIComponent(`${TAB}!A:K`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+          const r = await this.api(`/values/${encodeURIComponent(`${TAB}!A:L`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
             method: 'POST', body: JSON.stringify({ values: fresh.map(id => this.rowValues(this.byId.get(id)!)) }),
           });
           const m = /![A-Z]+(\d+)/.exec(r.updates?.updatedRange || '');
@@ -223,8 +223,11 @@ export class AccountStore {
       this.fresh.add(a.id);
       this.schedule();
     } else {
+      // Keep the Google picture in the sheet too, so it survives a server restart.
+      const changed = (g.picture && a.picture !== g.picture) || (g.email && a.email !== g.email);
       a.picture = g.picture || a.picture;
-      if (g.email && a.email !== g.email) { a.email = g.email; this.dirty.add(a.id); this.schedule(); }
+      a.email = g.email || a.email;
+      if (changed) { if (!this.fresh.has(a.id)) this.dirty.add(a.id); this.schedule(); }
     }
     return a;
   }

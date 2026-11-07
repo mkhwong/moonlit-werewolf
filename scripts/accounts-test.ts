@@ -49,12 +49,12 @@ const fakeFetch: any = async (url: string, init: any = {}) => {
   const body = init.body ? JSON.parse(init.body) : null;
   if (path === '') return ok({ sheets: Object.keys(T).map(title => ({ properties: { title } })) });
   if (path === ':batchUpdate') { body.requests.forEach(r => { T[r.addSheet.properties.title] = []; }); return ok({}); }
-  if (path === '/values:batchUpdate') { body.data.forEach(d => { const k = /^(.+)!A(\d+):K\d+$/.exec(d.range)!; T[k[1]][Number(k[2]) - 1] = d.values[0]; }); return ok({}); }
-  let k = /^\/values\/(.+)!A:K:append$/.exec(path);
-  if (k) { const t = T[k[1]]; const s = t.length + 1; t.push(...body.values); return ok({ updates: { updatedRange: `${k[1]}!A${s}:K${t.length}` } }); }
-  k = /^\/values\/(.+)!A1:K1$/.exec(path);
+  if (path === '/values:batchUpdate') { body.data.forEach(d => { const k = /^(.+)!A(\d+):L\d+$/.exec(d.range)!; T[k[1]][Number(k[2]) - 1] = d.values[0]; }); return ok({}); }
+  let k = /^\/values\/(.+)!A:L:append$/.exec(path);
+  if (k) { const t = T[k[1]]; const s = t.length + 1; t.push(...body.values); return ok({ updates: { updatedRange: `${k[1]}!A${s}:L${t.length}` } }); }
+  k = /^\/values\/(.+)!A1:L1$/.exec(path);
   if (k && method === 'PUT') { T[k[1]][0] = body.values[0]; return ok({}); }
-  k = /^\/values\/(.+)!A1:K$/.exec(path);
+  k = /^\/values\/(.+)!A1:L$/.exec(path);
   if (k) return ok({ values: T[k[1]] });
   throw new Error('unexpected ' + path);
 };
@@ -70,6 +70,7 @@ assert.deepEqual(sheet[1].parents, [folder[0]], 'sheet lives in the folder');
 const rows = () => tabs[sheet[0]]['帳戶'];
 assert.equal(rows()[0][2], '暱稱', 'header written');
 assert.equal(rows()[0][10], '頭像檔案ID');
+assert.equal(rows()[0][11], 'Google 頭像');
 
 const a = await s1.login({ sub: 'g1', email: 'a@x.com', name: 'Matthew Wong the Great', picture: 'https://g/pic' });
 await s1.login({ sub: 'g2', email: 'b@x.com', name: 'Wendy', picture: '' });
@@ -108,6 +109,10 @@ assert.equal(s2.get('g1')!.wins, 2);
 assert.ok((await s2.avatar('g1'))!.buf.equals(jpg2), 'image read back from Drive');
 const again = await s2.login({ sub: 'g1', email: 'a@x.com', name: 'whatever', picture: 'p2' });
 assert.equal(again.nickname, '月下狼王', 'existing account keeps its nickname');
+await s2.flush();
+assert.equal(rows()[1][11], 'p2', 'Google picture saved in the sheet');
+const s2b = await store();
+assert.equal(s2b.get('g1')!.picture, 'p2', 'Google picture survives a restart');
 await s2.flush();
 assert.equal(rows().length, 3, 'login of an existing account adds no row');
 await s2.clearAvatar('g1');
