@@ -1359,3 +1359,7 @@ html .wwt > .wwt-hint { display: none !important; }
 .acct-card { display: flex; gap: 12px; align-items: center; padding: 10px; margin: 6px 0 10px; border-radius: 8px; background: rgba(255, 255, 255, .04); }
 .acct-card img { width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 0 0 2px var(--gold-2); }
 .acct-card-msg { margin: 0 0 2px; font-size: 15px; }
+.acct-avatar { display: flex; align-items: center; gap: 14px; }
+.acct-avatar img, .acct-avatar .acct-pic { width: 72px; height: 72px; border-radius: 50%; flex: none; object-fit: cover; box-shadow: 0 0 0 2px var(--gold-2); }
+.acct-avatar .acct-pic { display: grid; place-items: center; background: #2a2140; font-family: var(--serif); font-size: 30px; color: var(--gold); }
+.acct-avatar p { margin: 0 0 6px; }

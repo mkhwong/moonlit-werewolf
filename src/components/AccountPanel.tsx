@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useAccount, renderGoogleButton, signOut, saveProfile, winRate } from '../account';
+import { useAccount, renderGoogleButton, signOut, saveProfile, winRate, uploadAvatar, clearAvatar } from '../account';
 import { Sheet } from './Sheets';
 
 /** Home-screen strip: Google sign-in when signed out, your card (勝負・勝率・簡介) when signed in. */
@@ -45,7 +45,17 @@ export function AccountSheet({ onClose, notify }: any) {
   const [nick, setNick] = useState(account?.nickname || '');
   const [msg, setMsg] = useState(account?.message || '');
   const [busy, setBusy] = useState(false);
+  const [up, setUp] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
   if (!account) return null;
+  const pick = async (f?: File) => {
+    if (!f) return;
+    setUp(true);
+    const r = await uploadAvatar(f);
+    setUp(false);
+    if (file.current) file.current.value = '';
+    notify?.(r.ok ? '頭像已更新' : r.error || '上載失敗');
+  };
   const rate = winRate(account);
   const save = async e => {
     e.preventDefault();
@@ -57,7 +67,17 @@ export function AccountSheet({ onClose, notify }: any) {
   return (
     <Sheet title="我的帳戶" onClose={onClose}>
       <form className="acct-form" onSubmit={save}>
-        <p className="muted small">{account.email}</p>
+        <div className="acct-avatar">
+          {account.picture ? <img src={account.picture} alt="你的頭像" referrerPolicy="no-referrer" /> : <span className="acct-pic">{account.nickname.slice(0, 1)}</span>}
+          <div>
+            <p className="muted small">{account.email}</p>
+            <div className="row">
+              <button type="button" className="btn btn-ghost btn-sm" disabled={up} onClick={() => file.current?.click()}>{up ? '上載中…' : '更換頭像'}</button>
+              {account.uploaded ? <button type="button" className="btn btn-ghost btn-sm" disabled={up} onClick={async () => { setUp(true); const r = await clearAvatar(); setUp(false); notify?.(r.ok ? '已改返用 Google 頭像' : r.error); }}>用返 Google 頭像</button> : null}
+            </div>
+            <input ref={file} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => pick(e.target.files?.[0])} />
+          </div>
+        </div>
         <div className="acct-stats">
           <span><b>{account.wins}</b>勝</span><span><b>{account.losses}</b>負</span>
           <span><b>{account.wins + account.losses}</b>局</span><span><b>{rate != null ? `${rate}%` : '—'}</b>勝率</span>

@@ -181,8 +181,6 @@ function SetupSheet({ room, you, counts, onClose }: any) {
             <Seg label="勝利條件" value={S.winMode} onChange={v => setS({ winMode: v })} options={[['side', '屠邊'], ['all', '屠城']]} /></div>
           <div className="rule"><span>女巫自救</span>
             <Seg label="女巫自救" value={S.witchSelfSave} onChange={v => setS({ witchSelfSave: v })} options={[['firstNight', '僅首夜'], ['never', '不可'], ['always', '全程可']]} /></div>
-          <div className="rule"><span>同守同救<small>守衛與女巫解藥作用於同一人時</small></span>
-            <Seg label="同守同救" value={S.sameGuardSaveDies} onChange={v => setS({ sameGuardSaveDies: v })} options={[[true, '死亡'], [false, '存活']]} /></div>
           <div className="rule"><span>夜晚死亡遺言</span>
             <Seg label="夜晚死亡遺言" value={S.lastWordsNight} onChange={v => setS({ lastWordsNight: v })} options={[['first', '僅首夜'], ['all', '每晚'], ['none', '無']]} /></div>
           <div className="rule"><span>開局隨機座位<small>開始時打亂所有人的座位</small></span>

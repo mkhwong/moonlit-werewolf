@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { socket, call } from './socket';
 
-export type MyAccount = { nickname: string; message: string; wins: number; losses: number; picture: string; email: string };
+export type MyAccount = { nickname: string; message: string; wins: number; losses: number; picture: string; email: string; uploaded?: boolean };
 
 const KEY = 'ww.account';
 let account: MyAccount | null = null;
@@ -38,6 +38,32 @@ export async function signOut() {
 }
 export async function saveProfile(patch: { nickname?: string; message?: string }) {
   const r = await call('account:update', patch);
+  if (r.ok) { account = r.account; emit(); }
+  return r;
+}
+
+/** 頭像: centre-crop and shrink to a 256×256 JPEG in the browser, then upload. */
+export async function uploadAvatar(file: File) {
+  if (!/^image\//.test(file.type)) return { ok: false, error: '請揀一張圖片' };
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const S = 256, side = Math.min(img.naturalWidth, img.naturalHeight);
+    const c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#120d1c';
+    g.fillRect(0, 0, S, S);
+    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, S, S);
+    const r = await call('account:avatar', { data: c.toDataURL('image/jpeg', 0.85) });
+    if (r.ok) { account = r.account; emit(); }
+    return r;
+  } catch {
+    return { ok: false, error: '讀取唔到呢張圖片' };
+  } finally { URL.revokeObjectURL(url); }
+}
+export async function clearAvatar() {
+  const r = await call('account:avatar', { clear: true });
   if (r.ok) { account = r.account; emit(); }
   return r;
 }

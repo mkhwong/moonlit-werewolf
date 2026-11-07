@@ -256,7 +256,7 @@ export function nightAction(game: any, pid: string, step: string, pr: any): any 
     }
     case 'medium': case 'gargoyle': return { type: 'pick', target: topUnchecked };
     case 'guard': {
-      if (game.day === 1 && game.settings.sameGuardSaveDies && rand01(game.id, pid, 'n1guard') < 0.7) return { type: 'skip' };
+      if (game.day === 1 && rand01(game.id, pid, 'n1guard') < 0.7) return { type: 'skip' };
       const want = [E.trustSeer, E.mostTrusted].find(t => t && t !== pid && pr.targets?.includes(t));
       return want ? { type: 'pick', target: want } : { type: 'skip' };
     }

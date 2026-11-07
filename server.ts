@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Game, shuffle } from './server/game';
 import { botThink, botName } from './server/bots';
-import { AccountStore, outcomes } from './server/accounts';
+import { AccountStore, outcomes, OWNER_SCOPES } from './server/accounts';
 import {
   ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS, sizeDefaults, seatCount,
 } from './shared/roles';
@@ -39,6 +39,41 @@ app.get('/healthz', (_req, res) => res.json({ ok: true, rooms: rooms.size, accou
 // 個人帳戶: the client needs the Google client ID to show the sign-in button.
 const accounts = new AccountStore();
 app.get('/api/auth-config', (_req, res) => res.json({ clientId: accounts.clientId || null, storage: accounts.status }));
+// 頭像: served from the server (the Drive files stay private to the owner).
+app.get('/avatar/:id', async (req, res) => {
+  try {
+    const img = await accounts.avatar(String(req.params.id));
+    if (!img) return res.status(404).end();
+    res.set({ 'content-type': img.type, 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' }).send(img.buf);
+  } catch { res.status(502).end(); }
+});
+// One-time owner connection: /admin/google?key=ADMIN_KEY → Google consent → refresh token to paste into Render.
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
+const adminState = () => crypto.createHmac('sha256', ADMIN_KEY).update('moonlit-admin').digest('hex').slice(0, 32);
+const callbackUrl = req => `${/^(localhost|127\.0\.0\.1)(:|$)/.test(req.get('host')) ? 'http' : 'https'}://${req.get('host')}/admin/google/callback`;
+const page = (title, body) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+<body style="font:16px/1.6 system-ui,sans-serif;background:#120d1c;color:#eee;max-width:640px;margin:40px auto;padding:0 16px"><h2 style="color:#e6c37a">${title}</h2>${body}</body>`;
+app.get('/admin/google', (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) return res.status(403).send(page('未授權', '<p>需要正確嘅 ADMIN_KEY。</p>'));
+  if (!accounts.clientId || !accounts.clientSecret) return res.status(400).send(page('未設定', '<p>請先喺 Render 設定 GOOGLE_CLIENT_ID 同 GOOGLE_CLIENT_SECRET。</p>'));
+  const url = accounts.ownerClient(callbackUrl(req)).generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: OWNER_SCOPES, state: adminState() });
+  res.redirect(url);
+});
+app.get('/admin/google/callback', async (req, res) => {
+  if (!ADMIN_KEY || req.query.state !== adminState()) return res.status(403).send(page('未授權', '<p>連結已失效，請重新開始。</p>'));
+  try {
+    const { tokens } = await accounts.ownerClient(callbackUrl(req)).getToken(String(req.query.code || ''));
+    if (!tokens.refresh_token) throw new Error('Google 冇俾 refresh token，請去 Google 帳戶「第三方存取權」移除呢個 App 再試');
+    await accounts.connect(tokens.refresh_token);
+    const esc = String(tokens.refresh_token).replace(/[<>&"]/g, '');
+    res.send(page('已連接 Google Drive', `<p>伺服器已經喺你嘅 Drive 開咗「月夜狼人殺」資料夾，入面有「月夜狼人殺 帳戶」試算表，玩家頭像都會放喺度。</p>
+<p>最後一步：將下面呢段複製，喺 Render → Environment 新增 <b>GOOGLE_REFRESH_TOKEN</b>，咁伺服器重啟後都會記得。</p>
+<textarea readonly style="width:100%;height:110px;background:#000;color:#9f9;border:1px solid #555;padding:8px" onclick="this.select()">${esc}</textarea>
+<p style="color:#f99">呢段等同你 Drive 資料夾嘅鑰匙，唔好俾其他人。</p>`));
+  } catch (e) {
+    res.status(500).send(page('連接失敗', `<p>${String(e.message || e).replace(/[<>&]/g, '')}</p>`));
+  }
+});
 
 // ───────────────────────── rooms ─────────────────────────
 const rooms = new Map();
@@ -490,7 +525,6 @@ function sanitizeConfig(room, patch) {
     if (typeof s.sheriff === 'boolean') t.sheriff = s.sheriff;
     if (['side', 'all'].includes(s.winMode)) t.winMode = s.winMode;
     if (['firstNight', 'never', 'always'].includes(s.witchSelfSave)) t.witchSelfSave = s.witchSelfSave;
-    if (typeof s.sameGuardSaveDies === 'boolean') t.sameGuardSaveDies = s.sameGuardSaveDies;
     if (['first', 'all', 'none'].includes(s.lastWordsNight)) t.lastWordsNight = s.lastWordsNight;
     if (typeof s.randomSeats === 'boolean') t.randomSeats = s.randomSeats;
     if (typeof s.allowExtend === 'boolean') t.allowExtend = s.allowExtend;
@@ -567,6 +601,26 @@ io.on('connection', socket => {
     const c = ctx(socket);
     if (c) c.room.broadcast();
     ack(cb)({ ok: true, account: AccountStore.selfView(a) });
+  });
+
+  // 頭像: a data URL (the client already shrinks it to a 256×256 JPEG).
+  socket.on('account:avatar', async (p, cb) => {
+    const id = socket.data.accountId;
+    if (!id) return ack(cb)({ ok: false, error: '請先登入' });
+    try {
+      let a;
+      if (p?.clear) a = await accounts.clearAvatar(id);
+      else {
+        const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(p?.data || ''));
+        if (!m) return ack(cb)({ ok: false, error: '只接受 JPG／PNG／WebP 圖片' });
+        a = await accounts.setAvatar(id, Buffer.from(m[2], 'base64'), m[1]);
+      }
+      const c = ctx(socket);
+      if (c) c.room.broadcast();
+      ack(cb)({ ok: true, account: AccountStore.selfView(a) });
+    } catch (e) {
+      ack(cb)({ ok: false, error: e.message || '上載失敗' });
+    }
   });
 
   socket.on('create', (_p, cb) => {

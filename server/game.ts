@@ -474,7 +474,7 @@ export class Game { [key: string]: any;
       const guarded = n.guard === n.kill || n.mechGuard === n.kill || n.luckyGuard === n.kill;
       let dies = !(guarded || n.save);
       if (guarded && n.save) {
-        dies = !!this.settings.sameGuardSaveDies;
+        dies = true; // 同守同救 always 死亡 (fixed rule, no option)
         this.secret(`${this.seat(n.kill)}號 同時被守護與解救${dies ? '，同守同救死亡' : ''}`);
       } else if (guarded) this.secret(`${this.seat(n.kill)}號 被守護，倖免於難`);
       if (dies) deaths.set(n.kill, 'wolf');

@@ -1,13 +1,16 @@
-// 個人帳戶: Google sign-in + one row per player in a Google Sheet on the owner's Drive.
+// 個人帳戶: Google sign-in + one row per player in a Google Sheet, profile images beside it — all in one
+// Drive folder 「月夜狼人殺」 that the server creates in the OWNER's Google Drive (it acts as the owner, scope drive.file,
+// so it can only see the files it made itself).
 //
 // Environment (all optional — without them the game runs as before, guests only):
-//   GOOGLE_CLIENT_ID             OAuth "Web application" client ID, used to verify Google sign-in tokens
-//   GOOGLE_SHEET_ID              the spreadsheet ID (from its URL …/spreadsheets/d/<ID>/edit)
-//   GOOGLE_SERVICE_ACCOUNT_JSON  the service account's JSON key; share the sheet with its client_email as Editor
-//   SESSION_SECRET               any long random string, so sign-ins survive a server restart
-// With a client ID but no sheet, accounts live in memory only (lost when the server restarts).
+//   GOOGLE_CLIENT_ID      OAuth "Web application" client ID (player sign-in, and the owner connection)
+//   GOOGLE_CLIENT_SECRET  that client's secret (owner connection only)
+//   GOOGLE_REFRESH_TOKEN  the owner's refresh token — get it once at /admin/google?key=ADMIN_KEY
+//   ADMIN_KEY             any password; protects /admin/google
+//   SESSION_SECRET        any long random string, so sign-ins survive a server restart
+// With a client ID but no owner connection, accounts live in memory only (lost when the server restarts).
 import crypto from 'node:crypto';
-import { OAuth2Client, JWT } from 'google-auth-library';
+import { OAuth2Client } from 'google-auth-library';
 
 export type Account = {
   id: string;          // Google account ID ("sub")
@@ -19,17 +22,28 @@ export type Account = {
   picture: string;
   created: string;
   lastPlayed: string;
+  avatarId: string;    // Drive file ID of an uploaded 頭像 ('' = use the Google picture)
+  avatarVer?: number;
 };
 
 const TAB = '帳戶';
-const HEADER = ['Google ID', 'Email', '暱稱', '個人簡介', '勝', '負', '總局數', '勝率', '最後遊戲', '建立日期'];
+const HEADER = ['Google ID', 'Email', '暱稱', '個人簡介', '勝', '負', '總局數', '勝率', '最後遊戲', '建立日期', '頭像檔案ID'];
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
+const DRIVE = 'https://www.googleapis.com/drive/v3/files';
+const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
+export const OWNER_SCOPES = ['https://www.googleapis.com/auth/drive.file'];
+const FOLDER_NAME = '月夜狼人殺';
+const SHEET_NAME = '月夜狼人殺 帳戶';
+const IMG = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const clip = (s: unknown, n: number) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const stamp = () => new Date().toISOString().replace('T', ' ').slice(0, 16);
 
 export class AccountStore {
   clientId = process.env.GOOGLE_CLIENT_ID || '';
-  sheetId = process.env.GOOGLE_SHEET_ID || '';
+  clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+  sheetId = '';
+  folderId = '';
+  avatars = new Map<string, { buf: Buffer; type: string }>(); // account id → image (cache; memory mode keeps them only here)
   secret = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
   byId = new Map<string, Account>();
   rowOf = new Map<string, number>();   // account id → sheet row (2-based; header is row 1)
@@ -38,42 +52,80 @@ export class AccountStore {
   flushTimer: NodeJS.Timeout | null = null;
   flushing: Promise<void> | null = null;
   verifier: OAuth2Client | null = null;
-  jwt: JWT | null = null;
+  owner: { getAccessToken: () => Promise<{ token?: string | null }> } | null = null;
+  reloadTimer: NodeJS.Timeout | null = null;
   ready: Promise<void>;
   status = 'off';                      // off | memory | sheet | error
   fetcher: typeof fetch = (input, init) => fetch(input, init);
 
-  constructor(opts: { fetcher?: typeof fetch; jwt?: any } = {}) {
+  constructor(opts: { fetcher?: typeof fetch; owner?: any } = {}) {
     if (opts.fetcher) this.fetcher = opts.fetcher;
     if (this.clientId) this.verifier = new OAuth2Client(this.clientId);
-    const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    if (opts.jwt) this.jwt = opts.jwt;
-    else if (raw && this.sheetId) {
-      try {
-        const key = JSON.parse(raw);
-        this.jwt = new JWT({ email: key.client_email, key: key.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
-      } catch (e) {
-        console.error('[accounts] GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON:', (e as Error).message);
-      }
-    }
-    this.status = !this.clientId ? 'off' : this.jwt && this.sheetId ? 'sheet' : 'memory';
-    this.ready = this.status === 'sheet' ? this.load().catch(e => { this.status = 'error'; console.error('[accounts] cannot read the sheet:', e.message); }) : Promise.resolve();
-    if (this.status === 'memory') console.warn('[accounts] no GOOGLE_SHEET_ID / GOOGLE_SERVICE_ACCOUNT_JSON — accounts are kept in memory only');
+    this.status = this.clientId ? 'memory' : 'off';
+    this.ready = Promise.resolve();
+    const refresh = process.env.GOOGLE_REFRESH_TOKEN;
+    if (opts.owner) this.connect(opts.owner);
+    else if (this.clientId && this.clientSecret && refresh) this.connect(refresh);
+    else if (this.clientId) console.warn('[accounts] Drive not connected (GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN) — accounts are kept in memory only');
     if (!process.env.SESSION_SECRET && this.clientId) console.warn('[accounts] SESSION_SECRET not set — players must sign in again after a restart');
-    // Pick up edits made by hand in the sheet every few minutes (only when nothing is waiting to be written).
-    if (this.status === 'sheet') setInterval(() => { if (!this.dirty.size && !this.fresh.size) this.load().catch(() => {}); }, 5 * 60_000).unref();
   }
+
+  /** Act as the owner (a refresh token, or a ready client in tests) and open/create the Drive folder + sheet. */
+  connect(owner: string | any) {
+    if (typeof owner === 'string') {
+      const c = new OAuth2Client(this.clientId, this.clientSecret);
+      c.setCredentials({ refresh_token: owner });
+      this.owner = c;
+    } else this.owner = owner;
+    const before = this.byId;
+    this.ready = this.ensureFiles().then(() => this.load()).then(() => {
+      // Accounts created in memory before the connection (e.g. right after /admin/google) get their rows too.
+      for (const [id, a] of before) if (!this.byId.has(id)) { this.byId.set(id, a); this.fresh.add(id); }
+      this.schedule();
+      console.log('[accounts] connected to Drive folder', this.folderId, 'sheet', this.sheetId);
+    }).catch(e => { this.status = 'error'; console.error('[accounts] cannot open the Drive folder / sheet:', e.message); });
+    // Pick up edits made by hand in the sheet every few minutes (only when nothing is waiting to be written).
+    if (!this.reloadTimer) {
+      this.reloadTimer = setInterval(() => { if (this.status === 'sheet' && !this.dirty.size && !this.fresh.size) this.load().catch(() => {}); }, 5 * 60_000);
+      this.reloadTimer.unref?.();
+    }
+    return this.ready;
+  }
+
+  /** Consent URL / code exchange for the one-time owner connection at /admin/google. */
+  ownerClient(redirect: string) { return new OAuth2Client(this.clientId, this.clientSecret, redirect); }
 
   get enabled() { return this.status !== 'off'; }
 
   // ── Google Sheets REST ──
+  async raw(url: string, init: RequestInit = {}) {
+    const { token } = await this.owner!.getAccessToken();
+    const res = await this.fetcher(url, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.headers || {}) } });
+    if (!res.ok) throw new Error(`Google ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    return res;
+  }
   async api(path: string, init: RequestInit = {}) {
-    const { token } = await this.jwt!.getAccessToken();
-    const res = await this.fetcher(`${SHEETS}/${this.sheetId}${path}`, {
-      ...init, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', ...(init.headers || {}) },
-    });
-    if (!res.ok) throw new Error(`Sheets ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const res = await this.raw(`${SHEETS}/${this.sheetId}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(init.headers || {}) } });
     return res.json();
+  }
+  async drive(query: string, init: RequestInit = {}, base = DRIVE) {
+    const res = await this.raw(`${base}${query}`, { ...init, headers: { 'content-type': 'application/json', ...(init.headers || {}) } });
+    return res.status === 204 ? {} : res.json();
+  }
+
+  /** Find (by appProperties) or create the 「月夜狼人殺」 folder and the 帳戶 spreadsheet inside it. */
+  async ensureFiles() {
+    const find = async (tag: string) => {
+      const q = encodeURIComponent(`appProperties has { key='moonlit' and value='${tag}' } and trashed = false`);
+      const r = await this.drive(`?q=${q}&fields=files(id,name)&spaces=drive`);
+      return r.files?.[0]?.id || '';
+    };
+    this.folderId = (await find('root')) || (await this.drive('?fields=id', {
+      method: 'POST', body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder', appProperties: { moonlit: 'root' } }),
+    })).id;
+    this.sheetId = (await find('accounts')) || (await this.drive('?fields=id', {
+      method: 'POST', body: JSON.stringify({ name: SHEET_NAME, mimeType: 'application/vnd.google-apps.spreadsheet', parents: [this.folderId], appProperties: { moonlit: 'accounts' } }),
+    })).id;
   }
 
   async ensureTab() {
@@ -85,10 +137,10 @@ export class AccountStore {
 
   async load() {
     await this.ensureTab();
-    const r = await this.api(`/values/${encodeURIComponent(`${TAB}!A1:J`)}?valueRenderOption=UNFORMATTED_VALUE`);
+    const r = await this.api(`/values/${encodeURIComponent(`${TAB}!A1:K`)}?valueRenderOption=UNFORMATTED_VALUE`);
     const rows: any[][] = r.values || [];
     if (!rows.length || rows[0][0] !== HEADER[0]) {
-      await this.api(`/values/${encodeURIComponent(`${TAB}!A1:J1`)}?valueInputOption=RAW`, { method: 'PUT', body: JSON.stringify({ values: [HEADER] }) });
+      await this.api(`/values/${encodeURIComponent(`${TAB}!A1:K1`)}?valueInputOption=RAW`, { method: 'PUT', body: JSON.stringify({ values: [HEADER] }) });
     }
     const keep = new Map(this.byId);
     this.byId.clear();
@@ -99,6 +151,7 @@ export class AccountStore {
       this.byId.set(id, {
         id, email: String(row[1] || ''), nickname: clip(row[2], 12) || '玩家', message: clip(row[3], 60),
         wins: Number(row[4]) || 0, losses: Number(row[5]) || 0, lastPlayed: String(row[8] || ''), created: String(row[9] || ''),
+        avatarId: String(row[10] || ''), avatarVer: keep.get(id)?.avatarVer,
         picture: keep.get(id)?.picture || '',
       });
       this.rowOf.set(id, i + 2);
@@ -108,7 +161,7 @@ export class AccountStore {
 
   rowValues(a: Account) {
     const games = a.wins + a.losses;
-    return [a.id, a.email, a.nickname, a.message, a.wins, a.losses, games, games ? Math.round((a.wins / games) * 1000) / 10 + '%' : '', a.lastPlayed, a.created];
+    return [a.id, a.email, a.nickname, a.message, a.wins, a.losses, games, games ? Math.round((a.wins / games) * 1000) / 10 + '%' : '', a.lastPlayed, a.created, a.avatarId];
   }
 
   schedule() {
@@ -129,11 +182,11 @@ export class AccountStore {
         if (dirty.length) {
           await this.api('/values:batchUpdate', {
             method: 'POST',
-            body: JSON.stringify({ valueInputOption: 'RAW', data: dirty.map(id => ({ range: `${TAB}!A${this.rowOf.get(id)}:J${this.rowOf.get(id)}`, values: [this.rowValues(this.byId.get(id)!)] })) }),
+            body: JSON.stringify({ valueInputOption: 'RAW', data: dirty.map(id => ({ range: `${TAB}!A${this.rowOf.get(id)}:K${this.rowOf.get(id)}`, values: [this.rowValues(this.byId.get(id)!)] })) }),
           });
         }
         if (fresh.length) {
-          const r = await this.api(`/values/${encodeURIComponent(`${TAB}!A:J`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+          const r = await this.api(`/values/${encodeURIComponent(`${TAB}!A:K`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
             method: 'POST', body: JSON.stringify({ values: fresh.map(id => this.rowValues(this.byId.get(id)!)) }),
           });
           const m = /![A-Z]+(\d+)/.exec(r.updates?.updatedRange || '');
@@ -165,7 +218,7 @@ export class AccountStore {
     await this.ready;
     let a = this.byId.get(g.sub);
     if (!a) {
-      a = { id: g.sub, email: g.email, nickname: clip(g.name, 12) || '玩家', message: '', wins: 0, losses: 0, picture: g.picture, created: stamp(), lastPlayed: '' };
+      a = { id: g.sub, email: g.email, nickname: clip(g.name, 12) || '玩家', message: '', wins: 0, losses: 0, picture: g.picture, created: stamp(), lastPlayed: '', avatarId: '' };
       this.byId.set(a.id, a);
       this.fresh.add(a.id);
       this.schedule();
@@ -213,9 +266,68 @@ export class AccountStore {
     this.schedule();
   }
 
+  // ── 頭像 (profile image) ──
+  /** Store a small image (the client sends a 256×256 JPEG). Kept in the Drive folder beside the sheet. */
+  async setAvatar(id: string, buf: Buffer, type: string) {
+    const a = this.byId.get(id);
+    if (!a) throw new Error('請先登入');
+    if (!IMG[type] || buf.length > 400_000 || !sniff(buf, type)) throw new Error('只接受 JPG／PNG／WebP 圖片');
+    if (this.status === 'sheet') {
+      const meta = { name: `頭像-${a.nickname}-${id.slice(-6)}.${IMG[type]}`, mimeType: type };
+      if (a.avatarId) {
+        try {
+          await this.raw(`${UPLOAD}/${a.avatarId}?uploadType=media`, { method: 'PATCH', headers: { 'content-type': type }, body: new Uint8Array(buf) });
+          await this.drive(`/${a.avatarId}`, { method: 'PATCH', body: JSON.stringify(meta) });
+        } catch { a.avatarId = ''; }
+      }
+      if (!a.avatarId) {
+        const boundary = 'moonlit' + crypto.randomBytes(8).toString('hex');
+        const body = Buffer.concat([
+          Buffer.from(`--${boundary}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ ...meta, parents: [this.folderId], appProperties: { moonlit: 'avatar', account: id } })}\r\n--${boundary}\r\ncontent-type: ${type}\r\n\r\n`),
+          buf, Buffer.from(`\r\n--${boundary}--`),
+        ]);
+        const r = await (await this.raw(`${UPLOAD}?uploadType=multipart&fields=id`, { method: 'POST', headers: { 'content-type': `multipart/related; boundary=${boundary}` }, body: new Uint8Array(body) })).json();
+        a.avatarId = r.id;
+        if (!this.fresh.has(id)) this.dirty.add(id);
+        this.schedule();
+      }
+    } else a.avatarId = a.avatarId || 'memory';
+    a.avatarVer = Date.now();
+    this.avatars.set(id, { buf, type });
+    return a;
+  }
+
+  async clearAvatar(id: string) {
+    const a = this.byId.get(id);
+    if (!a) return null;
+    if (this.status === 'sheet' && a.avatarId) await this.drive(`/${a.avatarId}`, { method: 'DELETE' }).catch(() => {});
+    a.avatarId = '';
+    a.avatarVer = Date.now();
+    this.avatars.delete(id);
+    if (!this.fresh.has(id)) this.dirty.add(id);
+    this.schedule();
+    return a;
+  }
+
+  /** Image bytes for GET /avatar/:id (from the cache, else from Drive). */
+  async avatar(id: string) {
+    const hit = this.avatars.get(id);
+    if (hit) return hit;
+    const a = this.byId.get(id);
+    if (!a?.avatarId || this.status !== 'sheet') return null;
+    const res = await this.raw(`${DRIVE}/${a.avatarId}?alt=media`);
+    const got = { buf: Buffer.from(await res.arrayBuffer()), type: res.headers.get('content-type') || 'image/jpeg' };
+    this.avatars.set(id, got);
+    return got;
+  }
+
+  static pictureOf(a: Account) {
+    return a.avatarId ? `/avatar/${a.id}?v=${a.avatarVer || a.avatarId.slice(-8)}` : a.picture;
+  }
+
   /** What other players see. */
   static publicView(a: Account | null) {
-    return a ? { nickname: a.nickname, message: a.message, wins: a.wins, losses: a.losses, picture: a.picture } : null;
+    return a ? { nickname: a.nickname, message: a.message, wins: a.wins, losses: a.losses, picture: AccountStore.pictureOf(a), uploaded: !!a.avatarId } : null;
   }
   static selfView(a: Account | null) {
     return a ? { ...AccountStore.publicView(a), email: a.email } : null;
@@ -234,4 +346,12 @@ export function outcomes(game: any, players: any[]) {
     out.push({ accountId: p.accountId, won: game.winner === 'lovers' ? !!vp.third : !vp.third && vp.team === game.winner });
   }
   return out;
+}
+
+/** Check the file really is the image type it claims (magic bytes). */
+function sniff(b: Buffer, type: string) {
+  if (type === 'image/jpeg') return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  if (type === 'image/png') return b.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (type === 'image/webp') return b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP';
+  return false;
 }
