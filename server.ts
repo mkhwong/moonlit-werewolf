@@ -47,6 +47,26 @@ app.get('/avatar/:id', async (req, res) => {
     res.set({ 'content-type': img.type, 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' }).send(img.buf);
   } catch { res.status(502).end(); }
 });
+// 私隱政策 / 服務條款 — linked from the Google sign-in consent screen (Branding page).
+const legal = (title, items) => `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}・月夜狼人殺</title>
+<body style="font:16px/1.7 system-ui,sans-serif;background:#120d1c;color:#e9e4f2;max-width:720px;margin:40px auto;padding:0 18px">
+<h1 style="color:#e6c37a;font-size:26px">月夜狼人殺・${title}</h1><p style="color:#9a92ab">最後更新：2026 年 11 月</p>${items.map(([h, t]) => `<h2 style="font-size:18px;color:#e6c37a;margin-top:28px">${h}</h2><p>${t}</p>`).join('')}
+<p style="margin-top:36px"><a style="color:#e6c37a" href="/">返回遊戲</a></p></body></html>`;
+app.get('/privacy', (_req, res) => res.send(legal('私隱政策', [
+  ['我們收集甚麼', '你可以不登入，以訪客身份遊玩，我們不會保存任何個人資料。若你選擇用 Google 登入，我們只會取得你的 Google 帳戶編號、電郵地址、名稱及頭像網址。'],
+  ['用途', '這些資料只用於建立你的遊戲帳戶：顯示暱稱、個人簡介、頭像，以及記錄勝負戰績。其他玩家只會看到你的暱稱、簡介、頭像及戰績，不會看到你的電郵地址。'],
+  ['儲存位置', '帳戶資料及你上載的頭像，儲存在遊戲營運者的 Google Drive（一個專用資料夾內的試算表及圖片）。遊戲伺服器只能存取它自己建立的檔案。'],
+  ['語音', '遊戲中的語音以點對點方式在玩家之間傳送，伺服器不會錄音或保存。'],
+  ['分享', '我們不會出售或向第三方分享你的資料。'],
+  ['刪除資料', '如要刪除帳戶及所有資料，請聯絡遊戲營運者，我們會從試算表及資料夾中移除你的紀錄及頭像。你亦可隨時在 Google 帳戶的「第三方應用程式」中撤銷授權。'],
+])));
+app.get('/terms', (_req, res) => res.send(legal('服務條款', [
+  ['服務', '月夜狼人殺是一個免費的線上狼人殺遊戲，按現狀提供，可能隨時更改或暫停。'],
+  ['帳戶', '登入是自選的。請勿冒充他人，或在暱稱、簡介、頭像中使用冒犯、違法或侵權的內容；營運者可移除相關內容或帳戶。'],
+  ['行為', '請尊重其他玩家。禁止騷擾、作弊或干擾遊戲運作。'],
+  ['責任', '在法律容許的範圍內，營運者不會就使用本遊戲引致的任何損失負責。'],
+])));
+
 // One-time owner connection: /admin/google?key=ADMIN_KEY → Google consent → refresh token to paste into Render.
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const adminState = () => crypto.createHmac('sha256', ADMIN_KEY).update('moonlit-admin').digest('hex').slice(0, 32);
