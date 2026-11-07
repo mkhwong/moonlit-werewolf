@@ -5,7 +5,7 @@ import { call } from '../socket';
 import { PttDock, VoiceCtx } from '../components/VoiceControls';
 import { Sheet, GuidePopup } from '../components/Sheets';
 import PastGamesSheet from '../components/PastGames';
-import { ProfileCard } from '../components/AccountPanel';
+import { PlayerRecord, AccountSheet } from '../components/AccountPanel';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt } from '../components/Throw';
 import { sfx } from '../audio';
 import {
@@ -300,7 +300,7 @@ export default function Lobby({ state, onLeave, notify }: any) {
       if (!r.ok && r.error) notify(r.error);
       return;
     }
-    if (p.id !== you.id && (host || p.acct)) setSheet({ player: p });
+    setSheet({ player: p }); // anyone can open a player's card (戰績・簡介); the host also gets the host actions
   };
 
   const title = full ? '人齊了' : '等待玩家入座';
@@ -473,17 +473,17 @@ export default function Lobby({ state, onLeave, notify }: any) {
 
       {sheet === 'setup' && host ? <SetupSheet room={room} you={you} counts={counts} onClose={() => setSheet(null)} /> : null}
       {sheet === 'timer' && host ? <TimerSheet room={room} onClose={() => setSheet(null)} /> : null}
+      {sheet === 'account' ? <AccountSheet onClose={() => setSheet(null)} notify={notify} /> : null}
       {sheet === 'past' ? <PastGamesSheet list={state.pastGames} onClose={() => setSheet(null)} /> : null}
       {sheet === 'guide' ? <GuidePopup game={fakeGame} onClose={() => setSheet(null)} /> : null}
       {sheet === 'throw' ? <ThrowFlyout game={fakeGame} onPick={it => { setThrowItem(it); setSheet(null); }} onClose={() => setSheet(null)} /> : null}
       {sheet && sheet.player ? (
-        <Sheet title={`${sheet.player.seat}號 ${sheet.player.name || ''}`} onClose={() => setSheet(null)}>
-          <p className="muted small">{sheet.player.bot ? '電腦玩家' : sheet.player.online ? '在線' : '離線'}{sheet.player.acct ? '・已登入帳戶' : ''}</p>
-          <ProfileCard acct={sheet.player.acct} />
-          {host && !sheet.player.bot ? (
+        <Sheet title={`${sheet.player.seat != null ? `${sheet.player.seat}號 ` : ''}${sheet.player.name || ''}`} onClose={() => setSheet(null)}>
+          <PlayerRecord p={sheet.player} past={state.pastGames} me={sheet.player.id === you.id} onEdit={() => setSheet('account')} />
+          {host && !sheet.player.bot && sheet.player.id !== you.id ? (
             <button className="btn btn-gold" onClick={async () => { const r = await call('giveHost', { id: sheet.player.id }); if (!r.ok && r.error) notify(r.error); setSheet(null); }}>交房主給 {sheet.player.name || '這位玩家'}</button>
           ) : null}
-          {host ? <button className="btn btn-danger" onClick={() => { call('kick', { id: sheet.player.id }); setSheet(null); }}>移出房間</button> : null}
+          {host && sheet.player.id !== you.id ? <button className="btn btn-danger" onClick={() => { call('kick', { id: sheet.player.id }); setSheet(null); }}>移出房間</button> : null}
         </Sheet>
       ) : null}
       <ThrowLayer />

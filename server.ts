@@ -331,6 +331,8 @@ class Room { [key: string]: any;
       no, label, endedAt: Date.now(), winner: game.winner, days: game.day, size: v.players.length,
       players: v.players.map(p => ({ id: p.id, seat: p.seat, name: p.name, role: p.role, alive: p.alive, deathCause: p.deathCause, team: p.team, third: p.third })),
       nightMap: v.nightMap, nightDeaths: v.nightDeaths, history: v.history, lovers: v.lovers,
+      // per seat: role and whether they won — for 本房戰績 on each player's card in the lobby
+      res: Object.fromEntries(v.players.map(p => [p.id, [p.role, game.winner === 'lovers' ? !!p.third : !p.third && p.team === game.winner]])),
     });
     if (this.pastGames.length > 30) this.pastGames.shift();
     // 個人戰績: each signed-in human player gets a win or a loss (test-mode games don't count).
@@ -412,7 +414,7 @@ class Room { [key: string]: any;
       },
       you: { id: p.id, name: p.name, seat: p.seat, isHost: p.id === this.hostId, pref: p.pref || null, ready: !!p.ready, account: AccountStore.selfView(accounts.get(p.accountId)) },
       game: atResult ? this.lastGame.viewFor(p.id) : this.game ? this.game.viewFor(p.id) : null,
-      pastGames: this.pastGames.map(g => ({ no: g.no, label: g.label, endedAt: g.endedAt, winner: g.winner, size: g.size, days: g.days })),
+      pastGames: this.pastGames.map(g => ({ no: g.no, label: g.label, endedAt: g.endedAt, winner: g.winner, size: g.size, days: g.days, res: g.res })),
       othersInLobby: atResult ? this.players.filter(x => !x.bot && !x.atResult).length : undefined,
       voice: this.voiceView(p),
     };

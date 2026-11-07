@@ -1371,3 +1371,15 @@ html .wwt > .wwt-hint { display: none !important; }
 .acct-avatar img, .acct-avatar .acct-pic { width: 72px; height: 72px; border-radius: 50%; flex: none; object-fit: cover; box-shadow: 0 0 0 2px var(--gold-2); }
 .acct-avatar .acct-pic { display: grid; place-items: center; background: #2a2140; font-family: var(--serif); font-size: 30px; color: var(--gold); }
 .acct-avatar p { margin: 0 0 6px; }
+.prec { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.prec-head { display: flex; gap: 14px; align-items: center; }
+.prec-head .avatar { box-shadow: 0 0 0 2px var(--gold-2); }
+.prec-status { margin: 0; font-size: 12px; color: var(--moon-2); }
+.prec-msg { margin: 2px 0 4px; font-size: 15px; }
+.prec-h { margin: 10px 0 2px; font-family: var(--serif); color: var(--gold); letter-spacing: .15em; font-size: 14px; }
+.prec-games { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; max-height: 32vh; overflow-y: auto; }
+.prec-games li { display: grid; grid-template-columns: 56px minmax(0, 1fr) 24px auto; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 5px; background: rgba(255, 255, 255, .03); font-size: 13px; }
+.prec-games li.won { background: linear-gradient(90deg, rgba(201, 164, 92, .16), transparent); }
+.prec-role { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
+.prec-res { font-weight: 900; text-align: center; }
+.prec-games li.won .prec-res { color: #f0c86a; } .prec-games li.lost .prec-res { color: var(--moon-3); }

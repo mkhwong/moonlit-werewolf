@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAccount, renderGoogleButton, signOut, saveProfile, winRate, uploadAvatar, clearAvatar } from '../account';
 import { Sheet } from './Sheets';
+import Emblem, { Avatar } from './Emblem';
+import { ROLES } from '../../shared/roles';
 
 /** Home-screen strip: Google sign-in when signed out, your card (勝負・勝率・簡介) when signed in. */
 export default function AccountPanel({ notify }: any) {
@@ -96,17 +98,49 @@ export function AccountSheet({ onClose, notify }: any) {
   );
 }
 
-/** Another player's public profile (lobby seat sheet). */
-export function ProfileCard({ acct }: any) {
-  if (!acct) return null;
-  const rate = winRate(acct);
+/** A player's card in the lobby: 頭像, 簡介, 帳戶戰績 (signed-in players) and 本房戰績 (every game in this room). */
+const WIN_TXT = { wolf: '狼人勝', good: '好人勝', lovers: '情侶勝' };
+export function PlayerRecord({ p, past = [], me = false, onEdit }: any) {
+  const acct = p.acct;
+  const rate = acct ? winRate(acct) : null;
+  const games = past.filter(g => g.res?.[p.id]).slice().reverse();
+  const roomW = games.filter(g => g.res[p.id][1]).length;
   return (
-    <div className="acct-card">
-      {acct.picture ? <img src={acct.picture} alt="" referrerPolicy="no-referrer" /> : null}
-      <div>
-        <p className="acct-card-msg">{acct.message || '（未寫簡介）'}</p>
-        <p className="muted small">{acct.wins} 勝 {acct.losses} 負{rate != null ? `・勝率 ${rate}%` : ''}</p>
+    <div className="prec">
+      <div className="prec-head">
+        <Avatar name={p.name || '?'} size={64} />
+        <div>
+          <p className="prec-status">{p.bot ? '電腦玩家' : acct ? '已登入帳戶' : '訪客（未登入）'}{!p.bot ? `・${p.online ? '在線' : '離線'}` : ''}</p>
+          {acct ? <p className="prec-msg">{acct.message || '（未寫簡介）'}</p> : null}
+          {me && acct && onEdit ? <button type="button" className="btn btn-ghost btn-sm" onClick={onEdit}>編輯我的帳戶</button> : null}
+        </div>
       </div>
+      {acct ? (
+        <>
+          <h4 className="prec-h">帳戶戰績</h4>
+          <div className="acct-stats">
+            <span><b>{acct.wins}</b>勝</span><span><b>{acct.losses}</b>負</span>
+            <span><b>{acct.wins + acct.losses}</b>局</span><span><b>{rate != null ? `${rate}%` : '—'}</b>勝率</span>
+          </div>
+        </>
+      ) : !p.bot ? <p className="muted small">{me ? '用 Google 登入就會記錄長期戰績（主頁「個人帳戶」）。' : '未登入，冇長期戰績。'}</p> : null}
+      <h4 className="prec-h">本房戰績{games.length ? `・${roomW} 勝 ${games.length - roomW} 負` : ''}</h4>
+      {games.length ? (
+        <ol className="prec-games">
+          {games.map(g => {
+            const [role, won] = g.res[p.id];
+            const R = ROLES[role];
+            return (
+              <li key={g.no} className={won ? 'won' : 'lost'}>
+                <span>第 {g.no} 局</span>
+                <span className="prec-role" style={{ color: R?.color }}><Emblem id={role} size={18} />{R?.name}</span>
+                <span className="prec-res">{won ? '勝' : '負'}</span>
+                <span className="muted small">{WIN_TXT[g.winner] || ''}</span>
+              </li>
+            );
+          })}
+        </ol>
+      ) : <p className="muted small">呢個房間仲未有佢參與過嘅完場遊戲。</p>}
     </div>
   );
 }
