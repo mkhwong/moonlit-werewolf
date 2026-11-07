@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAccount } from '../account';
 import Scene from '../components/Scene';
 import { call, saveSession } from '../socket';
 
 export default function NameEntry({ state, notify, onLeave }: any) {
-  const [name, setName] = useState('');
+  const { account } = useAccount();
+  const [name, setName] = useState(account?.nickname || '');
+  useEffect(() => { if (account?.nickname && !name) setName(account.nickname); }, [account?.nickname]);
   const [busy, setBusy] = useState(false);
   const submit = async e => {
     e.preventDefault();

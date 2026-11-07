@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Game, shuffle } from './server/game';
 import { botThink, botName } from './server/bots';
+import { AccountStore, outcomes } from './server/accounts';
 import {
   ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS, sizeDefaults, seatCount,
 } from './shared/roles';
@@ -34,7 +35,10 @@ const io = new Server(http, {
   transports: ['websocket', 'polling'],
 });
 
-app.get('/healthz', (_req, res) => res.json({ ok: true, rooms: rooms.size }));
+app.get('/healthz', (_req, res) => res.json({ ok: true, rooms: rooms.size, accounts: accounts.status }));
+// 個人帳戶: the client needs the Google client ID to show the sign-in button.
+const accounts = new AccountStore();
+app.get('/api/auth-config', (_req, res) => res.json({ clientId: accounts.clientId || null, storage: accounts.status }));
 
 // ───────────────────────── rooms ─────────────────────────
 const rooms = new Map();
@@ -274,6 +278,8 @@ class Room { [key: string]: any;
       nightMap: v.nightMap, nightDeaths: v.nightDeaths, history: v.history, lovers: v.lovers,
     });
     if (this.pastGames.length > 30) this.pastGames.shift();
+    // 個人戰績: each signed-in human player gets a win or a loss (test-mode games don't count).
+    if (!this.config.testMode) for (const o of outcomes(game, this.players)) accounts.record(o.accountId, o.won);
   }
 
   /** One player leaves the result screen for the lobby. */
@@ -345,11 +351,11 @@ class Room { [key: string]: any;
         seatCount: this.seatCount(),
         log: this.log.slice(-8),
         players: [...this.players].sort((a, b) => (a.seat ?? 99) - (b.seat ?? 99))
-          .map(x => ({ id: x.id, name: x.name, seat: x.seat, online: x.online, bot: !!x.bot, pref: x.pref || null, ready: !!x.ready || !!x.bot })),
+          .map(x => ({ id: x.id, name: x.name, seat: x.seat, online: x.online, bot: !!x.bot, pref: x.pref || null, ready: !!x.ready || !!x.bot, acct: AccountStore.publicView(accounts.get(x.accountId)) })),
         config: this.config,
         startProblem: this.status === 'lobby' ? this.startProblem() : null,
       },
-      you: { id: p.id, name: p.name, seat: p.seat, isHost: p.id === this.hostId, pref: p.pref || null, ready: !!p.ready },
+      you: { id: p.id, name: p.name, seat: p.seat, isHost: p.id === this.hostId, pref: p.pref || null, ready: !!p.ready, account: AccountStore.selfView(accounts.get(p.accountId)) },
       game: atResult ? this.lastGame.viewFor(p.id) : this.game ? this.game.viewFor(p.id) : null,
       pastGames: this.pastGames.map(g => ({ no: g.no, label: g.label, endedAt: g.endedAt, winner: g.winner, size: g.size, days: g.days })),
       othersInLobby: atResult ? this.players.filter(x => !x.bot && !x.atResult).length : undefined,
@@ -509,6 +515,7 @@ function bind(socket, room, player) {
   player.online = true;
   socket.data.code = room.code;
   socket.data.pid = player.id;
+  if (socket.data.accountId) player.accountId = socket.data.accountId;
   socket.join(room.code);
   room.broadcast();
 }
@@ -521,6 +528,46 @@ function ctx(socket) {
 
 io.on('connection', socket => {
   const ack = fn => (typeof fn === 'function' ? fn : () => {});
+
+  // ───── 個人帳戶 ─────
+  const signedIn = (a, cb) => {
+    socket.data.accountId = a.id;
+    const c = ctx(socket);
+    if (c) { c.player.accountId = a.id; c.room.broadcast(); }
+    ack(cb)({ ok: true, token: accounts.issue(a.id), account: AccountStore.selfView(a) });
+  };
+  socket.on('auth:google', async (p, cb) => {
+    if (!accounts.enabled) return ack(cb)({ ok: false, error: '未開放帳戶登入' });
+    try {
+      const g = await accounts.verifyGoogle(String(p?.credential || ''));
+      signedIn(await accounts.login(g), cb);
+    } catch (e) {
+      ack(cb)({ ok: false, error: 'Google 登入失敗，請再試一次' });
+    }
+  });
+  // Local testing only (never in production): AUTH_DEV_LOGIN=1 lets a test sign in without Google.
+  if (!PROD && process.env.AUTH_DEV_LOGIN === '1') {
+    socket.on('auth:dev', async (p, cb) => signedIn(await accounts.login({ sub: `dev-${String(p?.name || 'x')}`, email: `${p?.name}@example.test`, name: String(p?.name || '測試'), picture: '' }), cb));
+  }
+  socket.on('auth:resume', async (p, cb) => {
+    const a = accounts.enabled ? await accounts.fromToken(p?.token) : null;
+    if (!a) return ack(cb)({ ok: false });
+    signedIn(a, cb);
+  });
+  socket.on('auth:logout', (_p, cb) => {
+    socket.data.accountId = null;
+    const c = ctx(socket);
+    if (c) { c.player.accountId = null; c.room.broadcast(); }
+    ack(cb)({ ok: true });
+  });
+  socket.on('account:update', (p, cb) => {
+    const id = socket.data.accountId;
+    const a = id ? accounts.update(id, { nickname: p?.nickname, message: p?.message }) : null;
+    if (!a) return ack(cb)({ ok: false, error: '請先登入' });
+    const c = ctx(socket);
+    if (c) c.room.broadcast();
+    ack(cb)({ ok: true, account: AccountStore.selfView(a) });
+  });
 
   socket.on('create', (_p, cb) => {
     const room = new Room(newCode());

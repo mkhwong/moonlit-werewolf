@@ -5,6 +5,7 @@ import { call } from '../socket';
 import { PttDock, VoiceCtx } from '../components/VoiceControls';
 import { Sheet, GuidePopup } from '../components/Sheets';
 import PastGamesSheet from '../components/PastGames';
+import { ProfileCard } from '../components/AccountPanel';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt } from '../components/Throw';
 import { sfx } from '../audio';
 import {
@@ -301,7 +302,7 @@ export default function Lobby({ state, onLeave, notify }: any) {
       if (!r.ok && r.error) notify(r.error);
       return;
     }
-    if (host && p.id !== you.id) setSheet({ player: p });
+    if (p.id !== you.id && (host || p.acct)) setSheet({ player: p });
   };
 
   const title = full ? '人齊了' : '等待玩家入座';
@@ -479,11 +480,12 @@ export default function Lobby({ state, onLeave, notify }: any) {
       {sheet === 'throw' ? <ThrowFlyout game={fakeGame} onPick={it => { setThrowItem(it); setSheet(null); }} onClose={() => setSheet(null)} /> : null}
       {sheet && sheet.player ? (
         <Sheet title={`${sheet.player.seat}號 ${sheet.player.name || ''}`} onClose={() => setSheet(null)}>
-          <p className="muted small">{sheet.player.bot ? '電腦玩家' : sheet.player.online ? '在線' : '離線'}</p>
-          {!sheet.player.bot ? (
+          <p className="muted small">{sheet.player.bot ? '電腦玩家' : sheet.player.online ? '在線' : '離線'}{sheet.player.acct ? '・已登入帳戶' : ''}</p>
+          <ProfileCard acct={sheet.player.acct} />
+          {host && !sheet.player.bot ? (
             <button className="btn btn-gold" onClick={async () => { const r = await call('giveHost', { id: sheet.player.id }); if (!r.ok && r.error) notify(r.error); setSheet(null); }}>交房主給 {sheet.player.name || '這位玩家'}</button>
           ) : null}
-          <button className="btn btn-danger" onClick={() => { call('kick', { id: sheet.player.id }); setSheet(null); }}>移出房間</button>
+          {host ? <button className="btn btn-danger" onClick={() => { call('kick', { id: sheet.player.id }); setSheet(null); }}>移出房間</button> : null}
         </Sheet>
       ) : null}
       <ThrowLayer />

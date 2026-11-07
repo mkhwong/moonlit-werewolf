@@ -1334,3 +1334,28 @@ html .wwt > .wwt-hint { display: none !important; }
 .pg-fate { grid-column: 2 / span 2; font-size: 11px; color: var(--moon-3); }
 .pg-back { align-self: flex-start; margin-bottom: 8px; }
 .pg-record .btn-sm { align-self: center; }
+
+/* ───────── 個人帳戶 ───────── */
+.acct { width: min(560px, 100%); box-sizing: border-box; margin: 0 auto 4px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; }
+.acct-out { flex-wrap: wrap; justify-content: space-between; }
+.acct-out > div:first-child { flex: 1 1 200px; }
+.acct-out b { font-family: var(--serif); color: var(--gold); letter-spacing: .15em; }
+.acct-out p { margin: 2px 0 0; }
+.acct-gbtn { min-height: 44px; display: flex; align-items: center; }
+.acct-in { border: 1px solid var(--gold-2); color: var(--moon); font: inherit; cursor: pointer; }
+.acct-in img, .acct-pic { width: 42px; height: 42px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px var(--gold-2); object-fit: cover; }
+.acct-pic { display: grid; place-items: center; background: #2a2140; font-family: var(--serif); font-size: 20px; color: var(--gold); }
+.acct-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.acct-who b { font-size: 16px; }
+.acct-who small { color: var(--moon-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-rec { flex: none; font-size: 12px; color: var(--moon-2); text-align: right; }
+.acct-rec b { font-family: var(--serif); font-size: 18px; color: var(--moon); margin: 0 1px 0 4px; }
+.acct-rec em { display: block; font-style: normal; color: var(--gold); font-weight: 700; }
+.acct-form { display: flex; flex-direction: column; gap: 8px; }
+.acct-form textarea { font: inherit; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(201, 164, 92, .4); background: rgba(0, 0, 0, .3); color: var(--moon); resize: vertical; }
+.acct-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 6px; }
+.acct-stats span { display: flex; flex-direction: column; align-items: center; padding: 8px 0; border-radius: 6px; background: rgba(255, 255, 255, .04); font-size: 12px; color: var(--moon-2); }
+.acct-stats b { font-family: var(--serif); font-size: 22px; color: var(--moon); }
+.acct-card { display: flex; gap: 12px; align-items: center; padding: 10px; margin: 6px 0 10px; border-radius: 8px; background: rgba(255, 255, 255, .04); }
+.acct-card img { width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 0 0 2px var(--gold-2); }
+.acct-card-msg { margin: 0 0 2px; font-size: 15px; }

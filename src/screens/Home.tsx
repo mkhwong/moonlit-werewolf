@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Scene from '../components/Scene';
 import { call, saveSession } from '../socket';
+import AccountPanel from '../components/AccountPanel';
 
 export default function Home({ notify, connected }: any) {
   const params = new URLSearchParams(location.search);
@@ -26,6 +27,7 @@ export default function Home({ notify, connected }: any) {
           <div className="g-rule" aria-hidden><i /><b /><i /></div>
           <p>今夜，誰是狼</p>
         </div>
+        <AccountPanel notify={notify} />
         <div className="home-choices">
           <form className="home-card panel choice-join" onSubmit={e => { e.preventDefault(); if (code.length === 4) enter('join', { code }); }}>
             <h2>加入房間</h2>
