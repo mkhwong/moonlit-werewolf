@@ -104,7 +104,7 @@ function runOne(pack, settings) {
   });
 }
 
-const stats = { good: 0, wolf: 0, days: 0 };
+const stats = { good: 0, wolf: 0, days: 0, early: 0 };
 const phaseTotals = {};
 const t0 = Date.now();
 let failures = 0;
