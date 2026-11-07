@@ -1341,7 +1341,12 @@ html .wwt > .wwt-hint { display: none !important; }
 .acct-out > div:first-child { flex: 1 1 200px; }
 .acct-out b { font-family: var(--serif); color: var(--gold); letter-spacing: .15em; }
 .acct-out p { margin: 2px 0 0; }
-.acct-gbtn { min-height: 44px; display: flex; align-items: center; }
+.acct-gbtn { flex: 0 0 auto; min-height: 44px; min-width: 240px; display: flex; align-items: center; justify-content: flex-end;
+  /* The page is color-scheme: dark; Google's button iframe is light, and a mismatch makes the browser paint an opaque
+     white box behind the iframe. Matching the scheme keeps the pill's rounded corners transparent. */
+  color-scheme: light; background: transparent; }
+.acct-gbtn iframe { color-scheme: light; }
+@media (max-width: 520px) { .acct-gbtn { width: 100%; justify-content: center; } }
 .acct-in { border: 1px solid var(--gold-2); color: var(--moon); font: inherit; cursor: pointer; }
 .acct-in img, .acct-pic { width: 42px; height: 42px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px var(--gold-2); object-fit: cover; }
 .acct-pic { display: grid; place-items: center; background: #2a2140; font-family: var(--serif); font-size: 20px; color: var(--gold); }

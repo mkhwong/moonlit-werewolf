@@ -105,7 +105,7 @@ export async function renderGoogleButton(el: HTMLElement, onResult: (r: any) => 
     inited = clientId;
   }
   onResultRef.fn = onResult;
-  g.renderButton(el, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', locale: 'zh-HK', width: Math.min(300, el.clientWidth || 300) });
+  g.renderButton(el, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', locale: 'zh-HK', width: 240 });
   return true;
 }
 const onResultRef: { fn: ((r: any) => void) | null } = { fn: null };
