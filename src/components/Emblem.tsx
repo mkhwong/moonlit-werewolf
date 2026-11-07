@@ -410,13 +410,24 @@ export default function Emblem({ id, size = 64, color, className = '', title }: 
   );
 }
 
+/** 頭像 of signed-in players in this room, by name (names are unique per room). Filled from every room update. */
+const PICTURES = new Map<string, string>();
+export function setRoomPictures(players: any[] = []) {
+  PICTURES.clear();
+  for (const p of players) if (p.name && p.acct?.picture) PICTURES.set(p.name, p.acct.picture);
+}
+
 export function Avatar({ name = '', seat, size = 40, dim }: any) {
+  const pic = PICTURES.get(name);
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.codePointAt(0)) % 360;
   // Computer players are named 電腦・X — show X so the portraits are distinguishable.
   const ch = [...((name || '?').split('・').pop() || '?')][0];
   return (
     <span className={`avatar ${dim ? 'avatar-dim' : ''}`} style={{ width: size, height: size, '--h': h }} aria-hidden>
+      {pic
+        ? <img className="avatar-img" src={pic} alt="" referrerPolicy="no-referrer" loading="lazy" draggable={false} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+        : null}
       <span style={{ fontSize: Math.round(size * 0.46) }}>{ch}</span>
       {seat != null ? <em>{seat}</em> : null}
     </span>
