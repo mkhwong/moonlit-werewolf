@@ -320,6 +320,18 @@ export default function ActionPanel({ game, pr, ph, sel, setSel, mode, setMode, 
         </div>
       );
       break;
+    case 'conclude':
+      body = (
+        <>
+          <h3>局勢已定</h3>
+          <p>狼人 {pr.wolves} 人，好人 {pr.good} 人，場上已經冇技能可以扭轉結果。<br />要提早結束遊戲（狼人陣營勝）嗎？要全部在場玩家同意先會結束，20 秒內冇揀當同意。</p>
+          <div className="row">
+            <button className="btn btn-shu" onClick={() => act({ type: 'conclude', agree: true })}>提早結束</button>
+            <button className="btn btn-moon" onClick={() => act({ type: 'conclude', agree: false })}>繼續遊戲</button>
+          </div>
+        </>
+      );
+      break;
     case 'info':
     case 'wait':
       body = <><h3>{pr.text}</h3></>;

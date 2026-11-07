@@ -95,7 +95,10 @@ function runOne(pack, settings) {
       if (r !== 'over') return reject(new Error('game ended with ' + r));
       // sanity: winner condition consistent
       const w = game.evaluate();
-      if (w !== game.winner) return reject(new Error(`winner mismatch ${w} vs ${game.winner}`));
+      // (局勢已定: an agreed early end gives 狼人勝 while good players are still alive)
+      const early = !w && game.winner === 'wolf' && game.outcomeSettled();
+      if (w !== game.winner && !early) return reject(new Error(`winner mismatch ${w} vs ${game.winner}`));
+      if (early) stats.early = (stats.early || 0) + 1;
       resolve({ winner: game.winner, days: game.day, phases, log: game.publicLog.length });
     }, e => { clearTimeout(guard); reject(e); });
   });
@@ -129,6 +132,6 @@ async function worker() {
   }
 }
 await Promise.all(Array.from({ length: CONC }, worker));
-console.log(`games=${N} failures=${failures} good=${stats.good} wolf=${stats.wolf} avgDays=${(stats.days / N).toFixed(2)} time=${((Date.now() - t0) / 1000).toFixed(1)}s`);
+console.log(`games=${N} failures=${failures} good=${stats.good} wolf=${stats.wolf} earlyEnd=${stats.early || 0} avgDays=${(stats.days / N).toFixed(2)} time=${((Date.now() - t0) / 1000).toFixed(1)}s`);
 console.log('phases seen:', Object.keys(phaseTotals).sort().map(k => `${k}:${phaseTotals[k]}`).join(' '));
 process.exit(failures ? 1 : 0);

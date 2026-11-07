@@ -49,6 +49,7 @@ function phaseLabel(ph, P) {
     case 'sheriffResult': return '競選結果';
     case 'bearFx': return '熊的咆哮';
     case 'charmFx': return '殉情';
+    case 'conclude': return '局勢已定・是否提早結束';
     default: return '';
   }
 }
@@ -66,6 +67,7 @@ function judgeCall(ph, P) {
     case 'speechDir': return '請警長選擇發言順序';
     case 'skill': return `${P[d.pid]?.seat}號 請發動技能`;
     case 'badge': return '請警長移交警徽';
+    case 'conclude': return `局勢已定：狼人 ${d.wolves} 人，好人 ${d.good} 人，已冇技能可以扭轉。是否提早結束遊戲？`;
     default: return phaseLabel(ph, P);
   }
 }

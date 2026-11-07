@@ -571,12 +571,65 @@ export class Game { [key: string]: any;
         await this.sheriffElection();
       }
       if (!this.announced) await this.announceNight();
+      await this.maybeConclude();
       await this.discussion();
       await this.exileVote();
     } catch (e) {
       if (!(e instanceof DayEnd)) throw e;
       await this.handleDayEnd(e.it);
     }
+    await this.maybeConclude();
+  }
+
+  // ───────────────────────── 局勢已定 (early end) ─────────────────────────
+  /** Can this living good-side player still change the count? (potions, guns, guards, duels, swaps, bombs…) */
+  canSwing(p) {
+    switch (p.role) {
+      case 'witch': return this.witch.antidote || this.witch.poison;
+      case 'knight': return !this.knightUsed;
+      case 'miracleMerchant': return !this.merchant.used;
+      case 'hunter': case 'guard': case 'dreamweaver': case 'demonHunter': case 'magician': case 'whiteLady': case 'bomber':
+        return true;
+      case 'seer': case 'medium': case 'idiot': case 'gravekeeper': case 'bear': case 'silencer': case 'cupid': case 'halfBlood': case 'thief': case 'villager':
+        return !!(this.lucky && !this.lucky.used && this.lucky.pid === p.id);
+      default: return true; // unknown → assume it could matter
+    }
+  }
+
+  /** Wolves at least match the good side and nothing left on the good side can turn it around. */
+  outcomeSettled() {
+    const alive = this.alive();
+    const wolves = alive.filter(p => this.teamOfP(p) === 'wolf');
+    const good = alive.filter(p => this.teamOfP(p) !== 'wolf');
+    if (!wolves.length || !good.length || wolves.length < good.length) return false;
+    if (this.lovers?.some(id => this.isAlive(id))) return false;                       // 第三方 still in play
+    const sh = this.sheriffId ? this.get(this.sheriffId) : null;
+    if (sh?.alive && this.teamOfP(sh) !== 'wolf') return false;                          // a good 警長's 1.5 votes can break ties
+    if (this.settings.sheriff && !this.sheriffId && !this.badgeLost && (this.day <= 1 || this.electionPostponed)) return false;
+    return !good.some(p => this.canSwing(p));
+  }
+
+  /** Ask the living players whether to end now (狼人勝). Everyone must agree; no answer counts as agreeing. Asked once per head-count. */
+  async maybeConclude() {
+    if (this.finished || !this.outcomeSettled()) return;
+    const sig = this.alive().map(p => p.id).join(',');
+    if (this.concludeAsked === sig) return;
+    this.concludeAsked = sig;
+    const voters = this.alive().filter(p => !p.bot).map(p => p.id);
+    const wolves = this.alive().filter(p => this.teamOfP(p) === 'wolf').length;
+    const good = this.alive().length - wolves;
+    let declined = false;
+    if (voters.length) {
+      const ph = await this.runPhase('conclude', { wolves, good }, { duration: this.ms(20), priv: { voters, votes: {} } });
+      declined = voters.some(id => ph.priv.votes[id] === false);
+    }
+    if (declined) {
+      this.log('有玩家選擇繼續，遊戲繼續', 'conclude');
+      return;
+    }
+    this.winner = 'wolf';
+    this.log(`局勢已定（狼 ${wolves}・好人 ${good}，無技能可以扭轉），全體同意提早結束：狼人陣營獲勝`, 'win');
+    throw new GameOver();
   }
 
   async announceNight() {
@@ -1203,6 +1256,12 @@ export class Game { [key: string]: any;
       case 'vote':
         if (a.type === 'vote') this.handleVote(me, ph, a.target ?? null);
         break;
+      case 'conclude':
+        if (a.type === 'conclude' && ph.priv.voters.includes(pid) && !(pid in ph.priv.votes)) {
+          ph.priv.votes[pid] = !!a.agree;
+          if (!a.agree || ph.priv.voters.every(id => id in ph.priv.votes)) this.completeSoon(ph, { min: 600, delay: 600 });
+        }
+        break;
       case 'speechDir':
         if (a.type === 'dir' && ph.data.pid === pid && (a.dir === 1 || a.dir === -1)) {
           ph.priv.dir = a.dir;
@@ -1589,6 +1648,13 @@ export class Game { [key: string]: any;
         };
         if (ph.data.pid === me.id) return { kind: 'speaking', ...extras };
         return { kind: 'listen', speaker: ph.data.pid, ...extras };
+      }
+      case 'conclude': {
+        const pv = ph.priv;
+        const n = Object.keys(pv.votes).length;
+        if (!pv.voters.includes(me.id)) return { kind: 'info', text: `局勢已定：場上玩家決定緊係咪提早結束（${n}/${pv.voters.length}）` };
+        if (me.id in pv.votes) return { kind: 'info', text: `你揀咗${pv.votes[me.id] ? '提早結束' : '繼續遊戲'}，等待其他玩家（${n}/${pv.voters.length}）` };
+        return { kind: 'conclude', wolves: ph.data.wolves, good: ph.data.good };
       }
       case 'vote': {
         const pv = ph.priv;

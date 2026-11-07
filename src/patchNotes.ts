@@ -1,7 +1,14 @@
 // 更新日誌 — shown from the corner link on the home page. Newest first; keep each line short.
-export const VERSION = 'v2.7';
+export const VERSION = 'v2.8';
 
 export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
+  {
+    v: 'v2.8', date: '2026-11-07',
+    items: [
+      '局勢已定：狼人數目追平好人，而好人方已冇技能可以扭轉（冇好人警長、女巫冇藥、冇獵人守衛騎士等），會問在場玩家係咪提早結束',
+      '要全部在場玩家同意先會結束（狼人勝），有人揀「繼續遊戲」就照玩，人數再變時會再問',
+    ],
+  },
   {
     v: 'v2.7', date: '2026-11-07',
     items: [

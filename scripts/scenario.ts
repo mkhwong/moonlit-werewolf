@@ -564,5 +564,48 @@ const wolvesKill = (act, seats, t) => seats.forEach(n => { act(n, { type: 'pick'
   console.log('R ok: 狼弟 checks good, revenge knife, then 2 kills as last wolf; 場外 opens after last words');
 }
 
+// S: 局勢已定 — 屠城, 無警長, wolves = good and nobody can swing it → the living are asked; all agree → 狼人勝.
+//    A 繼續 vote keeps playing; a witch with a potion left means nobody is asked at all.
+for (const variant of ['agree', 'decline', 'witch']) {
+  const roles = variant === 'witch'
+    ? ['werewolf', 'werewolf', 'seer', 'witch', 'villager', 'villager']
+    : ['werewolf', 'werewolf', 'seer', 'villager', 'villager', 'villager'];
+  const { game, on } = setup(roles, { sheriff: false, winMode: 'all' });
+  let asked = 0, declined = false;
+  on(g => {
+    const ph = g.phase;
+    if (!ph) return;
+    const act = (n, a) => g.handle(id(n), a);
+    const step = ph.type === 'night' ? ph.data.step : null;
+    if (ph.type === 'reveal') once(ph, 'r', () => g.players.forEach(p => act(p.seat, { type: 'ready' })));
+    if (step === 'wolf') once(ph, 'w', () => { const t = g.alive().find(p => g.teamOfP(p) !== 'wolf' && p.role !== 'witch'); [1, 2].forEach(n => g.isAlive(id(n)) && act(n, { type: 'pick', target: t.id })); });
+    if (step === 'witch') once(ph, 'wi', () => act(4, { type: 'skip' }));
+    if (step === 'seer') once(ph, 's', () => act(3, { type: 'pick', target: id(1) }));
+    if (ph.type === 'speech') once(ph, 'sp', () => act(g.seat(ph.data.pid), { type: 'endSpeech' }));
+    if (ph.type === 'vote' && ph.data.kind === 'exile') once(ph, 'v', () => {
+      const t = g.alive().find(p => g.teamOfP(p) !== 'wolf' && p.role !== 'seer' && p.role !== 'witch') || g.alive().find(p => g.teamOfP(p) !== 'wolf');
+      g.alive().forEach(p => act(p.seat, { type: 'vote', target: t.id === p.id ? id(1) : t.id }));
+    });
+    if (ph.type === 'conclude') once(ph, 'c', () => {
+      asked++;
+      ph.priv.voters.forEach((pid, i) => g.handle(pid, { type: 'conclude', agree: !(variant === 'decline' && asked === 1 && i === ph.priv.voters.length - 1) }));
+      if (variant === 'decline' && asked === 1) declined = true;
+    });
+    if (variant === 'witch' && g.day >= 3) g.terminate();
+  });
+  await game.run();
+  if (variant === 'agree') {
+    assert.equal(asked, 1, 'asked once');
+    assert.equal(game.winner, 'wolf');
+    assert.ok(game.alive().filter(p => game.teamOfP(p) !== 'wolf').length >= 1, 'ended while good players were still alive');
+  } else if (variant === 'decline') {
+    assert.ok(declined && asked >= 2, 'after 繼續 the game went on and asked again once the count changed');
+    assert.equal(game.winner, 'wolf');
+  } else {
+    assert.equal(asked, 0, 'a witch with potions left → nobody is asked');
+  }
+}
+console.log('S ok: 局勢已定 early end (agree / 繼續 / not offered while a witch still has potions)');
+
 console.log('all scenarios passed');
 process.exit(0);
