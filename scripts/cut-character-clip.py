@@ -1,4 +1,4 @@
-# Cut the white backdrop out of a character clip (flood-fill from the frame edges, so white INSIDE the
+# Cut the white (or pure-black) backdrop out of a character clip (flood-fill from the frame edges, so white INSIDE the
 # outline — fur, beards, armour — stays), soften the edge, and save a looping transparent animated WebP.
 import sys, subprocess, numpy as np
 from scipy import ndimage
@@ -12,8 +12,47 @@ raw = subprocess.run(['ffmpeg','-v','error','-i',src,'-vf',f'fps={FPS},scale={W}
 frames = np.frombuffer(raw, np.uint8).reshape(-1, H, W, 3)
 ring = np.ones((3,3), bool)
 out = []
+# White or black backdrop? Decide from the frame edges of the first frame.
+f0 = frames[0].astype(np.int16).max(2)
+DARK = np.median(np.concatenate([f0[0], f0[-1], f0[:, 0], f0[:, -1]])) < 40
+
+def cut_dark(fl):
+    """Black backdrop: flood the (near) pure-black area from the edges plus flat-black pockets; soft edge from brightness."""
+    mx = fl.max(2)
+    black = mx <= 4
+    lab, n = ndimage.label(black)
+    edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
+    bg = np.isin(lab, edge[edge > 0])
+    sizes = ndimage.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1))
+    for i in np.nonzero(sizes >= 40)[0] + 1:
+        if i in edge: continue
+        m = lab == i
+        if np.percentile(mx[m], 90) <= 2: bg |= m
+    alpha = np.where(bg, 0, 255).astype(np.float32)
+    near = ndimage.binary_dilation(bg, ring, 2) & ~bg
+    soft = np.clip(mx.astype(np.float32) / 36.0, 0, 1) * 255
+    alpha[near] = np.minimum(alpha[near], soft[near])
+    # Glows drawn over black (sparkles, magic smoke, speech-bubble halos): dark *coloured* pixels close to the
+    # backdrop become see-through in proportion to their brightness. Neutral dark outlines are left alone.
+    band = ndimage.distance_transform_edt(~bg) <= 16
+    mn = fl.min(2)
+    glow = band & ~bg & (mx < 80) & (mx - mn > 14)
+    alpha[glow] = np.minimum(alpha[glow], np.clip(mx[glow].astype(np.float32) / 80.0, 0, 1) * 255)
+    alpha = ndimage.gaussian_filter(alpha, 0.6)
+    a = alpha / 255.0
+    with np.errstate(divide='ignore', invalid='ignore'):     # un-premultiply against black
+        rgb = np.where(a[..., None] > 0.02, fl.astype(np.float32) / np.maximum(a[..., None], 0.02), 0)
+    return np.dstack([np.clip(rgb, 0, 255), alpha]).astype(np.uint8)
+
 for f in frames:
     fl = f.astype(np.int16)
+    if DARK:
+        rgba = cut_dark(fl)
+        CW, CH = S, round(S * 581 / 576)
+        canvas = Image.new('RGBA', (CW, CH), (0, 0, 0, 0))
+        canvas.paste(Image.fromarray(rgba, 'RGBA'), ((CW - W) // 2, CH - H))
+        out.append(canvas)
+        continue
     mn, mx = fl.min(2), fl.max(2)
     light = (mn > 222) & (mx - mn < 30)                       # near-white, unsaturated
     lab, n = ndimage.label(light)
