@@ -1,7 +1,14 @@
 // 更新日誌 — shown from the corner link on the home page. Newest first; keep each line short.
-export const VERSION = 'v2.10';
+export const VERSION = 'v2.11';
 
 export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
+  {
+    v: 'v2.11', date: '2026-11-08',
+    items: [
+      '第一次入房會彈出「開咪設定」教學：手機同電腦分開圖解，撳「允許使用咪」即刻開',
+      '咪被封鎖或者搵唔到咪會講清楚原因同解決方法；語音提示旁邊加咗「點樣開咪？」',
+    ],
+  },
   {
     v: 'v2.10', date: '2026-11-08',
     items: [

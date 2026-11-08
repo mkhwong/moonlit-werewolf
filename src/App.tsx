@@ -8,6 +8,7 @@ import Lobby from './screens/Lobby';
 import Game from './screens/Game';
 import { voice } from './voice';
 import { VoiceCtx } from './components/VoiceControls';
+import MicHelp, { micHelpSeen } from './components/MicHelp';
 
 export default function App() {
   const [state, setState] = useState(null);
@@ -23,7 +24,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onState = s => { syncClock(s.serverNow); setRoomPictures(s.room?.players); setState(s); setResuming(false); armAudioUnlock(); if (s.voice) { voice.armAutoJoin(); voice.sync(s.you.id, s.voice.members); } (window as any).__ww = s; };
+    const onState = s => { syncClock(s.serverNow); setRoomPictures(s.room?.players); setState(s); setResuming(false); armAudioUnlock(); if (s.voice) { if (micHelpSeen()) voice.armAutoJoin(); voice.sync(s.you.id, s.voice.members); } (window as any).__ww = s; };
     const onConnect = () => {
       setConnected(true);
       const sess = loadSession();
@@ -64,6 +65,7 @@ export default function App() {
   return (
     <VoiceCtx.Provider value={state?.voice || null}>
       {screen}
+      <MicHelp inRoom={!!state?.you?.name && !!state?.voice} />
       {!connected ? <div className="netbar" role="status">連線中斷，正在重新連線…</div> : null}
       {toast ? <div className="toast" role="status">{toast}</div> : null}
     </VoiceCtx.Provider>

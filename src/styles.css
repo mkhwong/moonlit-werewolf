@@ -1448,3 +1448,18 @@ html .wwt > .wwt-hint { display: none !important; }
 .is-morph .copy-tag { animation: copy-tag .4s 2.1s both; }
 @keyframes copy-tag { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .copy-scan, .is-morph .copy-from, .is-morph .copy-to, .copy-beam { animation: none; } .is-morph .copy-from, .copy-beam { display: none; } }
+
+/* ───────── 開咪設定 pop-up ───────── */
+.mic-help .sheet-body { display: grid; gap: 12px; }
+.mic-lead { margin: 0; line-height: 1.6; color: var(--moon); }
+.mic-lead b { color: var(--gold); }
+.mic-ok, .mic-bad { margin: 0; padding: 9px 12px; border-radius: 6px; font-weight: 700; font-size: 14px; }
+.mic-ok { background: rgba(80, 160, 120, .18); color: #9fe0bf; box-shadow: inset 0 0 0 1px rgba(127, 200, 160, .4); }
+.mic-bad { background: rgba(190, 50, 60, .16); color: #f2a3a3; box-shadow: inset 0 0 0 1px rgba(220, 90, 100, .4); }
+.mic-tabs { justify-self: start; }
+.mic-steps ol { margin: 0 0 10px; padding-left: 1.4em; line-height: 1.7; }
+.mic-steps b { color: var(--gold); }
+.mic-steps img { display: block; width: 100%; max-width: 360px; height: auto; margin: 0 auto; border-radius: 10px; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); }
+.mic-note { margin: 10px 0 0; font-size: 13px; line-height: 1.6; color: var(--moon-2); }
+.mic-actions { gap: 10px; }
+.linkish { border: 0; background: none; padding: 0; color: var(--gold); text-decoration: underline; font: inherit; cursor: pointer; }

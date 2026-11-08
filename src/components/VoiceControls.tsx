@@ -4,6 +4,7 @@ import Emblem from './Emblem';
 import { useSimpleFx, setSimpleFx } from '../prefs';
 import { useChannels, setChannel, setVolume, unlockAudio, sfx, sayClips, AUDIO_ENABLED } from '../audio';
 import { ROLES, characterURL, characterAnimURL } from '../../shared/roles';
+import { showMicHelp } from './MicHelp';
 import RoleArt from './RoleArt';
 
 // state.voice from the server: { members, talking: [{pid, channel}], canTalk, channel }
@@ -190,7 +191,7 @@ export function PushToTalk({ big, dock, label, hint }: any) {
   useEffect(() => () => { if (holding.current) voice.stopTalking(); }, []);
 
   const wrap = `ptt-wrap ${big ? 'big' : ''} ${dock ? 'is-dock' : ''}`;
-  if (s.on && !s.mic) return <div className={wrap}><p className="small hint ptt-nomic">{s.error || '沒有麥克風，只能收聽'}</p></div>;
+  if (s.on && !s.mic) return <div className={wrap}><p className="small hint ptt-nomic">{s.error || '沒有麥克風，只能收聽'} <button type="button" className="linkish" onClick={showMicHelp}>點樣開咪？</button></p></div>;
   const liveLabel = label || CHANNEL_LABEL[v?.channel] || '按住說話';
   // Not in voice yet: the button itself connects (and asks for the mic) — no separate switch.
   const usable = can || !s.on;
@@ -245,7 +246,7 @@ export function PushToTalk({ big, dock, label, hint }: any) {
           {s.relayPeers ? <span className="small muted">{s.relayPeers} 人經伺服器轉送</span> : null}
         </div>
       )}
-      {s.error && !s.talking ? <p className="small hint ptt-err">{s.error}</p> : null}
+      {s.error && !s.talking ? <p className="small hint ptt-err">{s.error} <button type="button" className="linkish" onClick={showMicHelp}>點樣開咪？</button></p> : null}
     </div>
   );
 }
