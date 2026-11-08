@@ -1,6 +1,10 @@
 // Bridge between the game and the 「角色轉場」 transition module (werewolfTransitions.js).
 import './werewolfTransitions.js';
-import { CHARACTER_ART, ANIMATED_ART, characterAnimURL } from '../../shared/roles';
+import { CHARACTER_ART, ANIMATED_ART, characterAnimURL, characterHdURL } from '../../shared/roles';
+
+// Transition scenes fill most of the screen, so they use the 640px clips — unless the browser asks to save data.
+const saveData = () => typeof navigator !== 'undefined' && !!(navigator as any).connection?.saveData;
+const sceneClip = (role: string) => (saveData() ? characterAnimURL(role) : characterHdURL(role));
 import { isSimpleFx } from '../prefs';
 
 type Handle = Promise<void> & { skip(): void };
@@ -48,7 +52,7 @@ export function playTransition(role: string, opts: Record<string, unknown> = {})
   try {
     // 抽到角色: your own reveal always asks for the clip; other scenes use it once it has loaded (see preloadRoleClip).
     const { clip, ...rest } = opts as any;
-    const h = W.playRoleTransition(meta.art, clip && ANIMATED_ART.has(meta.art) ? { image: characterAnimURL(role), ...rest } : rest);
+    const h = W.playRoleTransition(meta.art, clip && ANIMATED_ART.has(meta.art) ? { image: sceneClip(role), ...rest } : rest);
     return () => { try { h.skip(); } catch { /* already gone */ } };
   } catch {
     return () => {};
@@ -92,7 +96,7 @@ const warmed = new Map<string, Promise<void>>();
 export function preloadRoleClip(role: string): Promise<void> {
   const meta = CHARACTER_ART[role];
   if (!meta || !ANIMATED_ART.has(meta.art) || typeof Image === 'undefined') return Promise.resolve();
-  const url = characterAnimURL(role)!;
+  const url = sceneClip(role)!;
   if (!warmed.has(url)) {
     warmed.set(url, new Promise<void>(resolve => {
       const im = new Image();
@@ -111,7 +115,7 @@ export function preloadRoleClip(role: string): Promise<void> {
 /** Your role first, then the rest of this game's roles one at a time (so the downloads never pile up). */
 export async function preloadGameClips(myRole: string | undefined, roles: string[]) {
   if (myRole) await preloadRoleClip(myRole);
-  await new Promise(r => setTimeout(r, 4000));
+  await new Promise(r => setTimeout(r, 800));
   for (const r of roles) {
     if (r !== myRole) await preloadRoleClip(r);
   }

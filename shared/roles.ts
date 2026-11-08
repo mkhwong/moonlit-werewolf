@@ -202,6 +202,11 @@ export const characterAnimURL = (role: string) => {
   const c = CHARACTER_ART[role];
   return c && ANIMATED_ART.has(c.art) ? `/characters/anim/${c.art}.webp` : characterURL(role);
 };
+/** 640px version of the clip for the full-screen transition scenes (the 360px one is for the card / corner). */
+export const characterHdURL = (role: string) => {
+  const c = CHARACTER_ART[role];
+  return c && ANIMATED_ART.has(c.art) ? `/characters/anim-hd/${c.art}.webp` : characterURL(role);
+};
 
 export const TEAM_NAME = { wolf: '狼人陣營', good: '好人陣營' };
 export const KIND_NAME = { wolf: '狼人', god: '神職', villager: '平民' };
