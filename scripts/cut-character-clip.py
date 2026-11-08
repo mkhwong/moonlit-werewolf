@@ -54,6 +54,15 @@ def cut_dark(fl):
         rgb = np.where(a[..., None] > 0.02, fl.astype(np.float32) / np.maximum(a[..., None], 0.02), 0)
     return np.dstack([np.clip(rgb, 0, 255), alpha]).astype(np.uint8)
 
+def seal_border(light, mx):
+    """Something cut off by the frame edge (a sword swung past it) has an open outline there; a short white
+    stretch of the border between two dark outline points is the inside of that object, not backdrop."""
+    L = round(170 * FW / 960)
+    for line, m in ((light[0], mx[0]), (light[-1], mx[-1]), (light[:, 0], mx[:, 0]), (light[:, -1], mx[:, -1])):
+        d = np.nonzero(m < 110)[0]
+        for a, b in zip(d[:-1], d[1:]):
+            if 1 < b - a < L: line[a:b] = False
+
 for f in frames:
     fl = f.astype(np.int16)
     if DARK:
@@ -65,6 +74,7 @@ for f in frames:
         continue
     mn, mx = fl.min(2), fl.max(2)
     light = (mn > 222) & (mx - mn < 30)                       # near-white, unsaturated
+    if GAP: seal_border(light, mx)
     lab, n = ndimage.label(light)
     edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
     bg = np.isin(lab, edge[edge > 0])
@@ -80,11 +90,16 @@ for f in frames:
     # unlike white fur/beards which always carry some shading
     ref = np.median(mn[bg]) if bg.any() else 252
     sizes = ndimage.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1))
-    for i in (np.nonzero(sizes >= 12 * K)[0] + 1) if not GAP else []:   # GAP clips: pure-white fur reads as a pocket
+    for i in np.nonzero(sizes >= 12 * K)[0] + 1:
         if i in edge: continue
         m = lab == i
         v = mn[m]
         if np.percentile(v, 10) >= ref - 6 and v.mean() >= ref - 2.5:
+            if GAP:
+                # GAP clips: pure-white fur and metal shine look exactly like backdrop, so a pocket only counts
+                # when it is ringed by the black line art (a real gap between arm and sword, say).
+                rim = ndimage.binary_dilation(m, ring, 3 * R) & ~ndimage.binary_dilation(m, ring, R)
+                if (mx[rim] < 110).mean() < 0.55: continue
             bg |= m
     # also eat faint grey drop-shadow halos connected to the backdrop
     halo = (mn > 196) & (mx - mn < 24)

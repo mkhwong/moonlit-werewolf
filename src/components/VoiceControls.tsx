@@ -162,7 +162,7 @@ export function RoleFigure({ role, dead, onClick, revenge, copy }: any) {
         aria-label={`我的身分：機械狼（複製咗${C.name}），查看技能`}>
         {morph ? <span className="copy-from"><RoleArt role="mechWolf" /></span> : null}
         <span className="copy-to">
-          {copyArt ? <RoleArt role={copied} /> : <span className="role-fig-emblem"><Emblem id={copied} size={72} /></span>}
+          {copyArt ? <RoleArt role={copied} noAnim={dead} /> : <span className="role-fig-emblem"><Emblem id={copied} size={72} /></span>}
           <i className="copy-scan" aria-hidden />
         </span>
         {morph ? <i className="copy-beam" aria-hidden /> : null}
@@ -173,7 +173,7 @@ export function RoleFigure({ role, dead, onClick, revenge, copy }: any) {
   return (
     <button type="button" className={`role-fig ${dead ? 'is-dead' : ''} ${revenge && role === 'wolfYounger' ? 'is-revenge' : ''}`} onClick={onClick} style={{ '--c': R.color } as any}
       aria-label={`我的身分：${R.name}，查看技能`}>
-      {art ? <RoleArt role={artRole} /> : <span className="role-fig-emblem"><Emblem id={role} size={72} /></span>}
+      {art ? <RoleArt role={artRole} noAnim={dead} /> : <span className="role-fig-emblem"><Emblem id={role} size={72} /></span>}
     </button>
   );
 }
