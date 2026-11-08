@@ -195,6 +195,13 @@ export const CHARACTER_ART: Record<string, { art: string; ms: number }> = {
   thief: { art: 'thief', ms: 4000 },
 };
 export const characterURL = (role: string) => (CHARACTER_ART[role] ? `/characters/${CHARACTER_ART[role].art}.webp` : null);
+/** Looping, silent, transparent character clips (animated WebP) — used on the role card, the reveal transition
+ *  and the bottom-left figure. Roles without a clip fall back to the still art. */
+export const ANIMATED_ART = new Set(['bear', 'demon-hunter', 'dreamweaver', 'gargoyle', 'ghost-knight', 'gravekeeper', 'guard', 'hidden-wolf', 'hunter', 'idiot', 'knight', 'mech-wolf', 'seer', 'villager', 'werewolf', 'white-wolf-king', 'witch', 'wolf-beauty', 'wolf-king']);
+export const characterAnimURL = (role: string) => {
+  const c = CHARACTER_ART[role];
+  return c && ANIMATED_ART.has(c.art) ? `/characters/anim/${c.art}.webp` : characterURL(role);
+};
 
 export const TEAM_NAME = { wolf: '狼人陣營', good: '好人陣營' };
 export const KIND_NAME = { wolf: '狼人', god: '神職', villager: '平民' };

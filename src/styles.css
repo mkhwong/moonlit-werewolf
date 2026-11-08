@@ -1412,3 +1412,6 @@ html .wwt > .wwt-hint { display: none !important; }
 .patch-notes h3 small { font-family: inherit; font-size: 12px; color: var(--moon-3); font-weight: 400; }
 .patch-notes ul { margin: 0; padding-left: 1.2em; color: var(--moon-2); }
 .patch-notes li { margin: 2px 0; }
+/* The animated clip already moves — drop the CSS idle bob on top of it. */
+.role-fig img.is-anim { animation: none; }
+.role-fig.is-dead img.is-anim { filter: grayscale(1) brightness(.7); }

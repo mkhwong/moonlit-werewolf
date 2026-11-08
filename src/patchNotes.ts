@@ -1,7 +1,15 @@
 // 更新日誌 — shown from the corner link on the home page. Newest first; keep each line short.
-export const VERSION = 'v2.8';
+export const VERSION = 'v2.9';
 
 export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
+  {
+    v: 'v2.9', date: '2026-11-08',
+    items: [
+      '19 個角色換上動態角色：抽身分嘅轉場、身分卡同左下角嘅角色都會郁（冇聲）',
+      '動態角色已去走白底，直接融入遊戲背景',
+      '帳戶嘅 Google 頭像會存入試算表，伺服器重啟後唔會冇咗',
+    ],
+  },
   {
     v: 'v2.8', date: '2026-11-07',
     items: [

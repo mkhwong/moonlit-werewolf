@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ItemImg } from './LuckyItems';
 import Emblem, { Avatar } from './Emblem';
 import { characterURL, ROLES, ROLE_ORDER, TEAM_NAME, MECH_SKILL, LONE_WOLVES, LUCKY_SKILLS, nightNumberLabel, dayNumberLabel } from '../../shared/roles';
+import RoleArt from './RoleArt';
 import { tagsFor } from '../notes';
 import { call } from '../socket';
 
@@ -29,7 +30,7 @@ export function RoleCardFace({ role, mates, extra }: any) {
   return (
     <div className="role-face" style={{ '--c': R.color }}>
       <div className="role-team">{TEAM_NAME[R.team]}</div>
-      <div className="role-emblem">{characterURL(role) ? <img className="role-art" src={characterURL(role)} alt="" /> : <Emblem id={role} size={120} />}</div>
+      <div className="role-emblem">{characterURL(role) ? <RoleArt className="role-art" role={role} /> : <Emblem id={role} size={120} />}</div>
       <div className="role-name">{R.name}</div>
       <p className="role-desc">{R.desc}</p>
       {mates ? <p className="role-mates">{mates}</p> : null}

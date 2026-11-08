@@ -1,6 +1,6 @@
 // Bridge between the game and the 「角色轉場」 transition module (werewolfTransitions.js).
 import './werewolfTransitions.js';
-import { CHARACTER_ART } from '../../shared/roles';
+import { CHARACTER_ART, ANIMATED_ART, characterAnimURL } from '../../shared/roles';
 import { isSimpleFx } from '../prefs';
 
 type Handle = Promise<void> & { skip(): void };
@@ -21,6 +21,7 @@ function ensureImages() {
   const W = wt();
   if (!W || ready) return W;
   const map: Record<string, string> = {};
+  // Night turn animations keep the still art (light to preload); your own reveal uses the clip (below).
   for (const { art } of Object.values(CHARACTER_ART)) map[art] = `/characters/${art}.webp`;
   W.setRoleImages(map);
   W.setTurnBackgrounds('/turns/bg/');
@@ -45,7 +46,9 @@ export function playTransition(role: string, opts: Record<string, unknown> = {})
   const meta = CHARACTER_ART[role];
   if (!W || !meta) return () => {};
   try {
-    const h = W.playRoleTransition(meta.art, opts);
+    // 抽到角色: the reveal shows the looping clip when this role has one.
+    const { clip, ...rest } = opts as any;
+    const h = W.playRoleTransition(meta.art, clip && ANIMATED_ART.has(meta.art) ? { image: characterAnimURL(role), ...rest } : rest);
     return () => { try { h.skip(); } catch { /* already gone */ } };
   } catch {
     return () => {};
@@ -81,4 +84,14 @@ export function playTurn(id: string, opts: Record<string, unknown> = {}): () => 
   } catch {
     return () => {};
   }
+}
+
+/** Start fetching your own role's clip as soon as the role is known, so the reveal shows it moving. */
+const warmed = new Set<string>();
+export function preloadRoleClip(role: string) {
+  const url = characterAnimURL(role);
+  if (!url || warmed.has(url) || typeof Image === 'undefined') return;
+  warmed.add(url);
+  const im = new Image();
+  im.src = url;
 }
