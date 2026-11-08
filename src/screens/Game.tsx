@@ -520,7 +520,7 @@ export default function Game({ state }: any) {
 
         {/* Bottom row: your character on the left, the action panel on the right. */}
         <div className="bottom-row">
-          {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} revenge={game.me?.revenge} onClick={() => setSheet('role')} /> : null}
+          {me && ph?.type !== 'reveal' ? <RoleFigure role={me.role} dead={!me.alive} revenge={game.me?.revenge} copy={me.mech?.learned} onClick={() => setSheet('role')} /> : null}
           <div className="bottom-right">
             {/* With 退水 stacked over ＋30 秒 the 輪到你發言 banner is dropped (結束發言 already says it's your turn). */}
             <ActionPanel game={game} pr={pr} ph={ph} sel={sel} setSel={setSel} mode={mode} setMode={setMode} P={P} me={me} introDone={introDone && !cine} speechMin={speechMin || (me?.alive && hasSkillButtons(pr, mode) && canExtend)} setSpeechMin={setSpeechMin} />

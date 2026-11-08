@@ -1415,3 +1415,36 @@ html .wwt > .wwt-hint { display: none !important; }
 /* The animated clip already moves — drop the CSS idle bob on top of it. */
 .role-fig img.is-anim { animation: none; }
 .role-fig.is-dead img.is-anim { filter: grayscale(1) brightness(.7); }
+
+/* ───────── 機械狼 copy: the learned character as a cyan machine copy ───────── */
+.role-fig.is-copy { position: relative; filter: drop-shadow(0 0 10px rgba(89, 243, 255, .55)) drop-shadow(0 6px 12px rgba(0, 0, 0, .7)); }
+.role-fig.is-copy .copy-to, .role-fig.is-copy .copy-from { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; }
+/* cyan monochrome — clearly the same character, clearly not the real one */
+.role-fig.is-copy .copy-to img { filter: grayscale(1) sepia(1) hue-rotate(140deg) saturate(2.6) brightness(.95) contrast(1.15); animation: none; }
+/* moving scan lines, clipped to the character's own shape */
+.copy-scan { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: .55;
+  background: repeating-linear-gradient(0deg, rgba(120, 255, 255, .5) 0 1px, transparent 1px 4px);
+  -webkit-mask: var(--mask) center bottom / contain no-repeat; mask: var(--mask) center bottom / contain no-repeat;
+  animation: copy-scan 2.4s linear infinite; }
+@keyframes copy-scan { from { background-position: 0 0; } to { background-position: 0 40px; } }
+.copy-tag { position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%); z-index: 2; white-space: nowrap; padding: 1px 7px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .05em; color: #051d22; background: #59f3ff; box-shadow: 0 0 8px rgba(89, 243, 255, .8); }
+.role-fig.is-copy.is-dead .copy-to img { filter: grayscale(1) brightness(.6); }
+.role-fig.is-copy.is-dead .copy-scan, .role-fig.is-copy.is-dead .copy-tag { opacity: .35; }
+/* the moment it learns: the 機械狼 overloads and dissolves, a scan beam sweeps up and prints the copy */
+.is-morph .copy-from { animation: copy-out 1.1s ease-in forwards; z-index: 1; }
+.is-morph .copy-from img { animation: none; }
+@keyframes copy-out {
+  0% { filter: brightness(1); transform: none; opacity: 1; }
+  35% { filter: brightness(1.8) drop-shadow(0 0 14px #59f3ff); transform: scale(1.04); }
+  100% { filter: brightness(3) blur(3px); transform: scale(.85) translateY(6%); opacity: 0; }
+}
+.is-morph .copy-to { animation: copy-in 1.5s .8s cubic-bezier(.3, .7, .3, 1) both; }
+@keyframes copy-in { from { clip-path: inset(100% 0 0 0); filter: brightness(2.2); } 70% { filter: brightness(1.4); } to { clip-path: inset(0 0 0 0); filter: none; } }
+.copy-beam { position: absolute; left: -8%; right: -8%; height: 3px; bottom: 0; z-index: 3; pointer-events: none; border-radius: 3px;
+  background: linear-gradient(90deg, transparent, #b8ffff, #59f3ff, #b8ffff, transparent); box-shadow: 0 0 14px 4px rgba(89, 243, 255, .75);
+  animation: copy-beam 1.5s .8s cubic-bezier(.3, .7, .3, 1) both; }
+@keyframes copy-beam { 0% { bottom: 0; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { bottom: 100%; opacity: 0; } }
+.is-morph .copy-tag { animation: copy-tag .4s 2.1s both; }
+@keyframes copy-tag { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .copy-scan, .is-morph .copy-from, .is-morph .copy-to, .copy-beam { animation: none; } .is-morph .copy-from, .copy-beam { display: none; } }

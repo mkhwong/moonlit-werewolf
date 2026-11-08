@@ -1,3 +1,4 @@
+# usage: cut-character-clip.py <src> <dst.webp> [size=400] [fps=15] [quality=72] [gap=0]
 # Cut the white (or pure-black) backdrop out of a character clip (flood-fill from the frame edges, so white INSIDE the
 # outline — fur, beards, armour — stays), soften the edge, and save a looping transparent animated WebP.
 import sys, subprocess, numpy as np
@@ -6,6 +7,7 @@ from PIL import Image
 src, dst = sys.argv[1], sys.argv[2]
 S = int(sys.argv[3]) if len(sys.argv) > 3 else 400
 FPS = int(sys.argv[4]) if len(sys.argv) > 4 else 15
+GAP = int(sys.argv[6]) if len(sys.argv) > 6 else 0              # optional outline gap-closing radius (full-size px)
 w, h = map(int, subprocess.run(['ffprobe','-v','error','-select_streams','v:0','-show_entries','stream=width,height','-of','csv=p=0',src],capture_output=True,text=True).stdout.strip().split(','))
 sc = S / max(w, h); W, H = round(w*sc) // 2 * 2, round(h*sc) // 2 * 2
 # Cut at the clip's own resolution (thin gaps — between pitchfork tines, inside a bow — are only clearly
@@ -66,11 +68,19 @@ for f in frames:
     lab, n = ndimage.label(light)
     edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
     bg = np.isin(lab, edge[edge > 0])
+    if GAP:
+        # White fur with a broken, feathery outline (白狼王's tail): thicken the line art so the flood can't
+        # squeeze through gaps narrower than ~2×GAP, flood, then grow the backdrop back up to the line art.
+        ink = ndimage.binary_dilation(~light, ring, GAP)
+        lab3, _ = ndimage.label(light & ~ink)
+        e3 = np.unique(np.concatenate([lab3[0], lab3[-1], lab3[:, 0], lab3[:, -1]]))
+        core = np.isin(lab3, e3[e3 > 0])
+        bg = ndimage.binary_dilation(core, ring, GAP + 1) & light & bg
     # enclosed pockets of backdrop (between an arm and the body, inside a bow string…): flat pure white,
     # unlike white fur/beards which always carry some shading
     ref = np.median(mn[bg]) if bg.any() else 252
     sizes = ndimage.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1))
-    for i in np.nonzero(sizes >= 12 * K)[0] + 1:
+    for i in (np.nonzero(sizes >= 12 * K)[0] + 1) if not GAP else []:   # GAP clips: pure-white fur reads as a pocket
         if i in edge: continue
         m = lab == i
         v = mn[m]
@@ -78,6 +88,7 @@ for f in frames:
             bg |= m
     # also eat faint grey drop-shadow halos connected to the backdrop
     halo = (mn > 196) & (mx - mn < 24)
+    if GAP: halo &= ndimage.distance_transform_edt(~bg) <= 3 * R   # don't let the halo crawl into pale fur
     lab2, _ = ndimage.label(halo)
     bg |= np.isin(lab2, np.unique(lab2[bg])[1:]) if bg.any() else False
     alpha = np.where(bg, 0, 255).astype(np.float32)

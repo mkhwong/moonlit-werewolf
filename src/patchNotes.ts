@@ -1,7 +1,14 @@
 // 更新日誌 — shown from the corner link on the home page. Newest first; keep each line short.
-export const VERSION = 'v2.9';
+export const VERSION = 'v2.10';
 
 export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
+  {
+    v: 'v2.10', date: '2026-11-08',
+    items: [
+      '機械狼學到技能嗰下，左下角會播一段複製動畫：機械狼過載消失，掃描光束由下而上「打印」出被學嘅角色',
+      '之後左下角會換成被學角色嘅動態造型，用青藍色機械複製版配色加掃描線，標住「複製・角色名」',
+    ],
+  },
   {
     v: 'v2.9', date: '2026-11-08',
     items: [

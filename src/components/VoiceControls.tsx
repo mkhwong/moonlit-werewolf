@@ -3,7 +3,7 @@ import { voice, VoiceStatus } from '../voice';
 import Emblem from './Emblem';
 import { useSimpleFx, setSimpleFx } from '../prefs';
 import { useChannels, setChannel, setVolume, unlockAudio, sfx, sayClips, AUDIO_ENABLED } from '../audio';
-import { ROLES, characterURL } from '../../shared/roles';
+import { ROLES, characterURL, characterAnimURL } from '../../shared/roles';
 import RoleArt from './RoleArt';
 
 // state.voice from the server: { members, talking: [{pid, channel}], canTalk, channel }
@@ -131,13 +131,45 @@ export function FxToggle() {
   );
 }
 
-/** Your role's character, bottom-left beside the action panel (tap for your skills). */
-export function RoleFigure({ role, dead, onClick, revenge }: any) {
+/** Your role's character, bottom-left beside the action panel (tap for your skills).
+ *  機械狼: once it has learned a skill, the figure becomes a cyan "machine copy" of the learned character —
+ *  with a short scan-in morph the moment it learns (not when you reload mid-game). */
+export function RoleFigure({ role, dead, onClick, revenge, copy }: any) {
   const R = role ? ROLES[role] : null;
+  const copied = role === 'mechWolf' && copy && ROLES[copy] ? copy : null;
+  const seen = useRef(copied);
+  const [morph, setMorph] = useState(false);
+  useEffect(() => {
+    if (copied && seen.current !== copied) {
+      setMorph(true);
+      const t = setTimeout(() => setMorph(false), 2600);
+      seen.current = copied;
+      return () => clearTimeout(t);
+    }
+    seen.current = copied;
+    return undefined;
+  }, [copied]);
   if (!R) return null;
   // 狼弟 switches to his 復仇 art once 狼兄 is out.
   const art = revenge && role === 'wolfYounger' ? '/characters/wolf-younger-revenge.webp' : characterURL(role);
   const artRole = revenge && role === 'wolfYounger' ? 'wolfYoungerRevenge' : role; // 狼弟 復仇 has its own clip
+  if (copied) {
+    const C = ROLES[copied];
+    const copyArt = characterAnimURL(copied);
+    return (
+      <button type="button" className={`role-fig is-copy ${morph ? 'is-morph' : ''} ${dead ? 'is-dead' : ''}`} onClick={onClick}
+        style={{ '--c': '#59f3ff', '--mask': copyArt ? `url("${copyArt}")` : 'none' } as any}
+        aria-label={`我的身分：機械狼（複製咗${C.name}），查看技能`}>
+        {morph ? <span className="copy-from"><RoleArt role="mechWolf" /></span> : null}
+        <span className="copy-to">
+          {copyArt ? <RoleArt role={copied} /> : <span className="role-fig-emblem"><Emblem id={copied} size={72} /></span>}
+          <i className="copy-scan" aria-hidden />
+        </span>
+        {morph ? <i className="copy-beam" aria-hidden /> : null}
+        <b className="copy-tag">複製・{C.name}</b>
+      </button>
+    );
+  }
   return (
     <button type="button" className={`role-fig ${dead ? 'is-dead' : ''} ${revenge && role === 'wolfYounger' ? 'is-revenge' : ''}`} onClick={onClick} style={{ '--c': R.color } as any}
       aria-label={`我的身分：${R.name}，查看技能`}>
