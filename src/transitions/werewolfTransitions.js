@@ -89,7 +89,7 @@ const CSS = `
 .wwt-fx>*,.wwt-fg>*{position:absolute}
 .wwt-cam>.wwt-stage{inset:auto;left:var(--cx);top:var(--cy);width:var(--cw);height:var(--ch);margin:calc(var(--ch)/-2) 0 0 calc(var(--cw)/-2)}
 .wwt-card{position:absolute;inset:0;opacity:0;will-change:transform,opacity,filter}
-.wwt-card img{position:relative;width:100%;height:100%;display:block;-webkit-user-drag:none;
+.wwt-card img{position:relative;width:100%;height:100%;object-fit:contain;object-position:50% 100%;display:block;-webkit-user-drag:none;
   filter:drop-shadow(0 0 1.6vmin rgba(var(--accent-rgb),.5)) drop-shadow(0 1vmin 1.8vmin rgba(0,0,0,.6))}
 .wwt-card::before{content:"";position:absolute;left:18%;right:18%;bottom:-1%;height:9%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent)}
 .wwt-cam>.wwt-text{inset:auto 0 auto 0;top:calc(var(--cy) + var(--ch)/2 + 1.4vmin);display:flex;flex-direction:column;align-items:center;gap:.7vmin;text-align:center;padding:0 16px}

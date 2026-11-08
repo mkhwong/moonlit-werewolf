@@ -45,6 +45,11 @@ for f in frames:
     with np.errstate(divide='ignore', invalid='ignore'):
         rgb = np.where(a[..., None] > 0.02, (rgb - 255 * (1 - a[..., None])) / np.maximum(a[..., None], 0.02), 0)
     rgba = np.dstack([np.clip(rgb, 0, 255), alpha]).astype(np.uint8)
-    out.append(Image.fromarray(rgba, 'RGBA'))
+    # Same canvas shape as the still art (576×581), character centred and standing on the bottom edge,
+    # so nothing that sizes the still art ever stretches the clip.
+    CW, CH = S, round(S * 581 / 576)
+    canvas = Image.new('RGBA', (CW, CH), (0, 0, 0, 0))
+    canvas.paste(Image.fromarray(rgba, 'RGBA'), ((CW - W) // 2, CH - H))
+    out.append(canvas)
 out[0].save(dst, save_all=True, append_images=out[1:], duration=round(1000 / FPS), loop=0, quality=int(sys.argv[5]) if len(sys.argv) > 5 else 72, method=4, lossless=False, minimize_size=True, allow_mixed=False)
-print(dst, len(out), 'frames', W, H)
+print(dst, len(out), 'frames', out[0].size)
