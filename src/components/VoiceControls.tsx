@@ -137,11 +137,11 @@ export function RoleFigure({ role, dead, onClick, revenge }: any) {
   if (!R) return null;
   // 狼弟 switches to his 復仇 art once 狼兄 is out.
   const art = revenge && role === 'wolfYounger' ? '/characters/wolf-younger-revenge.webp' : characterURL(role);
-  const revengeArt = revenge && role === 'wolfYounger' ? art : undefined;
+  const artRole = revenge && role === 'wolfYounger' ? 'wolfYoungerRevenge' : role; // 狼弟 復仇 has its own clip
   return (
     <button type="button" className={`role-fig ${dead ? 'is-dead' : ''} ${revenge && role === 'wolfYounger' ? 'is-revenge' : ''}`} onClick={onClick} style={{ '--c': R.color } as any}
       aria-label={`我的身分：${R.name}，查看技能`}>
-      {art ? <RoleArt role={role} src={revengeArt} /> : <span className="role-fig-emblem"><Emblem id={role} size={72} /></span>}
+      {art ? <RoleArt role={artRole} /> : <span className="role-fig-emblem"><Emblem id={role} size={72} /></span>}
     </button>
   );
 }

@@ -46,7 +46,7 @@ export function playTransition(role: string, opts: Record<string, unknown> = {})
   const meta = CHARACTER_ART[role];
   if (!W || !meta) return () => {};
   try {
-    // 抽到角色: the reveal shows the looping clip when this role has one.
+    // 抽到角色: your own reveal always asks for the clip; other scenes use it once it has loaded (see preloadRoleClip).
     const { clip, ...rest } = opts as any;
     const h = W.playRoleTransition(meta.art, clip && ANIMATED_ART.has(meta.art) ? { image: characterAnimURL(role), ...rest } : rest);
     return () => { try { h.skip(); } catch { /* already gone */ } };
@@ -86,12 +86,33 @@ export function playTurn(id: string, opts: Record<string, unknown> = {}): () => 
   }
 }
 
-/** Start fetching your own role's clip as soon as the role is known, so the reveal shows it moving. */
-const warmed = new Set<string>();
-export function preloadRoleClip(role: string) {
-  const url = characterAnimURL(role);
-  if (!url || warmed.has(url) || typeof Image === 'undefined') return;
-  warmed.add(url);
-  const im = new Image();
-  im.src = url;
+/** Fetch a role's clip; once it has loaded, every transition scene (role calls, action scenes) uses it
+ *  instead of the still art. Resolves when done (or at once if there is nothing to load). */
+const warmed = new Map<string, Promise<void>>();
+export function preloadRoleClip(role: string): Promise<void> {
+  const meta = CHARACTER_ART[role];
+  if (!meta || !ANIMATED_ART.has(meta.art) || typeof Image === 'undefined') return Promise.resolve();
+  const url = characterAnimURL(role)!;
+  if (!warmed.has(url)) {
+    warmed.set(url, new Promise<void>(resolve => {
+      const im = new Image();
+      im.onload = () => {
+        const W = ensureImages();
+        if (W) W.setRoleImages({ [meta.art]: url });
+        resolve();
+      };
+      im.onerror = () => resolve();
+      im.src = url;
+    }));
+  }
+  return warmed.get(url)!;
+}
+
+/** Your role first, then the rest of this game's roles one at a time (so the downloads never pile up). */
+export async function preloadGameClips(myRole: string | undefined, roles: string[]) {
+  if (myRole) await preloadRoleClip(myRole);
+  await new Promise(r => setTimeout(r, 4000));
+  for (const r of roles) {
+    if (r !== myRole) await preloadRoleClip(r);
+  }
 }

@@ -16,7 +16,7 @@ import { playSkillFx, playVerdict } from '../components/SkillFx';
 import { preloadItems } from '../components/LuckyItems';
 import { ThrowLayer, ThrowFlyout, ItemArt, throwAt, throwBlocked } from '../components/Throw';
 import { PttDock, RoleFigure, VoiceCtx, SoundButton, useVoice } from '../components/VoiceControls';
-import { hasTransition, playTransition, preloadTransitions, preloadRoleClip, playTurn, preloadTurns, TURN_FOR_STEP, TURN_FOR_SHOOTER } from '../transitions';
+import { hasTransition, playTransition, preloadTransitions, preloadGameClips, playTurn, preloadTurns, TURN_FOR_STEP, TURN_FOR_SHOOTER } from '../transitions';
 import { ROLES, TEAM_NAME, NIGHT_STEPS, NO_BOOM, nightNumberLabel, dayNumberLabel } from '../../shared/roles';
 
 const VOTE_LABEL = { sheriff: '警長投票', sheriffPk: '警長 PK 投票', exile: '放逐投票', exilePk: '放逐 PK 投票' };
@@ -82,7 +82,7 @@ function useRoleTransitions(game, pr, mode) {
   useEffect(() => {
     const roles = Object.keys(game.composition);
     preloadTransitions(roles);
-    if (me?.role) preloadRoleClip(me.role);
+    preloadGameClips(me?.role, roles);
     if (roles.includes('miracleMerchant')) preloadItems();
     if (!me) return;
     // Decode this player's own turn scenes plus the public ones.
