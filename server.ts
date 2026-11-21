@@ -12,6 +12,7 @@ import { Game, shuffle } from './server/game';
 import { botThink, botName } from './server/bots';
 import { AccountStore, outcomes, OWNER_SCOPES } from './server/accounts';
 import { getUsage, isOwnerEmail } from './server/usage';
+import { Gate } from './server/gate';
 import {
   ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS, sizeDefaults, seatCount,
 } from './shared/roles';
@@ -619,6 +620,12 @@ function ctx(socket) {
   return room && player ? { room, player } : null;
 }
 
+const gate = new Gate(accounts);
+const isOwnerSocket = (socket: any) => isOwnerEmail(accounts.get(socket.data.accountId)?.email);
+/** 進入密碼: is this connection still locked out of creating / joining rooms? */
+const gateBlocks = (socket: any) => gate.on && socket.data.gateVer !== gate.version && !isOwnerSocket(socket);
+const gateRefusal = { ok: false, gate: true, error: '需要進入密碼' };
+
 /** 進行中房間 for the owner's front end: no tokens or roles, just who is where and what stage the game is at. */
 function adminRooms() {
   return [...rooms.values()].map(r => {
@@ -737,7 +744,30 @@ io.on('connection', socket => {
     }
   });
 
+  // 進入密碼: status (a saved browser token unlocks it), unlocking with the password.
+  socket.on('gate:status', (p, cb) => {
+    if (gate.on && gate.tokenOk(p?.token)) socket.data.gateVer = gate.version;
+    ack(cb)({ on: gate.on, ok: !gateBlocks(socket) });
+  });
+  socket.on('gate:unlock', (p, cb) => {
+    if (!gate.on) return ack(cb)({ ok: true });
+    // Wrong tries are counted per network address, so reconnecting doesn't reset them.
+    const ip = String(socket.handshake.headers['x-forwarded-for'] || socket.handshake.address || socket.id).split(',')[0].trim();
+    const r = gate.check(ip, p?.password);
+    if (!r.ok) return ack(cb)(r);
+    socket.data.gateVer = gate.version;
+    ack(cb)({ ok: true, token: gate.token() });
+  });
+  socket.on('admin:gate', async (p, cb) => {
+    if (!isOwnerSocket(socket)) return ack(cb)({ ok: false, error: '無權限' });
+    if (!p || (p.on === undefined && !p.password)) return ack(cb)({ ok: true, ...gate.view(), saved: accounts.status === 'sheet' });
+    const r = await gate.set({ on: p.on, password: p.password });
+    if (r.ok) io.emit('gate', { on: gate.on });   // everyone re-checks; people already in a room stay in it
+    ack(cb)(r);
+  });
+
   socket.on('create', (_p, cb) => {
+    if (gateBlocks(socket)) return ack(cb)(gateRefusal);
     const room = new Room(newCode());
     rooms.set(room.code, room);
     const player = room.addPlayer();
@@ -746,6 +776,7 @@ io.on('connection', socket => {
   });
 
   socket.on('join', (p, cb) => {
+    if (gateBlocks(socket)) return ack(cb)(gateRefusal);
     const code = String(p?.code || '').trim().toUpperCase();
     const room = rooms.get(code);
     if (!room) return ack(cb)({ ok: false, error: '找不到這個房間代碼' });

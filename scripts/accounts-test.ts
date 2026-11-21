@@ -52,8 +52,8 @@ const fakeFetch: any = async (url: string, init: any = {}) => {
   if (path === '/values:batchUpdate') { body.data.forEach(d => { const k = /^(.+)!A(\d+):L\d+$/.exec(d.range)!; T[k[1]][Number(k[2]) - 1] = d.values[0]; }); return ok({}); }
   let k = /^\/values\/(.+)!A:([A-Z]):append$/.exec(path);
   if (k) { const t = T[k[1]]; const s = t.length + 1; t.push(...body.values); return ok({ updates: { updatedRange: `${k[1]}!A${s}:${k[2]}${t.length}` } }); }
-  k = /^\/values\/(.+)!A1:[A-Z]1$/.exec(path);
-  if (k && method === 'PUT') { T[k[1]][0] = body.values[0]; return ok({}); }
+  k = /^\/values\/(.+)!A1:[A-Z](\d+)$/.exec(path);
+  if (k && method === 'PUT') { body.values.forEach((v, i) => { T[k[1]][i] = v; }); return ok({}); }
   k = /^\/values\/(.+)!A([12]):[A-Z]$/.exec(path);
   if (k) return ok({ values: k[2] === '2' ? T[k[1]].slice(1) : T[k[1]] });
   throw new Error('unexpected ' + path);
@@ -144,6 +144,22 @@ assert.equal(s4.logins.length, 2, 'log read back after a restart');
 const sum = s4.loginSummary(t0 + 60 * 60_000);
 assert.equal(sum.today, 1, 'one distinct account today');
 assert.equal(sum.recent[0].kind, '自動登入', 'newest first');
+
+// 設定 tab: the 進入密碼 survives a restart (only its hash is stored).
+const { Gate } = await import('../server/gate');
+const gate4 = new Gate(s4);
+assert.equal((await gate4.set({ on: true })).ok, false, 'cannot switch on without a password');
+const set: any = await gate4.set({ password: 'moon123', on: true });
+assert.ok(set.ok && set.saved && gate4.on, 'password set and switched on');
+assert.ok(!JSON.stringify(tabs[sheet[0]]['設定']).includes('moon123'), 'plain password never written');
+const s5 = await store();
+const gate5 = new Gate(s5);
+assert.ok(gate5.on && gate5.version === 1, 'setting read back after a restart');
+assert.equal(gate5.check('ip', 'nope').ok, false);
+assert.equal(gate5.check('ip', 'moon123').ok, true, 'right password accepted after restart');
+assert.ok(gate5.tokenOk(gate4.token()), 'saved browser token still valid');
+await gate5.set({ password: 'star456' });
+assert.ok(!gate5.tokenOk(gate4.token()), 'changing the password invalidates saved tokens');
 
 // Write failures are retried, not lost.
 let fail = true;

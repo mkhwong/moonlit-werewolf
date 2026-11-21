@@ -1523,3 +1523,24 @@ html .wwt > .wwt-hint { display: none !important; }
   .ll-list li { grid-template-columns: 1fr auto; }
   .ll-time { grid-column: 1 / -1; }
 }
+
+/* ───────── 進入密碼 ───────── */
+.gate { width: min(420px, 100%); box-sizing: border-box; display: grid; gap: 10px; padding: 18px; text-align: left; }
+.gate h2 { margin: 0; color: var(--gold); }
+.gate p { margin: 0; line-height: 1.6; }
+.gate-input { font: inherit; font-size: 20px; letter-spacing: .15em; text-align: center; padding: 12px; border-radius: 8px; border: 1px solid rgba(214, 176, 98, .4); background: rgba(0, 0, 0, .35); color: var(--moon); }
+.gate-input.is-wrong { border-color: #e0525f; animation: gate-shake .35s; }
+@keyframes gate-shake { 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
+.gate-err { color: #f2a3a3; font-weight: 700; font-size: 14px; }
+.gate-admin { display: grid; gap: 10px; padding: 12px 14px; align-self: stretch; }
+.ga-switch { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, .15); background: rgba(255, 255, 255, .06); color: var(--moon-2); font: inherit; font-weight: 700; cursor: pointer; }
+.ga-switch i { width: 34px; height: 20px; border-radius: 99px; background: rgba(255, 255, 255, .18); position: relative; transition: background .2s; }
+.ga-switch i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.ga-switch.on { color: #9fe0bf; border-color: rgba(127, 200, 160, .5); }
+.ga-switch.on i { background: #4f9e7a; }
+.ga-switch.on i::after { transform: translateX(14px); }
+.ga-state { margin: 0; font-size: 13px; line-height: 1.6; color: var(--moon-2); }
+.ga-state.is-on { color: #9fe0bf; }
+.ga-form { display: flex; gap: 6px; }
+.ga-form input { flex: 1; min-width: 0; font: inherit; padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .15); background: rgba(0, 0, 0, .3); color: var(--moon); }
+@media (min-width: 721px) { .owner-panels .usage { grid-row: span 2; } }

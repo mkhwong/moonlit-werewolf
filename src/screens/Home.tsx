@@ -5,11 +5,16 @@ import AccountPanel from '../components/AccountPanel';
 import { OwnerPanels } from '../components/UsageMeter';
 import { Sheet } from '../components/Sheets';
 import { PATCH_NOTES, VERSION } from '../patchNotes';
+import GatePanel from '../components/GatePanel';
+import { useGate, gateRefused } from '../gate';
+import { useAccount } from '../account';
 
 export default function Home({ notify, connected }: any) {
   const params = new URLSearchParams(location.search);
   const [code, setCode] = useState((params.get('room') || '').toUpperCase().slice(0, 4));
   const [busy, setBusy] = useState(false);
+  const { account } = useAccount();
+  const gate = useGate(account?.owner);
 
   const enter = async (event: string, payload?: unknown) => {
     setBusy(true);
@@ -18,7 +23,10 @@ export default function Home({ notify, connected }: any) {
     if (r.ok) {
       saveSession({ code: r.code, token: r.token });
       history.replaceState(null, '', location.pathname);
-    } else notify(r.error || '無法連線，請稍後再試');
+    } else {
+      if (r.gate) gateRefused();   // locked: back to the password prompt on this page
+      notify(r.error || '無法連線，請稍後再試');
+    }
   };
 
   return (
@@ -31,7 +39,8 @@ export default function Home({ notify, connected }: any) {
           <p>今夜，誰是狼</p>
         </div>
         <AccountPanel notify={notify} />
-        <OwnerPanels />
+        <OwnerPanels notify={notify} />
+        {gate.on && !gate.ok ? <GatePanel notify={notify} /> : (
         <div className="home-choices">
           <form className="home-card panel choice-join" onSubmit={e => { e.preventDefault(); if (code.length === 4) enter('join', { code }); }}>
             <h2>加入房間</h2>
@@ -49,6 +58,7 @@ export default function Home({ notify, connected }: any) {
             <button className="btn btn-shu btn-lg" disabled={busy || !connected} onClick={() => enter('create')}>建立房間</button>
           </div>
         </div>
+        )}
         <p className="muted small home-foot">建議 6–18 人，邊開語音邊玩。</p>
       </main>
       <PatchNotes />

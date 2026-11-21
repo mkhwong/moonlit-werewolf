@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { call } from '../socket';
 import { useAccount } from '../account';
+import GateAdmin from './GateAdmin';
 
 // 伺服器用量 — only rendered for the owner's account (the server checks again on every request).
 const fmtGB = (gb: number) => (gb < 1 ? `${Math.round(gb * 1000)} MB` : `${gb.toFixed(2)} GB`);
@@ -171,13 +172,14 @@ export function LoginLog() {
 }
 
 /** Owner section on the home page: usage and rooms side by side (stacked on a phone). */
-export function OwnerPanels() {
+export function OwnerPanels({ notify }: any) {
   const { account } = useAccount();
   if (!account?.owner) return null;
   return (
     <div className="owner-panels">
       <UsageMeter />
       <RoomList />
+      <GateAdmin notify={notify} />
       <LoginLog />
     </div>
   );

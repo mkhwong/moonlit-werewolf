@@ -29,6 +29,7 @@ export type Account = {
 
 const TAB = '帳戶';
 const HEADER = ['Google ID', 'Email', '暱稱', '個人簡介', '勝', '負', '總局數', '勝率', '最後遊戲', '建立日期', '頭像檔案ID', 'Google 頭像'];
+const SET_TAB = '設定';              // owner settings (key / value), e.g. the 進入密碼 hash
 const LOG_TAB = '登入紀錄';
 const LOG_HEADER = ['時間 (UTC)', '暱稱', 'Email', 'Google ID', '方式'];
 const LOG_KEEP = 1000;               // entries kept in memory for the owner's 登入紀錄 panel
@@ -63,6 +64,7 @@ export class AccountStore {
   ready: Promise<void>;
   status = 'off';                      // off | memory | sheet | error
   fetcher: typeof fetch = (input, init) => fetch(input, init);
+  settings: Record<string, string> = {};
   logins: LoginEntry[] = [];           // newest last
   logQueue: LoginEntry[] = [];         // not yet appended to the 登入紀錄 tab
   lastSeen = new Map<string, number>();
@@ -87,7 +89,9 @@ export class AccountStore {
       this.owner = c;
     } else this.owner = owner;
     const before = this.byId;
-    this.ready = this.ensureFiles().then(() => this.load()).then(() => this.loadLog().catch(e => console.error('[accounts] cannot read 登入紀錄:', e.message))).then(() => {
+    this.ready = this.ensureFiles().then(() => this.load())
+      .then(() => this.loadLog().catch(e => console.error('[accounts] cannot read 登入紀錄:', e.message)))
+      .then(() => this.loadSettings().catch(e => console.error('[accounts] cannot read 設定:', e.message))).then(() => {
       // Accounts created in memory before the connection (e.g. right after /admin/google) get their rows too.
       for (const [id, a] of before) if (!this.byId.has(id)) { this.byId.set(id, a); this.fresh.add(id); }
       this.schedule();
@@ -139,13 +143,29 @@ export class AccountStore {
 
   async ensureTab() {
     const meta = await this.api('?fields=sheets.properties.title');
-    const add = [TAB, LOG_TAB].filter(t => !meta.sheets?.some(s => s.properties.title === t));
+    const add = [TAB, LOG_TAB, SET_TAB].filter(t => !meta.sheets?.some(s => s.properties.title === t));
     if (add.length) {
       await this.api(':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: add.map(title => ({ addSheet: { properties: { title, gridProperties: { frozenRowCount: 1 } } } })) }) });
     }
     if (add.includes(LOG_TAB)) {
       await this.api(`/values/${encodeURIComponent(`${LOG_TAB}!A1:E1`)}?valueInputOption=RAW`, { method: 'PUT', body: JSON.stringify({ values: [LOG_HEADER] }) });
     }
+  }
+
+  /** 設定 tab: key in column A, value in column B. */
+  async loadSettings() {
+    const r = await this.api(`/values/${encodeURIComponent(`${SET_TAB}!A1:B`)}?valueRenderOption=UNFORMATTED_VALUE`);
+    const out: Record<string, string> = {};
+    for (const row of r.values || []) if (row[0]) out[String(row[0])] = String(row[1] ?? '');
+    this.settings = { ...out, ...this.settings };   // anything set before the sheet opened wins
+  }
+  /** Save settings (kept in memory too, so they work while Drive is unavailable). */
+  async saveSettings(patch: Record<string, string>) {
+    Object.assign(this.settings, patch);
+    if (this.status !== 'sheet') return false;
+    const rows = Object.entries(this.settings).map(([k, v]) => [k, v]);
+    await this.api(`/values/${encodeURIComponent(`${SET_TAB}!A1:B${rows.length}`)}?valueInputOption=RAW`, { method: 'PUT', body: JSON.stringify({ values: rows }) });
+    return true;
   }
 
   /** The recent end of the 登入紀錄 tab, so the owner's panel survives a restart (read once when connecting). */

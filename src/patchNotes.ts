@@ -1,7 +1,15 @@
 // 更新日誌 — shown from the corner link on the home page. Newest first; keep each line short.
-export const VERSION = 'v2.12';
+export const VERSION = 'v2.13';
 
 export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
+  {
+    v: 'v2.13', date: '2026-11-21',
+    items: [
+      '進入密碼：房主可以隨時開關；開咗之後訪客同 Google 帳戶都要輸入密碼先可以建立或加入房間',
+      '密碼錯誤會留喺主頁再輸入；同一部機輸啱一次就唔使再輸，直到密碼更改',
+      '連續輸錯 5 次要等一分鐘',
+    ],
+  },
   {
     v: 'v2.12', date: '2026-11-21',
     items: [
