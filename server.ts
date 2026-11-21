@@ -168,6 +168,7 @@ class Room { [key: string]: any;
     this.voice = new Map();     // pid -> { mic } for players who switched voice on
     this.talking = new Map();   // pid -> { channel, listeners } while holding the talk button
     this.lastActive = Date.now();
+    this.createdAt = Date.now();
     this.pending = false;
   }
 
@@ -617,6 +618,36 @@ function ctx(socket) {
   return room && player ? { room, player } : null;
 }
 
+/** 進行中房間 for the owner's front end: no tokens or roles, just who is where and what stage the game is at. */
+function adminRooms() {
+  return [...rooms.values()].map(r => {
+    const humans = r.humans();
+    const g = r.game;
+    const pack = r.config.mode === 'preset' ? packById(r.config.packId) : null;
+    return {
+      code: r.code,
+      status: r.status,
+      host: r.get(r.hostId)?.name || '—',
+      online: humans.filter(p => p.online).length,
+      humans: humans.length,
+      bots: r.players.filter(p => p.bot).length,
+      seated: r.players.filter(p => p.seat != null).length,
+      watching: humans.filter(p => p.seat == null).length,
+      accounts: humans.filter(p => p.accountId).length,
+      board: pack ? pack.name : '自訂',
+      test: !!r.config.testMode,
+      face: !!r.config.settings?.faceToFace,
+      voice: r.voice.size,
+      stage: g ? (g.finished ? '已完場' : !g.day ? '抽身分中' : `第 ${g.day} ${g.time === 'night' ? '夜' : '日'}`) : '等候中',
+      alive: g ? g.alive().length : null,
+      total: g ? g.players.length : null,
+      games: r.pastGames.length,
+      createdAt: r.createdAt,
+      lastActive: r.lastActive,
+    };
+  }).sort((a, b) => (+(b.status !== 'lobby') - +(a.status !== 'lobby')) || b.lastActive - a.lastActive);   // games first, then most recent
+}
+
 io.on('connection', socket => {
   const ack = fn => (typeof fn === 'function' ? fn : () => {});
 
@@ -644,6 +675,12 @@ io.on('connection', socket => {
     const a = accounts.enabled ? await accounts.fromToken(p?.token) : null;
     if (!a) return ack(cb)({ ok: false });
     signedIn(a, cb);
+  });
+  // 進行中房間 (owner only): a snapshot of every open room.
+  socket.on('admin:rooms', (_p, cb) => {
+    const a = accounts.get(socket.data.accountId);
+    if (!a || !isOwnerEmail(a.email)) return ack(cb)({ ok: false, error: '無權限' });
+    ack(cb)({ ok: true, rooms: adminRooms(), at: Date.now() });
   });
   // 伺服器用量: only for the owner's Google account (OWNER_EMAILS), checked here on the server.
   socket.on('admin:usage', async (p, cb) => {

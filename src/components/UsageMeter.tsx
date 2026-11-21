@@ -67,3 +67,55 @@ export default function UsageMeter() {
     </section>
   );
 }
+
+// 進行中房間 — owner only, refreshed every 15 s while the home page is open.
+const ago = (t: number, now: number) => {
+  const m = Math.floor((now - t) / 60000);
+  return m < 1 ? '啱啱' : m < 60 ? `${m} 分鐘前` : `${Math.floor(m / 60)} 小時前`;
+};
+export function RoomList() {
+  const { account } = useAccount();
+  const [d, setD] = useState<any>(null);
+  useEffect(() => {
+    if (!account?.owner) return undefined;
+    let live = true;
+    const load = async () => { const r = await call('admin:rooms'); if (live && r?.ok) setD(r); };
+    load();
+    const t = setInterval(load, 15e3);
+    return () => { live = false; clearInterval(t); };
+  }, [account?.owner]);
+  if (!account?.owner || !d) return null;
+  const playing = d.rooms.filter(r => r.status !== 'lobby').length;
+  return (
+    <section className="rooms-admin panel" aria-label="進行中房間（只有你見到）">
+      <div className="um-title">
+        <b>進行中房間</b>
+        <span className="muted small">只有你見到・{d.rooms.length} 間{d.rooms.length ? `（${playing} 間遊戲中）` : ''}・每 15 秒更新</span>
+      </div>
+      {!d.rooms.length ? <p className="um-hint">而家冇人開房。</p> : (
+        <ul className="ra-list">
+          {d.rooms.map(r => (
+            <li key={r.code} className={`ra-room ${r.status !== 'lobby' ? 'is-playing' : ''} ${r.online ? '' : 'is-idle'}`}>
+              <div className="ra-top">
+                <b className="ra-code">{r.code}</b>
+                <span className="ra-stage">{r.stage}{r.alive != null && r.stage !== '已完場' ? `・存活 ${r.alive}/${r.total}` : ''}</span>
+                <span className="ra-board">{r.board}</span>
+              </div>
+              <div className="ra-meta">
+                <span>房主 {r.host}</span>
+                <span>在線 {r.online}/{r.humans} 人</span>
+                {r.bots ? <span>電腦 {r.bots}</span> : null}
+                {r.watching ? <span>觀眾 {r.watching}</span> : null}
+                {r.voice ? <span>語音 {r.voice}</span> : null}
+                {r.accounts ? <span>已登入 {r.accounts}</span> : null}
+                {r.test ? <span className="ra-tag">測試</span> : null}
+                {r.face ? <span className="ra-tag">面殺</span> : null}
+              </div>
+              <div className="ra-time muted">開咗 {ago(r.createdAt, d.at)}・最後活動 {ago(r.lastActive, d.at)}{r.games ? `・已玩 ${r.games} 局` : ''}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

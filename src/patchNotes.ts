@@ -6,6 +6,7 @@ export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
     v: 'v2.12', date: '2026-11-21',
     items: [
       '房主專用「伺服器用量」：顯示 Render 本月流量同免費運行時數，同埋月底預計用量（只有指定帳戶見到）',
+      '房主專用「進行中房間」：即時睇到每間房嘅代碼、進度、人數、電腦玩家同觀眾，每 15 秒更新',
     ],
   },
   {

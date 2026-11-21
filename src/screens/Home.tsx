@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Scene from '../components/Scene';
 import { call, saveSession } from '../socket';
 import AccountPanel from '../components/AccountPanel';
-import UsageMeter from '../components/UsageMeter';
+import UsageMeter, { RoomList } from '../components/UsageMeter';
 import { Sheet } from '../components/Sheets';
 import { PATCH_NOTES, VERSION } from '../patchNotes';
 
@@ -32,6 +32,7 @@ export default function Home({ notify, connected }: any) {
         </div>
         <AccountPanel notify={notify} />
         <UsageMeter />
+        <RoomList />
         <div className="home-choices">
           <form className="home-card panel choice-join" onSubmit={e => { e.preventDefault(); if (code.length === 4) enter('join', { code }); }}>
             <h2>加入房間</h2>
