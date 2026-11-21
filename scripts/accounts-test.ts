@@ -50,12 +50,12 @@ const fakeFetch: any = async (url: string, init: any = {}) => {
   if (path === '') return ok({ sheets: Object.keys(T).map(title => ({ properties: { title } })) });
   if (path === ':batchUpdate') { body.requests.forEach(r => { T[r.addSheet.properties.title] = []; }); return ok({}); }
   if (path === '/values:batchUpdate') { body.data.forEach(d => { const k = /^(.+)!A(\d+):L\d+$/.exec(d.range)!; T[k[1]][Number(k[2]) - 1] = d.values[0]; }); return ok({}); }
-  let k = /^\/values\/(.+)!A:L:append$/.exec(path);
-  if (k) { const t = T[k[1]]; const s = t.length + 1; t.push(...body.values); return ok({ updates: { updatedRange: `${k[1]}!A${s}:L${t.length}` } }); }
-  k = /^\/values\/(.+)!A1:L1$/.exec(path);
+  let k = /^\/values\/(.+)!A:([A-Z]):append$/.exec(path);
+  if (k) { const t = T[k[1]]; const s = t.length + 1; t.push(...body.values); return ok({ updates: { updatedRange: `${k[1]}!A${s}:${k[2]}${t.length}` } }); }
+  k = /^\/values\/(.+)!A1:[A-Z]1$/.exec(path);
   if (k && method === 'PUT') { T[k[1]][0] = body.values[0]; return ok({}); }
-  k = /^\/values\/(.+)!A1:L$/.exec(path);
-  if (k) return ok({ values: T[k[1]] });
+  k = /^\/values\/(.+)!A([12]):[A-Z]$/.exec(path);
+  if (k) return ok({ values: k[2] === '2' ? T[k[1]].slice(1) : T[k[1]] });
   throw new Error('unexpected ' + path);
 };
 const owner = { getAccessToken: async () => ({ token: 'tok' }) };
@@ -126,6 +126,24 @@ const tok = s2.issue('g1');
 assert.equal((await s2.fromToken(tok))!.id, 'g1');
 assert.equal(await s2.fromToken(tok.slice(0, -2) + 'xx'), null, 'tampered token refused');
 assert.equal(await s2.fromToken('g1.1.abc'), null, 'expired token refused');
+
+// 登入紀錄: written to its own tab, read back after a restart, revisits throttled.
+const logRows = () => tabs[sheet[0]]['登入紀錄'];
+assert.deepEqual(logRows()[0], ['時間 (UTC)', '暱稱', 'Email', 'Google ID', '方式'], 'log tab created with a header');
+const g1 = s2.get('g1')!;
+const t0 = Date.UTC(2026, 10, 21, 12, 0);
+s2.recordLogin(g1, 'Google 登入', t0);
+s2.recordLogin(g1, '自動登入', t0 + 5 * 60_000);          // within 30 min: not logged again
+s2.recordLogin(g1, '自動登入', t0 + 45 * 60_000);
+await s2.flush();
+assert.equal(logRows().length, 3, 'two entries appended (revisit within 30 min skipped)');
+assert.equal(logRows()[1][0], '2026-11-21 12:00:00');
+assert.equal(logRows()[2][4], '自動登入');
+const s4 = await store();
+assert.equal(s4.logins.length, 2, 'log read back after a restart');
+const sum = s4.loginSummary(t0 + 60 * 60_000);
+assert.equal(sum.today, 1, 'one distinct account today');
+assert.equal(sum.recent[0].kind, '自動登入', 'newest first');
 
 // Write failures are retried, not lost.
 let fail = true;

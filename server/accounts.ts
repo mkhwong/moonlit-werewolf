@@ -29,6 +29,11 @@ export type Account = {
 
 const TAB = '帳戶';
 const HEADER = ['Google ID', 'Email', '暱稱', '個人簡介', '勝', '負', '總局數', '勝率', '最後遊戲', '建立日期', '頭像檔案ID', 'Google 頭像'];
+const LOG_TAB = '登入紀錄';
+const LOG_HEADER = ['時間 (UTC)', '暱稱', 'Email', 'Google ID', '方式'];
+const LOG_KEEP = 1000;               // entries kept in memory for the owner's 登入紀錄 panel
+const REVISIT_GAP = 30 * 60_000;     // a returning visit (saved session) is logged at most once per 30 min per account
+export type LoginEntry = { at: number; id: string; nickname: string; email: string; kind: string };
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -58,6 +63,9 @@ export class AccountStore {
   ready: Promise<void>;
   status = 'off';                      // off | memory | sheet | error
   fetcher: typeof fetch = (input, init) => fetch(input, init);
+  logins: LoginEntry[] = [];           // newest last
+  logQueue: LoginEntry[] = [];         // not yet appended to the 登入紀錄 tab
+  lastSeen = new Map<string, number>();
 
   constructor(opts: { fetcher?: typeof fetch; owner?: any } = {}) {
     if (opts.fetcher) this.fetcher = opts.fetcher;
@@ -79,7 +87,7 @@ export class AccountStore {
       this.owner = c;
     } else this.owner = owner;
     const before = this.byId;
-    this.ready = this.ensureFiles().then(() => this.load()).then(() => {
+    this.ready = this.ensureFiles().then(() => this.load()).then(() => this.loadLog().catch(e => console.error('[accounts] cannot read 登入紀錄:', e.message))).then(() => {
       // Accounts created in memory before the connection (e.g. right after /admin/google) get their rows too.
       for (const [id, a] of before) if (!this.byId.has(id)) { this.byId.set(id, a); this.fresh.add(id); }
       this.schedule();
@@ -131,9 +139,49 @@ export class AccountStore {
 
   async ensureTab() {
     const meta = await this.api('?fields=sheets.properties.title');
-    if (!meta.sheets?.some(s => s.properties.title === TAB)) {
-      await this.api(':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: TAB, gridProperties: { frozenRowCount: 1 } } } }] }) });
+    const add = [TAB, LOG_TAB].filter(t => !meta.sheets?.some(s => s.properties.title === t));
+    if (add.length) {
+      await this.api(':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: add.map(title => ({ addSheet: { properties: { title, gridProperties: { frozenRowCount: 1 } } } })) }) });
     }
+    if (add.includes(LOG_TAB)) {
+      await this.api(`/values/${encodeURIComponent(`${LOG_TAB}!A1:E1`)}?valueInputOption=RAW`, { method: 'PUT', body: JSON.stringify({ values: [LOG_HEADER] }) });
+    }
+  }
+
+  /** The recent end of the 登入紀錄 tab, so the owner's panel survives a restart (read once when connecting). */
+  async loadLog() {
+    const r = await this.api(`/values/${encodeURIComponent(`${LOG_TAB}!A2:E`)}?valueRenderOption=UNFORMATTED_VALUE`);
+    const rows: any[][] = (r.values || []).slice(-LOG_KEEP);
+    const old = rows.map(row => ({
+      at: Date.parse(String(row[0] || '').replace(' ', 'T') + 'Z') || 0, nickname: String(row[1] || ''), email: String(row[2] || ''), id: String(row[3] || ''), kind: String(row[4] || ''),
+    })).filter(e => e.at && e.id);
+    this.logins = [...old, ...this.logins].slice(-LOG_KEEP);
+  }
+
+  /** 登入紀錄: a fresh Google sign-in always; a returning visit with a saved session at most every 30 min. */
+  recordLogin(a: Account, kind: 'Google 登入' | '自動登入', now = Date.now()) {
+    if (kind === '自動登入' && now - (this.lastSeen.get(a.id) || 0) < REVISIT_GAP) return;
+    this.lastSeen.set(a.id, now);
+    const e: LoginEntry = { at: now, id: a.id, nickname: a.nickname, email: a.email, kind };
+    this.logins.push(e);
+    if (this.logins.length > LOG_KEEP) this.logins.splice(0, this.logins.length - LOG_KEEP);
+    if (this.owner && this.status !== 'error') { this.logQueue.push(e); this.schedule(); }   // written once the sheet is open
+  }
+
+  /** Owner's 登入紀錄 panel: latest entries plus distinct accounts today / 7 days / this month. */
+  loginSummary(now = Date.now(), limit = 40) {
+    const d = new Date(now);
+    const dayStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    const monthStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+    const distinct = (from: number) => new Set(this.logins.filter(e => e.at >= from).map(e => e.id)).size;
+    const month = new Date(monthStart).toISOString().slice(0, 7);
+    return {
+      today: distinct(dayStart), week: distinct(now - 7 * 864e5), month: distinct(monthStart),
+      accounts: this.byId.size,
+      newThisMonth: [...this.byId.values()].filter(a => (a.created || '').startsWith(month)).length,
+      recent: this.logins.slice(-limit).reverse().map(e => ({ ...e, nickname: this.byId.get(e.id)?.nickname || e.nickname })),
+      saved: this.status === 'sheet',
+    };
   }
 
   async load() {
@@ -175,7 +223,8 @@ export class AccountStore {
     if (this.flushing) { await this.flushing; return this.flush(); }
     const fresh = [...this.fresh];
     const dirty = [...this.dirty].filter(id => this.rowOf.has(id));
-    if (!fresh.length && !dirty.length) return;
+    const logs = this.logQueue.splice(0);
+    if (!fresh.length && !dirty.length && !logs.length) return;
     this.fresh.clear();
     dirty.forEach(id => this.dirty.delete(id));
     this.flushing = (async () => {
@@ -194,16 +243,22 @@ export class AccountStore {
           if (m) fresh.forEach((id, i) => this.rowOf.set(id, Number(m[1]) + i));
           else await this.load();
         }
+        if (logs.length) {
+          await this.api(`/values/${encodeURIComponent(`${LOG_TAB}!A:E`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+            method: 'POST', body: JSON.stringify({ values: logs.map(e => [new Date(e.at).toISOString().replace('T', ' ').slice(0, 19), e.nickname, e.email, e.id, e.kind]) }),
+          });
+        }
       } catch (e) {
         console.error('[accounts] write failed, will retry:', (e as Error).message);
         fresh.forEach(id => { if (!this.rowOf.has(id)) this.fresh.add(id); });
         dirty.forEach(id => this.dirty.add(id));
+        this.logQueue.unshift(...logs);
         setTimeout(() => this.schedule(), 15_000);
       }
     })();
     await this.flushing;
     this.flushing = null;
-    if (this.dirty.size || this.fresh.size) this.schedule();
+    if (this.dirty.size || this.fresh.size || this.logQueue.length) this.schedule();
   }
 
   // ── sign-in & sessions ──

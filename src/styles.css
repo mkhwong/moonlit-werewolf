@@ -1503,3 +1503,23 @@ html .wwt > .wwt-hint { display: none !important; }
 .owner-panels .rooms-admin { max-height: 420px; overflow-y: auto; }
 @media (max-width: 720px) { .owner-panels { grid-template-columns: 1fr; } }
 .um-title > .muted { order: 3; flex-basis: 100%; }
+
+/* ───────── 登入紀錄 (owner only) ───────── */
+.logins-admin { grid-column: 1 / -1; display: grid; gap: 10px; padding: 12px 14px; }
+.ll-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ll-stats span { display: grid; gap: 1px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, .04); font-size: 12px; color: var(--moon-2); }
+.ll-stats b { font-size: 20px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.ll-stats em { font-style: normal; font-size: 11px; color: #9fe0bf; }
+.ll-list { margin: 0; padding: 0; list-style: none; max-height: 320px; overflow-y: auto; }
+.ll-list li { display: grid; grid-template-columns: 112px 1fr auto; align-items: center; gap: 10px; padding: 6px 2px; border-top: 1px dashed rgba(255, 255, 255, .08); font-size: 13px; }
+.ll-time { color: var(--moon-2); font-variant-numeric: tabular-nums; font-size: 12px; }
+.ll-who { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ll-who b { white-space: nowrap; }
+.ll-who small { color: var(--moon-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ll-kind { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: rgba(255, 255, 255, .07); color: var(--moon-2); white-space: nowrap; }
+.ll-kind.is-new { background: rgba(214, 176, 98, .16); color: var(--gold); }
+@media (max-width: 720px) {
+  .ll-stats { grid-template-columns: repeat(2, 1fr); }
+  .ll-list li { grid-template-columns: 1fr auto; }
+  .ll-time { grid-column: 1 / -1; }
+}

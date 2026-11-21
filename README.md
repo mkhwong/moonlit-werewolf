@@ -93,6 +93,7 @@ The home page can show this month's Render usage to the owner only: outbound ban
 - `RENDER_API_KEY` — a Render API key (Account settings → API Keys). `RENDER_SERVICE_ID` is provided by Render automatically and picks the workspace.
 - Optional: `RENDER_BANDWIDTH_GB` / `RENDER_FREE_HOURS` if your plan's limits differ. `/admin/usage?key=ADMIN_KEY` returns the same numbers as JSON.
 - The same owner accounts also get 進行中房間: every open room's code, stage (等候中 / 第 N 夜・日 / 已完場), players online, bots, spectators and voice users, refreshed every 15 s (socket `admin:rooms`, owner-checked on the server).
+- 登入紀錄: every Google sign-in, and returning visits with a saved session (at most once per account per 30 min), are appended to a 「登入紀錄」 tab in the accounts spreadsheet. The owner panel shows the latest 40 plus distinct accounts today / 7 days / this month (socket `admin:logins`).
 
 ## Project layout
 

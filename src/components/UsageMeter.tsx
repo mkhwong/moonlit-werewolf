@@ -120,6 +120,56 @@ export function RoomList() {
   );
 }
 
+// 登入紀錄 — owner only: who signed in and when, refreshed every 30 s.
+const when = (t: number) => {
+  const d = new Date(t), now = new Date();
+  const hm = d.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (d.toDateString() === now.toDateString()) return `今日 ${hm}`;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return `琴日 ${hm}`;
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`;
+};
+export function LoginLog() {
+  const { account } = useAccount();
+  const [d, setD] = useState<any>(null);
+  useEffect(() => {
+    if (!account?.owner) return undefined;
+    let live = true;
+    const load = async () => { const r = await call('admin:logins'); if (live && r?.ok) setD(r); };
+    load();
+    const t = setInterval(load, 30e3);
+    return () => { live = false; clearInterval(t); };
+  }, [account?.owner]);
+  if (!account?.owner || !d) return null;
+  return (
+    <section className="logins-admin panel" aria-label="登入紀錄（只有你見到）">
+      <div className="um-title">
+        <b>登入紀錄</b>
+        <span className="muted small">只有你見到・最近 {d.recent.length} 次・每 30 秒更新</span>
+      </div>
+      <div className="ll-stats">
+        <span><b>{d.today}</b>今日</span>
+        <span><b>{d.week}</b>7 日內</span>
+        <span><b>{d.month}</b>本月</span>
+        <span><b>{d.accounts}</b>帳戶總數{d.newThisMonth ? <em>本月新增 {d.newThisMonth}</em> : null}</span>
+      </div>
+      {!d.saved ? <p className="um-err">未接駁 Google Drive：紀錄只保存喺伺服器記憶體，重啟會清空。</p> : null}
+      {!d.recent.length ? <p className="um-hint">暫時未有人登入。</p> : (
+        <ul className="ll-list">
+          {d.recent.map((e, i) => (
+            <li key={`${e.at}-${e.id}-${i}`}>
+              <span className="ll-time">{when(e.at)}</span>
+              <span className="ll-who"><b>{e.nickname}</b><small>{e.email}</small></span>
+              <span className={`ll-kind ${e.kind === 'Google 登入' ? 'is-new' : ''}`}>{e.kind}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="um-hint">完整紀錄喺 Google Drive「月夜狼人殺 帳戶」試算表嘅「登入紀錄」分頁。用已儲存登入回到遊戲，每個帳戶 30 分鐘內只記一次。</p>
+    </section>
+  );
+}
+
 /** Owner section on the home page: usage and rooms side by side (stacked on a phone). */
 export function OwnerPanels() {
   const { account } = useAccount();
@@ -128,6 +178,7 @@ export function OwnerPanels() {
     <div className="owner-panels">
       <UsageMeter />
       <RoomList />
+      <LoginLog />
     </div>
   );
 }

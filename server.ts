@@ -74,6 +74,7 @@ app.get('/privacy', (_req, res) => res.send(legal('私隱政策',
       '登入及保持登入狀態（30 日）。',
       '顯示你的暱稱、個人簡介及頭像。',
       '記錄勝負戰績。',
+      '記錄登入時間，只供遊戲營運者監察服務運作。',
       '不會用作廣告、推廣或寄發電郵。',
     ]],
     ['其他玩家看到甚麼', ['暱稱、個人簡介、頭像及勝負戰績。', '其他玩家看不到你的電郵地址或 Google 帳戶編號。']],
@@ -662,19 +663,32 @@ io.on('connection', socket => {
     if (!accounts.enabled) return ack(cb)({ ok: false, error: '未開放帳戶登入' });
     try {
       const g = await accounts.verifyGoogle(String(p?.credential || ''));
-      signedIn(await accounts.login(g), cb);
+      const a = await accounts.login(g);
+      accounts.recordLogin(a, 'Google 登入');
+      signedIn(a, cb);
     } catch (e) {
       ack(cb)({ ok: false, error: 'Google 登入失敗，請再試一次' });
     }
   });
   // Local testing only (never in production): AUTH_DEV_LOGIN=1 lets a test sign in without Google.
   if (!PROD && process.env.AUTH_DEV_LOGIN === '1') {
-    socket.on('auth:dev', async (p, cb) => signedIn(await accounts.login({ sub: `dev-${String(p?.name || 'x')}`, email: `${p?.name}@example.test`, name: String(p?.name || '測試'), picture: '' }), cb));
+    socket.on('auth:dev', async (p, cb) => {
+      const a = await accounts.login({ sub: `dev-${String(p?.name || 'x')}`, email: `${p?.name}@example.test`, name: String(p?.name || '測試'), picture: '' });
+      accounts.recordLogin(a, 'Google 登入');
+      signedIn(a, cb);
+    });
   }
   socket.on('auth:resume', async (p, cb) => {
     const a = accounts.enabled ? await accounts.fromToken(p?.token) : null;
     if (!a) return ack(cb)({ ok: false });
+    accounts.recordLogin(a, '自動登入');
     signedIn(a, cb);
+  });
+  // 登入紀錄 (owner only).
+  socket.on('admin:logins', (_p, cb) => {
+    const a = accounts.get(socket.data.accountId);
+    if (!a || !isOwnerEmail(a.email)) return ack(cb)({ ok: false, error: '無權限' });
+    ack(cb)({ ok: true, ...accounts.loginSummary() });
   });
   // 進行中房間 (owner only): a snapshot of every open room.
   socket.on('admin:rooms', (_p, cb) => {
