@@ -11,6 +11,7 @@
 // With a client ID but no owner connection, accounts live in memory only (lost when the server restarts).
 import crypto from 'node:crypto';
 import { OAuth2Client } from 'google-auth-library';
+import { isOwnerEmail } from './usage';
 
 export type Account = {
   id: string;          // Google account ID ("sub")
@@ -333,7 +334,7 @@ export class AccountStore {
     return a ? { nickname: a.nickname, message: a.message, wins: a.wins, losses: a.losses, picture: AccountStore.pictureOf(a), uploaded: !!a.avatarId } : null;
   }
   static selfView(a: Account | null) {
-    return a ? { ...AccountStore.publicView(a), email: a.email } : null;
+    return a ? { ...AccountStore.publicView(a), email: a.email, owner: isOwnerEmail(a.email) || undefined } : null;
   }
 }
 

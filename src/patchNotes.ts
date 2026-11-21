@@ -1,7 +1,13 @@
 // 更新日誌 — shown from the corner link on the home page. Newest first; keep each line short.
-export const VERSION = 'v2.11';
+export const VERSION = 'v2.12';
 
 export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
+  {
+    v: 'v2.12', date: '2026-11-21',
+    items: [
+      '房主專用「伺服器用量」：顯示 Render 本月流量同免費運行時數，同埋月底預計用量（只有指定帳戶見到）',
+    ],
+  },
   {
     v: 'v2.11', date: '2026-11-08',
     items: [

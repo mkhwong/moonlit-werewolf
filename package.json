@@ -9,7 +9,7 @@
     "build": "vite build",
     "start": "tsx server.ts --prod",
     "lint": "tsc --noEmit",
-    "test": "tsx scripts/scenario.ts && tsx scripts/accounts-test.ts && tsx scripts/simulate.ts 120",
+    "test": "tsx scripts/scenario.ts && tsx scripts/accounts-test.ts && tsx scripts/usage-test.ts && tsx scripts/simulate.ts 120",
     "bots": "tsx scripts/bots.ts"
   },
   "engines": {

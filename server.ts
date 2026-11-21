@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Game, shuffle } from './server/game';
 import { botThink, botName } from './server/bots';
 import { AccountStore, outcomes, OWNER_SCOPES } from './server/accounts';
+import { getUsage, isOwnerEmail } from './server/usage';
 import {
   ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS, sizeDefaults, seatCount,
 } from './shared/roles';
@@ -103,6 +104,10 @@ const adminState = () => crypto.createHmac('sha256', ADMIN_KEY).update('moonlit-
 const callbackUrl = req => `${/^(localhost|127\.0\.0\.1)(:|$)/.test(req.get('host')) ? 'http' : 'https'}://${req.get('host')}/admin/google/callback`;
 const page = (title, body) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
 <body style="font:16px/1.6 system-ui,sans-serif;background:#120d1c;color:#eee;max-width:640px;margin:40px auto;padding:0 16px"><h2 style="color:#e6c37a">${title}</h2>${body}</body>`;
+app.get('/admin/usage', async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) return res.status(403).json({ ok: false, error: '未授權' });
+  res.json(await getUsage({ force: req.query.force === '1' }));
+});
 app.get('/admin/google', (req, res) => {
   if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) return res.status(403).send(page('未授權', '<p>需要正確嘅 ADMIN_KEY。</p>'));
   if (!accounts.clientId || !accounts.clientSecret) return res.status(400).send(page('未設定', '<p>請先喺 Render 設定 GOOGLE_CLIENT_ID 同 GOOGLE_CLIENT_SECRET。</p>'));
@@ -639,6 +644,12 @@ io.on('connection', socket => {
     const a = accounts.enabled ? await accounts.fromToken(p?.token) : null;
     if (!a) return ack(cb)({ ok: false });
     signedIn(a, cb);
+  });
+  // 伺服器用量: only for the owner's Google account (OWNER_EMAILS), checked here on the server.
+  socket.on('admin:usage', async (p, cb) => {
+    const a = accounts.get(socket.data.accountId);
+    if (!a || !isOwnerEmail(a.email)) return ack(cb)({ ok: false, error: '無權限' });
+    ack(cb)(await getUsage({ force: !!p?.force }));
   });
   socket.on('auth:logout', (_p, cb) => {
     socket.data.accountId = null;

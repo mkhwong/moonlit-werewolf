@@ -1463,3 +1463,22 @@ html .wwt > .wwt-hint { display: none !important; }
 .mic-note { margin: 10px 0 0; font-size: 13px; line-height: 1.6; color: var(--moon-2); }
 .mic-actions { gap: 10px; }
 .linkish { border: 0; background: none; padding: 0; color: var(--gold); text-decoration: underline; font: inherit; cursor: pointer; }
+
+/* ───────── 伺服器用量 (owner only) ───────── */
+.usage { display: grid; gap: 10px; padding: 12px 14px; }
+.um-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.um-title b { color: var(--gold); }
+.um-title .btn { margin-left: auto; }
+.um-row { display: grid; gap: 5px; }
+.um-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.um-head b { font-variant-numeric: tabular-nums; }
+.um-bar { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.um-bar i { display: block; height: 100%; border-radius: inherit; background: #6fc29a; transition: width .4s ease; }
+.um-warn .um-bar i { background: #e0b04f; }
+.um-bad .um-bar i { background: #e0525f; }
+.um-bad .um-head b { color: #f2a3a3; }
+.um-hint, .um-err { margin: 0; font-size: 12px; line-height: 1.5; color: var(--moon-2); }
+.um-err, .um-hint.um-alert { color: #f2a3a3; }
+.um-hint.um-alert { font-weight: 700; }
+.um-svcs { margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--moon-2); }
+.um-svcs li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-top: 1px dashed rgba(255, 255, 255, .08); }

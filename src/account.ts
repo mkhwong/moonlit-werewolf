@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { socket, call } from './socket';
 
-export type MyAccount = { nickname: string; message: string; wins: number; losses: number; picture: string; email: string; uploaded?: boolean };
+export type MyAccount = { nickname: string; message: string; wins: number; losses: number; picture: string; email: string; uploaded?: boolean; owner?: boolean };
 
 const KEY = 'ww.account';
 let account: MyAccount | null = null;

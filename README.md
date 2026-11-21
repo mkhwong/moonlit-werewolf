@@ -85,6 +85,14 @@ Test on your own: create a room in the browser, then `npm run bots ABCD 11` fill
 - All players must reach the same server instance. Keep the deployment at a single instance (Cloud Run: max instances = 1) if you change scaling settings.
 - The client connects over WebSocket and falls back to HTTP long-polling if a proxy blocks WebSockets. Dropped connections resume automatically into the same seat.
 
+## 伺服器用量 (owner-only meter)
+
+The home page can show this month's Render usage to the owner only: outbound bandwidth for the whole workspace (free plan: 5 GB) and free instance hours (750 h), with a month-end projection. Set in Render → Environment:
+
+- `OWNER_EMAILS` — the Google login email(s) allowed to see it (comma-separated). The server checks it on every request.
+- `RENDER_API_KEY` — a Render API key (Account settings → API Keys). `RENDER_SERVICE_ID` is provided by Render automatically and picks the workspace.
+- Optional: `RENDER_BANDWIDTH_GB` / `RENDER_FREE_HOURS` if your plan's limits differ. `/admin/usage?key=ADMIN_KEY` returns the same numbers as JSON.
+
 ## Project layout
 
 ```
