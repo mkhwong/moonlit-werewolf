@@ -1544,3 +1544,9 @@ html .wwt > .wwt-hint { display: none !important; }
 .ga-form { display: flex; gap: 6px; }
 .ga-form input { flex: 1; min-width: 0; font: inherit; padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .15); background: rgba(0, 0, 0, .3); color: var(--moon); }
 @media (min-width: 721px) { .owner-panels .usage { grid-row: span 2; } }
+
+/* 官方網站鎖 notice */
+.unofficial { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 14px; padding: 24px; text-align: center; background: radial-gradient(ellipse at top, #231a30, #07050b 70%); color: var(--moon); }
+.unofficial h1 { margin: 0; color: var(--gold); font-size: clamp(26px, 6vw, 40px); }
+.unofficial p { margin: 0; max-width: 28em; line-height: 1.7; }
+.home-copy { margin: 2px 0 0; font-size: 11px; opacity: .6; }

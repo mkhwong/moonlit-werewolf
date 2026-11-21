@@ -13,6 +13,7 @@ import { botThink, botName } from './server/bots';
 import { AccountStore, outcomes, OWNER_SCOPES } from './server/accounts';
 import { getUsage, isOwnerEmail } from './server/usage';
 import { Gate } from './server/gate';
+import { hostAllowed, OFFICIAL_URL, UNOFFICIAL_TITLE, UNOFFICIAL_TEXT } from './shared/official';
 import {
   ROLES, ROLE_ORDER, DEFAULT_SETTINGS, TIMER_FIELDS, MAX_PLAYERS, MIN_PLAYERS, packById, countRoles, PACKS, sizeDefaults, seatCount,
 } from './shared/roles';
@@ -29,8 +30,15 @@ const ICE_SERVERS = (() => {
 
 const app = express();
 const http = createServer(app);
+// 官方網站鎖: ALLOW_HOSTS adds custom domains (comma-separated). Pages, assets and game connections
+// from anywhere else are refused, so a copied front end can't use this server or its art.
+const EXTRA_HOSTS = (process.env.ALLOW_HOSTS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const allowed = (host?: string | null) => hostAllowed(host, EXTRA_HOSTS);
+const originHost = (v?: string | string[]) => { try { return v ? new URL(String(v)).hostname : ''; } catch { return '-'; } };
 const io = new Server(http, {
-  cors: { origin: true },
+  cors: { origin: (origin, cb) => cb(null, !origin || allowed(originHost(origin))) },
+  // A browser always sends Origin; scripts and tests may not.
+  allowRequest: (req, cb) => cb(null, !req.headers.origin || allowed(originHost(req.headers.origin))),
   pingInterval: 10000,
   pingTimeout: 20000,
   // Accept both transports so players behind proxies that block WebSockets still connect.
@@ -38,6 +46,18 @@ const io = new Server(http, {
 });
 
 app.get('/healthz', (_req, res) => res.json({ ok: true, rooms: rooms.size, accounts: accounts.status }));
+const unofficialPage = `<!doctype html><html lang="zh-HK"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${UNOFFICIAL_TITLE}</title>
+<body style="margin:0;min-height:100vh;display:grid;place-content:center;gap:14px;padding:24px;text-align:center;background:#0b0810;color:#e8dcc0;font-family:system-ui,'Noto Sans TC',sans-serif">
+<h1 style="margin:0;color:#d6b062">${UNOFFICIAL_TITLE}</h1><p style="margin:0">${UNOFFICIAL_TEXT}</p>
+<p><a style="color:#d6b062" href="${OFFICIAL_URL}">前往官方網站</a></p><p style="opacity:.6;font-size:12px">© 2026 月夜狼人殺　版權所有</p></body></html>`;
+// Anything served under another address (a re-hosted copy of this server) shows the notice instead;
+// art, clips and voice can't be embedded by pages on other sites (saves bandwidth too).
+app.use((req, res, next) => {
+  if (!allowed(req.hostname)) return res.status(403).send(unofficialPage);
+  const ref = req.get('referer');
+  if (ref && /^\/(characters|voice|turns|assets|help)\//.test(req.path) && !allowed(originHost(ref))) return res.status(403).end();
+  next();
+});
 // 個人帳戶: the client needs the Google client ID to show the sign-in button.
 const accounts = new AccountStore();
 app.get('/api/auth-config', (_req, res) => res.json({ clientId: accounts.clientId || null, storage: accounts.status }));
@@ -97,6 +117,11 @@ app.get('/terms', (_req, res) => res.send(legal('服務條款',
     ['帳戶', ['登入是自選的。', '請勿冒充他人，或在暱稱、簡介、頭像中使用冒犯、違法或侵權的內容；營運者可移除相關內容或帳戶。']],
     ['行為', ['請尊重其他玩家。', '禁止騷擾、作弊或干擾遊戲運作。']],
     ['責任', ['在法律容許的範圍內，營運者不會就使用本遊戲引致的任何損失負責。']],
+    ['版權', [
+      '月夜狼人殺的程式碼、角色插畫、角色動畫、旁白錄音及介面設計均受版權保護，© 2026 月夜狼人殺，版權所有。',
+      '未經許可，不得複製、下載後重新發佈、轉載、修改或以任何形式重新託管本遊戲或其任何部分。',
+      '本遊戲只在官方網站 moonlit-werewolf.onrender.com 提供；其他網址上的複製版本均未經授權。',
+    ]],
     ['私隱', ['個人資料的處理方式見 <a href="/privacy">私隱政策</a>。']],
   ])));
 

@@ -60,6 +60,7 @@ export default function Home({ notify, connected }: any) {
         </div>
         )}
         <p className="muted small home-foot">建議 6–18 人，邊開語音邊玩。</p>
+        <p className="muted home-copy">© 2026 月夜狼人殺　版權所有・未經許可不得複製或轉載</p>
       </main>
       <PatchNotes />
       <PrivacyNotice />

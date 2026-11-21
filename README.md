@@ -96,6 +96,12 @@ The home page can show this month's Render usage to the owner only: outbound ban
 - 登入紀錄: every Google sign-in, and returning visits with a saved session (at most once per account per 30 min), are appended to a 「登入紀錄」 tab in the accounts spreadsheet. The owner panel shows the latest 40 plus distinct accounts today / 7 days / this month (socket `admin:logins`).
 - 進入密碼: the owner can switch on a password from the home page. While it is on, guests and Google accounts (everyone except OWNER_EMAILS) must enter it before `create` / `join`; a wrong password keeps them on the front page, 5 wrong tries per address per minute. Only a salted scrypt hash is stored, in the sheet's 設定 tab; a correct entry gives the browser a token that stays valid until the password changes. Players already in a room are not removed.
 
+## Copy protection
+
+- **官方網站鎖** (`shared/official.ts`): the page only runs on `moonlit-werewolf.onrender.com` (and localhost). Elsewhere it shows 「此遊戲只限官方網站」. The server also refuses pages under other host names, socket connections from other origins, and art/voice requested by pages on other sites. Add a custom domain with `ALLOW_HOSTS` (server) and `OFFICIAL_HOSTS` (shared/official.ts).
+- **Scrambled build**: `vite build` obfuscates the game's own code (rollup-plugin-obfuscator, after Vite's own transforms). `NO_OBFUSCATE=1 npm run build` skips it.
+- Copyright: see `LICENSE` (all rights reserved) and the 版權 section of `/terms`.
+
 ## Project layout
 
 ```
