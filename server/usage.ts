@@ -37,15 +37,32 @@ async function api(path: string, key: string, fetcher: typeof fetch) {
   return r.json();
 }
 
+/** Render labels come as [{ field, value }] (older docs show a plain object): read either. */
+const labelOf = (s: any, field: string) =>
+  Array.isArray(s?.labels) ? s.labels.find((l: any) => l?.field === field)?.value : s?.labels?.[field];
+const seriesOf = (data: any): any[] => (Array.isArray(data) ? data : data?.data || []);
+const resourceOf = (s: any) => labelOf(s, 'resource') || labelOf(s, 'service') || '?';
+
 const sumSeries = (data: any, perPoint: (v: number, unit?: string) => number) => {
   const by = new Map<string, number>();
-  for (const s of Array.isArray(data) ? data : data?.data || []) {
-    const id = s?.labels?.resource || s?.labels?.service || '?';
+  for (const s of seriesOf(data)) {
+    const id = resourceOf(s);
     let t = by.get(id) || 0;
     for (const p of s?.values || []) t += perPoint(Number(p?.value) || 0, s?.unit);
     by.set(id, t);
   }
   return by;
+};
+/** Free instance hours: Render reports memory only while an instance is awake, so hours with a reading = hours running. */
+const awakeHours = (data: any) => {
+  const by = new Map<string, Set<string>>();
+  for (const s of seriesOf(data)) {
+    const id = resourceOf(s);
+    const set = by.get(id) || new Set<string>();
+    for (const p of s?.values || []) set.add(String(p?.timestamp));
+    by.set(id, set);
+  }
+  return new Map([...by].map(([id, set]) => [id, set.size]));
 };
 
 let cache: { at: number; value: Usage } | null = null;
@@ -90,7 +107,7 @@ export async function getUsage(opts: { force?: boolean; fetcher?: typeof fetch; 
       let hours = new Map<string, number>();
       if (free.length) {
         const qf = `startTime=${encodeURIComponent(start.toISOString())}&endTime=${encodeURIComponent(now.toISOString())}${free.map(s => `&resource=${s.id}`).join('')}&resolutionSeconds=3600`;
-        hours = sumSeries(await api(`/metrics/instance-count?${qf}`, key, fetcher), v => v);   // one point per hour → instance-hours
+        hours = awakeHours(await api(`/metrics/memory?${qf}`, key, fetcher));   // instance-count is empty for free services
       }
       const services = mine.map(s => ({ name: s.name, plan: s.serviceDetails?.plan || s.type, gb: bw.get(s.id) || 0, hours: hours.get(s.id) || 0 }));
       const bandwidthGB = services.reduce((t, s) => t + s.gb, 0);

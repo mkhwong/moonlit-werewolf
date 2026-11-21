@@ -119,3 +119,15 @@ export function RoomList() {
     </section>
   );
 }
+
+/** Owner section on the home page: usage and rooms side by side (stacked on a phone). */
+export function OwnerPanels() {
+  const { account } = useAccount();
+  if (!account?.owner) return null;
+  return (
+    <div className="owner-panels">
+      <UsageMeter />
+      <RoomList />
+    </div>
+  );
+}

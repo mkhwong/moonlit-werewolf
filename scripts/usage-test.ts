@@ -15,14 +15,18 @@ const fake: any = async (url: string, init: any) => {
     { service: { id: 'srv-site', ownerId: 'tea-1', name: 'pages', type: 'static_site', serviceDetails: {} }, cursor: 'c' },
     { service: { id: 'srv-other', ownerId: 'tea-2', name: 'someone-else', type: 'web_service', serviceDetails: { plan: 'free' } }, cursor: 'd' },
   ]);
+  const L = (id: string) => [{ field: 'service', value: id }, { field: 'resource', value: id }];   // Render's real label shape
   if (url.includes('/metrics/bandwidth')) return body([
-    { labels: { resource: 'srv-ww' }, unit: 'MB', values: [{ value: 1200 }, { value: 300 }] },
+    { labels: L('srv-ww'), unit: 'mb', values: [{ value: 1200 }, { value: 300 }] },
     { labels: { resource: 'srv-onw' }, unit: 'GB', values: [{ value: 0.25 }] },
     { labels: { resource: 'srv-site' }, unit: 'MB', values: [{ value: 50 }] },
   ]);
-  if (url.includes('/metrics/instance-count')) return body([
-    { labels: { resource: 'srv-ww' }, values: Array.from({ length: 200 }, () => ({ value: 1 })) },
-    { labels: { resource: 'srv-onw' }, values: Array.from({ length: 40 }, () => ({ value: 1 })) },
+  const hrs = (n: number, from = 0) => Array.from({ length: n }, (_, i) => ({ timestamp: new Date(Date.UTC(2026, 10, 1, from + i)).toISOString(), value: 1.4e8 }));
+  if (url.includes('/metrics/memory')) return body([
+    // two instances of the same service (a restart): overlapping hours count once
+    { labels: [{ field: 'instance', value: 'srv-ww-a' }, ...L('srv-ww')], unit: 'bytes', values: hrs(150) },
+    { labels: [{ field: 'instance', value: 'srv-ww-b' }, ...L('srv-ww')], unit: 'bytes', values: hrs(100, 100) },
+    { labels: L('srv-onw'), unit: 'bytes', values: hrs(40) },
   ]);
   return { ok: false, status: 404, text: async () => 'nope' };
 };
@@ -35,7 +39,7 @@ ok(u.ok, 'reads usage');
 ok(Math.abs(u.bandwidthGB - 1.8) < 1e-9, `bandwidth sums units across the workspace (${u.bandwidthGB} GB)`);
 ok(!u.services.some(s => s.name === 'someone-else'), 'ignores services in other workspaces');
 ok(u.freeHours === 240, `free instance hours (${u.freeHours})`);
-ok(seen.some(s => s.includes('/metrics/instance-count') && !s.includes('srv-site')), 'hours only for free web services');
+ok(seen.some(s => s.includes('/metrics/memory') && !s.includes('srv-site')), 'hours only for free web services');
 ok(Math.abs(u.projectedGB - 1.8 / 20.5 * 30) < 1e-6, `projection to month end (${u.projectedGB.toFixed(2)} GB)`);
 ok(u.month === '2026-11' && u.bandwidthLimitGB === 5 && u.freeHoursLimit === 750, 'month and free limits');
 ok(isOwnerEmail('me@example.com') && isOwnerEmail(' OTHER@x.com ') && !isOwnerEmail('me@example.co') && !isOwnerEmail(''), 'owner email check (case-insensitive, exact)');
