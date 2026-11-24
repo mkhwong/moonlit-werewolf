@@ -420,7 +420,7 @@ p { margin: 0; line-height: 1.6; }
 .ptt-latch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--moon-2); cursor: pointer; }
 .ptt-latch input { accent-color: var(--gold); width: 16px; height: 16px; }
 .over-voice { width: 100%; }
-.seat-mic { position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--lantern); color: #1f1405; box-shadow: 0 0 0 2px #120c18; }
+.seat-mic { position: absolute; z-index: 4; bottom: -2px; left: 50%; transform: translateX(-50%); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--lantern); color: #1f1405; box-shadow: 0 0 0 2px #120c18; }
 .seat.is-talking .seat-medal { box-shadow: 0 0 0 2px var(--lantern), 0 0 22px rgba(240, 192, 106, .9); animation: talk-pulse .9s ease-in-out infinite alternate; }
 @keyframes talk-pulse { from { box-shadow: 0 0 0 2px var(--lantern), 0 0 10px rgba(240, 192, 106, .5); } to { box-shadow: 0 0 0 3px var(--lantern), 0 0 28px rgba(240, 192, 106, 1); } }
 
@@ -543,6 +543,7 @@ p { margin: 0; line-height: 1.6; }
 /* Avatar: a cameo portrait */
 .avatar {
   position: relative; flex: none; display: inline-grid; place-items: center; border-radius: 50%;
+  isolation: isolate;   /* the profile photo's z-index stays inside the circle, so seat badges (mic, 狼 mark, X…) draw on top */
   background: radial-gradient(circle at 40% 32%, hsl(var(--h) 26% 42%), hsl(var(--h) 32% 14%) 75%);
   color: var(--moon); font-family: var(--serif); font-weight: 900;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 -8px 14px rgba(0, 0, 0, .45);

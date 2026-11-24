@@ -1,7 +1,13 @@
 // 更新日誌 — shown from the corner link on the home page. Newest first; keep each line short.
-export const VERSION = 'v2.13';
+export const VERSION = 'v2.14';
 
 export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
+  {
+    v: 'v2.14', date: '2026-11-24',
+    items: [
+      '修正有頭像嘅玩家：講嘢時座位嘅咪圖示被頭像遮住；狼隊友標記、離線圓點、出局交叉亦一併修正',
+    ],
+  },
   {
     v: 'v2.13', date: '2026-11-21',
     items: [
