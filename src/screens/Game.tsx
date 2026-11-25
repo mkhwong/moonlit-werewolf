@@ -7,7 +7,7 @@ import CinematicLayer, { FULL_CINE, VoteRecord } from '../components/Cinematic';
 import Emblem, { Avatar } from '../components/Emblem';
 import { GuidePopup, RoleSheet, LogSheet, NotesSheet, HostSheet, RoleCardFace, matesText, LogList } from '../components/Sheets';
 import NightMap from '../components/NightMap';
-import PastGamesSheet from '../components/PastGames';
+import PastGamesSheet, { LastGameSheet } from '../components/PastGames';
 import { act, call, call as emit, useNow, now } from '../socket';
 import { useNotes } from '../notes';
 import { useAudioCues } from '../cues';
@@ -347,6 +347,9 @@ export default function Game({ state }: any) {
     && (you.isHost || isSheriff || ph.data.pid === game.me?.id) && (ph.data.ext || 0) < 3);
   // 票型: every vote result pops up and stays until 確認; tapping a vote line in the feed reopens it.
   const [voteRec, setVoteRec] = useState(null);
+  // 上一局: the game played before this one in the same room (the current one is archived only when it ends).
+  const prevGame = (state.pastGames || []).filter(g => g.no < (state.gameNo || 0)).slice(-1)[0] || null;
+  const [prevOpen, setPrevOpen] = useState(false);
   useEffect(() => { if (ph?.type === 'voteResult') setVoteRec(ph.data); }, [ph?.id]);
   // 擲物 mode: after picking an item, every other player's seat blinks; tap one to throw.
   const [throwItem, setThrowItem] = useState(null);
@@ -496,7 +499,7 @@ export default function Game({ state }: any) {
               </div>
             ) : null}
           </div>
-          <JudgeFeed game={game} P={P} line={call} onVote={setVoteRec} />
+          <JudgeFeed game={game} P={P} line={call} onVote={setVoteRec} prev={prevGame} onPrev={() => setPrevOpen(true)} />
           <div className="seat-col">
             <Seats side="right" players={right} {...seatProps} />
             {/* « under the right column: reopen the minimised speech panel */}
@@ -571,6 +574,7 @@ export default function Game({ state }: any) {
       {sheet === 'throw' ? <ThrowFlyout game={game} onPick={it => { setThrowItem(it); setSheet(null); }} onClose={() => setSheet(null)} /> : null}
       <ThrowLayer />
       {voteRec ? <VoteRecord data={voteRec} players={P} onClose={() => setVoteRec(null)} /> : null}
+      {prevOpen && prevGame ? <LastGameSheet no={prevGame.no} list={state.pastGames} onClose={() => setPrevOpen(false)} /> : null}
       {sheet === 'host' ? <HostSheet finished={game.finished} skipBlock={skipBlock} onClose={() => setSheet(null)} /> : null}
     </div>
   );

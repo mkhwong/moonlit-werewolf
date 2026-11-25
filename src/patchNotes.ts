@@ -1,7 +1,13 @@
 // 更新日誌 — shown from the corner link on the home page. Newest first; keep each line short.
-export const VERSION = 'v2.14';
+export const VERSION = 'v2.15';
 
 export const PATCH_NOTES: { v: string; date: string; items: string[] }[] = [
+  {
+    v: 'v2.15', date: '2026-11-25',
+    items: [
+      '同一個房玩第二局起，中間法官聊天框右上角有「上一局」掣：即刻睇上一局每位玩家嘅身分、點樣出局、每晚圖解同完整行動紀錄',
+    ],
+  },
   {
     v: 'v2.14', date: '2026-11-24',
     items: [

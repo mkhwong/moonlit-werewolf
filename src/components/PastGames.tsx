@@ -11,8 +11,8 @@ const WIN = { wolf: '狼人陣營勝', good: '好人陣營勝', lovers: '情侶�
 const FATE = { love: '殉情', bomb: '被炸死', purify: '被淨化', curse: '被狼巫查殺', revenge: '被復仇', dream: '夢遊出局', hunt: '被獵魔', reflect: '被反傷', merchant: '交易失敗', charm: '殉情', wolf: '狼刀', poison: '毒殺', vote: '放逐', shot: '被開槍', selfDestruct: '自爆', duel: '決鬥出局', wwk: '被白狼王帶走' };
 const hhmm = (t: number) => new Date(t).toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-export function GameRecord({ rec }: any) {
-  const [showLog, setShowLog] = useState(false);
+export function GameRecord({ rec, logOpen = false }: any) {
+  const [showLog, setShowLog] = useState(logOpen);
   return (
     <div className="pg-record">
       <p className={`pg-win pg-${rec.winner}`}>{WIN[rec.winner] || '完場'}・{rec.label}・{rec.size}人・{rec.days}晚</p>
@@ -33,6 +33,23 @@ export function GameRecord({ rec }: any) {
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowLog(v => !v)} aria-expanded={showLog}>{showLog ? '收起文字紀錄' : '文字紀錄（含夜晚行動）'}</button>
       {showLog ? <div className="panel over-log"><LogList entries={rec.history || []} empty="沒有紀錄" /></div> : null}
     </div>
+  );
+}
+
+/** 上一局: straight to the previous game's identities and action history, from the 法官 feed. */
+export function LastGameSheet({ no, list, onClose }: any) {
+  const [rec, setRec] = useState<any>(null);
+  const [err, setErr] = useState('');
+  const [all, setAll] = useState(false);
+  React.useEffect(() => {
+    call('pastGame', { no }).then(r => { if (r?.ok) setRec(r.game); else setErr('讀取不到上一局嘅紀錄'); });
+  }, [no]);
+  if (all) return <PastGamesSheet list={list} onClose={onClose} />;
+  return (
+    <Sheet title={`上一局・第 ${no} 局`} onClose={onClose} wide className="pg-sheet">
+      {rec ? <GameRecord rec={rec} logOpen /> : err ? <p className="err">{err}</p> : <p className="muted">載入中…</p>}
+      {list?.length > 1 ? <button type="button" className="btn btn-ghost btn-sm pg-all" onClick={() => setAll(true)}>本房全部 {list.length} 局 ›</button> : null}
+    </Sheet>
   );
 }
 

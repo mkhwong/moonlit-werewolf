@@ -3,7 +3,7 @@ import { act } from '../socket';
 
 // Centre of the table: the judge's current call, and a running log of
 // announcements and typed speeches.
-export default function JudgeFeed({ game, P, line, sub, onVote }: any) {
+export default function JudgeFeed({ game, P, line, sub, onVote, prev, onPrev }: any) {
   const ref = useRef(null);
   const pr = game.phase?.prompt;
   // 狼隊頻道: during the wolf step the pack can flip the chat box to a wolves-only channel.
@@ -37,6 +37,12 @@ export default function JudgeFeed({ game, P, line, sub, onVote }: any) {
   return (
     <section className="judge" aria-label="法官">
       <div className="judge-line" aria-live="polite">
+        {prev && onPrev ? (
+          <button type="button" className="judge-prev" onClick={onPrev} aria-label={`上一局（第 ${prev.no} 局）紀錄：身分同行動`}>
+            <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden><path d="M12 7v5l3 2M3.5 12a8.5 8.5 0 1 0 2.5-6M3 4v4h4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            上一局
+          </button>
+        ) : null}
         <span className="judge-tag">法官</span>
         <p className="judge-call">{line}</p>
         {sub ? <p className="judge-sub">{sub}</p> : null}

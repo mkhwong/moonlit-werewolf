@@ -478,6 +478,7 @@ class Room { [key: string]: any;
       you: { id: p.id, name: p.name, seat: p.seat, isHost: p.id === this.hostId, pref: p.pref || null, ready: !!p.ready, account: AccountStore.selfView(accounts.get(p.accountId)) },
       game: atResult ? this.lastGame.viewFor(p.id) : this.game ? this.game.viewFor(p.id) : null,
       pastGames: this.pastGames.map(g => ({ no: g.no, label: g.label, endedAt: g.endedAt, winner: g.winner, size: g.size, days: g.days, res: g.res })),
+      gameNo: this.gameNo,   // number of the game being played (or last started)
       othersInLobby: atResult ? this.players.filter(x => !x.bot && !x.atResult).length : undefined,
       voice: this.voiceView(p),
     };

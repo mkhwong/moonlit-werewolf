@@ -1551,3 +1551,9 @@ html .wwt > .wwt-hint { display: none !important; }
 .unofficial h1 { margin: 0; color: var(--gold); font-size: clamp(26px, 6vw, 40px); }
 .unofficial p { margin: 0; max-width: 28em; line-height: 1.7; }
 .home-copy { margin: 2px 0 0; font-size: 11px; opacity: .6; }
+
+/* 上一局 button in the 法官 feed */
+.judge-line { position: relative; }
+.judge-prev { position: absolute; top: 6px; right: 6px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; border: 1px solid rgba(201, 164, 92, .45); background: rgba(18, 12, 24, .75); color: var(--gold); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.judge-prev:hover, .judge-prev:focus-visible { background: rgba(201, 164, 92, .18); }
+.pg-all { justify-self: start; margin-top: 4px; }
